@@ -1,0 +1,12 @@
+#VisualStudio
+.vs/
+x64/
+**/x64/
+
+# GameAssets
+Assets/**
+
+!Assets/**/
+!Assets/**/*.cpp
+!Assets/**/*.h
+!Assets/**/*.cscript
