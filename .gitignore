@@ -1,4 +1,4 @@
-# VisualStudio
+﻿# VisualStudio
 .vs/
 Build/
 
@@ -9,6 +9,3 @@ Assets/**
 !Assets/**/*.cpp
 !Assets/**/*.h
 !Assets/**/*.cscript
-
-# Codex
-.codex/
