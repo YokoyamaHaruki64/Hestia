@@ -1,4 +1,4 @@
-#VisualStudio
+# VisualStudio
 .vs/
 x64/
 **/x64/
@@ -10,3 +10,6 @@ Assets/**
 !Assets/**/*.cpp
 !Assets/**/*.h
 !Assets/**/*.cscript
+
+# Codex
+.codex/
