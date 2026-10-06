@@ -1,4 +1,4 @@
-#ifndef _WINDOW_H_
+﻿#ifndef _WINDOW_H_
 #define _WINDOW_H_
 
 #include <Windows.h>
@@ -9,7 +9,7 @@ class Window
 {
 public:
     bool Initialize(
-		int nCmdShow,
+        int nCmdShow,
         WNDPROC windowProc,
         void* userData,
         const wchar_t* title,
@@ -18,11 +18,11 @@ public:
 
     void Finalize();
 
-	HWND GetHandle() const { return m_handle; }
+    HWND GetHandle() const { return m_handle; }
 
 private:
     HWND m_handle = nullptr;
-	std::wstring m_title;
+    std::wstring m_title;
 };
 
 #endif // _WINDOW_H_

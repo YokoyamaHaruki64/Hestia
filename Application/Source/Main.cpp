@@ -1,19 +1,19 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "Application.h"
 
 int APIENTRY wWinMain(
-	HINSTANCE hInstance,
-	HINSTANCE hPrevInstance, 
-	LPWSTR lpCmdLine, 
-	int nCmdShow)
+    HINSTANCE hInstance,
+    HINSTANCE hPrevInstance,
+    LPWSTR lpCmdLine,
+    int nCmdShow)
 {
-	Application app;
+    Application app;
 
-	if (!app.Initialize(nCmdShow)) return -1;
+    if (!app.Initialize(nCmdShow)) return -1;
 
-	const int exitCode = app.Run();
+    const int exitCode = app.Run();
 
-	app.Finalize();
+    app.Finalize();
 
-	return exitCode;
+    return exitCode;
 }

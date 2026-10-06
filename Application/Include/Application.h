@@ -1,4 +1,4 @@
-#ifndef _APPLICATION_H_
+﻿#ifndef _APPLICATION_H_
 #define _APPLICATION_H_
 
 #include <cstdint>
@@ -59,7 +59,7 @@ class Application
     */
 
 #if HESTIA_EDITOR
-    Editor m_editor;
+    // Editor m_editor;
 #endif
 
     double m_targetFPS = 120.0;
