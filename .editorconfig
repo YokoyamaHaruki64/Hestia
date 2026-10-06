@@ -1,0 +1,116 @@
+﻿root = true
+
+# ---------------------------------------------------
+# すべてのファイルの共通設定
+# ---------------------------------------------------
+[*]
+charset                  = utf-8-bom
+end_of_line              = lf
+insert_final_newline     = true
+trim_trailing_whitespace = true
+
+# ---------------------------------------------------
+# C++ ソース / ヘッダー
+# ---------------------------------------------------
+[*.{cpp,cxx,cc,c}]
+indent_style = space
+indent_size  = 4
+tab_width    = 4
+
+[*.{h,hpp,hxx,inl}]
+indent_style = space
+indent_size  = 4
+tab_width    = 4
+
+[*.{cscript}]
+indent_style = space
+indent_size  = 4
+tab_width    = 4
+
+# ---------------------------------------------------
+# HLSL シェーダー
+# bomなしUTF-8 を使用することで、コンパイルを通す
+# ---------------------------------------------------
+[*.{hlsl,hlsli,fx,fxh,shader}]
+indent_style             = space
+indent_size              = 4
+tab_width                = 4
+charset                  = utf-8
+trim_trailing_whitespace = true
+
+# ---------------------------------------------------
+# 実行時に読み込むテキストデータ
+# Parser間のBOM対応差を避けるため、BOMなしUTF-8に統一する
+# ---------------------------------------------------
+[*.{json,yml,yaml,scene,prefab,material,shader,ini,toml}]
+charset = utf-8
+
+# ---------------------------------------------------
+# Visual Studio プロジェクト / ソリューション
+# ---------------------------------------------------
+[*.{vcxproj,vcxproj.filters,vcxproj.props,props,targets}]
+indent_style = space
+indent_size  = 2
+
+[*.{sln,slnx}]
+indent_style = tab
+indent_size  = 4
+
+# ---------------------------------------------------
+# CMakeLists / CMake モジュール
+# ---------------------------------------------------
+[CMakeLists.txt]
+indent_style = space
+indent_size  = 2
+
+[*.cmake]
+indent_style = space
+indent_size  = 2
+
+# ---------------------------------------------------
+# JSON（設定ファイル・アセットメタデータ等）
+# ---------------------------------------------------
+[*.json]
+indent_style = space
+indent_size  = 2
+
+# ---------------------------------------------------
+# YAML（CI/CD・設定ファイル等）
+# ---------------------------------------------------
+[*.{yml,yaml}]
+indent_style = space
+indent_size  = 2
+trim_trailing_whitespace = false
+
+# ---------------------------------------------------
+# Markdown / ドキュメント
+# ---------------------------------------------------
+[*.md]
+trim_trailing_whitespace = false
+indent_style             = space
+indent_size              = 2
+
+# ---------------------------------------------------
+# バッチ / PowerShell スクリプト
+# ---------------------------------------------------
+[*.{bat,cmd}]
+indent_style = space
+indent_size  = 4
+
+[*.ps1]
+indent_style = space
+indent_size  = 4
+
+# ---------------------------------------------------
+# Python (ビルドスクリプト等)
+# ---------------------------------------------------
+[*.py]
+indent_style = space
+indent_size  = 4
+
+# ---------------------------------------------------
+# XML
+# ---------------------------------------------------
+[*.xml]
+indent_style = space
+indent_size  = 2

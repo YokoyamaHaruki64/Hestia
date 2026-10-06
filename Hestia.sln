@@ -10,50 +10,35 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "App", "Application\App.vcxp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Engine", "Engine\Engine.vcxproj", "{FE1D5632-593C-43BF-8047-219B71DD2C0E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ソリューション項目", "ソリューション項目", "{2022CB0F-8BAF-F49E-0C48-8EF4C96EC109}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug_Editor|x64 = Debug_Editor|x64
-		Debug_Editor|x86 = Debug_Editor|x86
 		Debug_Game|x64 = Debug_Game|x64
-		Debug_Game|x86 = Debug_Game|x86
 		Release_Editor|x64 = Release_Editor|x64
-		Release_Editor|x86 = Release_Editor|x86
 		Release_Game|x64 = Release_Game|x64
-		Release_Game|x86 = Release_Game|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Editor|x64.ActiveCfg = Debug_Editor|x64
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Editor|x64.Build.0 = Debug_Editor|x64
-		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Editor|x86.ActiveCfg = Debug_Editor|Win32
-		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Editor|x86.Build.0 = Debug_Editor|Win32
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Game|x64.ActiveCfg = Debug_Game|x64
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Game|x64.Build.0 = Debug_Game|x64
-		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Game|x86.ActiveCfg = Debug_Game|Win32
-		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Game|x86.Build.0 = Debug_Game|Win32
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Release_Editor|x64.ActiveCfg = Release_Editor|x64
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Release_Editor|x64.Build.0 = Release_Editor|x64
-		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Release_Editor|x86.ActiveCfg = Release_Editor|Win32
-		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Release_Editor|x86.Build.0 = Release_Editor|Win32
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Release_Game|x64.ActiveCfg = Release_Game|x64
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Release_Game|x64.Build.0 = Release_Game|x64
-		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Release_Game|x86.ActiveCfg = Release_Game|Win32
-		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Release_Game|x86.Build.0 = Release_Game|Win32
 		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Debug_Editor|x64.ActiveCfg = Debug_Editor|x64
 		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Debug_Editor|x64.Build.0 = Debug_Editor|x64
-		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Debug_Editor|x86.ActiveCfg = Debug_Editor|Win32
-		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Debug_Editor|x86.Build.0 = Debug_Editor|Win32
 		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Debug_Game|x64.ActiveCfg = Debug_Game|x64
 		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Debug_Game|x64.Build.0 = Debug_Game|x64
-		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Debug_Game|x86.ActiveCfg = Debug_Game|Win32
-		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Debug_Game|x86.Build.0 = Debug_Game|Win32
 		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Release_Editor|x64.ActiveCfg = Release_Editor|x64
 		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Release_Editor|x64.Build.0 = Release_Editor|x64
-		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Release_Editor|x86.ActiveCfg = Release_Editor|Win32
-		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Release_Editor|x86.Build.0 = Release_Editor|Win32
 		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Release_Game|x64.ActiveCfg = Release_Game|x64
 		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Release_Game|x64.Build.0 = Release_Game|x64
-		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Release_Game|x86.ActiveCfg = Release_Game|Win32
-		{FE1D5632-593C-43BF-8047-219B71DD2C0E}.Release_Game|x86.Build.0 = Release_Game|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
