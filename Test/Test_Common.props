@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <OutDir Condition="'$(ConfigurationType)'=='StaticLibrary'">$(MSBuildThisFileDirectory)Build\lib\$(Platform)\$(Configuration)\</OutDir>
+    <OutDir Condition="'$(ConfigurationType)'!='StaticLibrary'">$(MSBuildThisFileDirectory)Build\bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)Build\obj\$(Platform)\$(Configuration)\$(MSBuildProjectName)\</IntDir>
+  </PropertyGroup>
+</Project>
