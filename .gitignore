@@ -2,6 +2,9 @@
 .vs/
 Build/
 
+# Codex working notes
+/.codex/working/
+
 # GameAssets
 Assets/**
 

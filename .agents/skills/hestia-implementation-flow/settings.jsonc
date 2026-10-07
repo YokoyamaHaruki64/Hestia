@@ -1,0 +1,30 @@
+﻿{
+  // schemaVersion: 設定形式のバージョン。
+  "schemaVersion": 1,
+
+  // modelSelection: 役割ごとのモデル選択方法。
+  "modelSelection": {
+    // upper: 上位モデル。使える値: inherit（現在の設定）/ fixed（固定）/ select（候補から選択）。
+    "upper": "inherit",
+    // lower: 下位モデル。使える値: fixed（固定）/ select（上位モデルが候補から選択）。
+    "lower": "select"
+  },
+
+  // candidateSequence: select で使う候補。配列の順序は優先順。空なら未設定。
+  // 記入例: { "model": "gpt-6-luna", "effort": "high" }
+  // model: 正式なモデル ID。使える値一覧（2026/10/07 の SubAgent ツール仕様）:
+  //   gpt-5.6-sol, gpt-6-sol, gpt-6.1-sol, gpt-6-luna, gpt-6-astra
+  // effort: 推論強度。使える値一覧:
+  //   gpt-6-luna: low, medium, high, xhigh, max
+  //   その他の上記モデル: low, medium, high, xhigh, max, ultra
+  // 省略名の 6.0-luna や mid は使わず、gpt-6-luna / medium と記入する。
+  // 利用可能な値は変わるため、実行時に公開されるツール仕様を優先する。
+  "candidateSequence": [],
+
+  // fixedModels: fixed で使う固定モデルの map。upper / lower へ model と effort を記入する。
+  // model / effort: 上記の値一覧から選ぶ。null は未設定。使わない役割は null のままでよい。
+  "fixedModels": {
+    "upper": { "model": null, "effort": null },
+    "lower": { "model": null, "effort": null }
+  }
+}
