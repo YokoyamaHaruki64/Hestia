@@ -8,9 +8,12 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
+      <PreprocessorDefinitions Condition="'$(Configuration)' == 'Test'">HESTIA_TEST=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)' != 'Test'">HESTIA_TEST=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp23</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Include;$(MSBuildThisFileDirectory)../;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />

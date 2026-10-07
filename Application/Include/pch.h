@@ -1,17 +1,20 @@
-﻿#ifndef _APP_PCH_H_
+﻿/*=============================================================================
+
+ File   : pch.h
+ Desc   : Application プロジェクトで共通使用する事前コンパイルヘッダーを定義する。
+
+------------------------------------------------------------------------------
+
+ Date   : 2026/10/05
+ Author : Yokoyama Haruki
+
+=============================================================================*/
+
+#ifndef _APP_PCH_H_
 #define _APP_PCH_H_
 
-// Windows の min/max マクロと不要な追加ヘッダーの取り込みを抑える。
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
 // Windows / COM
-#include <Windows.h>
+#include "Common/Include/WindowsHeaders.h"
 #include <objbase.h>
 #include <wrl/client.h>
 

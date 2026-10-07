@@ -1,7 +1,19 @@
-﻿#ifndef _WINDOW_H_
+﻿/*=============================================================================
+
+ File   : Window.h
+ Desc   : Win32 ウィンドウの生成と基本操作を行う Window クラスを宣言する。
+
+------------------------------------------------------------------------------
+
+ Date   : 2026/10/05
+ Author : Yokoyama Haruki
+
+=============================================================================*/
+
+#ifndef _WINDOW_H_
 #define _WINDOW_H_
 
-#include <Windows.h>
+#include "Common/Include/WindowsHeaders.h"
 #include <cstdint>
 #include <string>
 
