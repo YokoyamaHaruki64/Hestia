@@ -19,12 +19,18 @@
   //   その他の上記モデル: low, medium, high, xhigh, max, ultra
   // 省略名の 6.0-luna や mid は使わず、gpt-6-luna / medium と記入する。
   // 利用可能な値は変わるため、実行時に公開されるツール仕様を優先する。
-  "candidateSequence": [],
+  "candidateSequence": [
+    { "model": "gpt-6-luna", "effort": "high" },
+    { "model": "gpt-6.1-sol", "effort": "low" },
+    { "model": "gpt-6-luna", "effort": "medium" },
+    { "model": "gpt-6-luna", "effort": "xhigh" },
+    { "model": "gpt-6-luna", "effort": "max" }
+  ],
 
   // fixedModels: fixed で使う固定モデルの map。upper / lower へ model と effort を記入する。
   // model / effort: 上記の値一覧から選ぶ。null は未設定。使わない役割は null のままでよい。
   "fixedModels": {
-    "upper": { "model": null, "effort": null },
-    "lower": { "model": null, "effort": null }
+    "upper": { "model": "gpt-6.1-sol", "effort": "medium" },
+    "lower": { "model": "gpt-6-luna", "effort": "high" }
   }
 }
