@@ -34,7 +34,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\ThirdParty\GoogleTest\googletest\include;$(ProjectDir)..\ThirdParty\GoogleTest\googletest;$(ProjectDir)..\..\Application\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\ThirdParty\GoogleTest\googletest\include;$(ProjectDir)..\ThirdParty\GoogleTest\googletest;$(ProjectDir)..\..\Application\Include;$(ProjectDir)..\..\Engine\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -43,6 +43,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\ApplicationTests.cpp" />
+    <ClCompile Include="Source\EngineTests.cpp" />
     <ClCompile Include="..\ThirdParty\GoogleTest\googletest\src\gtest-all.cc" />
     <ClCompile Include="..\ThirdParty\GoogleTest\googletest\src\gtest_main.cc" />
   </ItemGroup>

@@ -1,13 +1,23 @@
-﻿#include "pch.h"
+﻿/*=============================================================================
+
+ File   : Application.cpp
+ Desc   : Application の初期化、メインループ、Engine連携を実装する。
+
+------------------------------------------------------------------------------
+
+ Date   : 2026/10/05
+ Author : Yokoyama Haruki
+
+=============================================================================*/
+
+#include "pch.h"
 #include "Application.h"
 
 bool Application::Initialize(int nCmdShow)
 {
     // Windowの初期化
     if (!m_window.Initialize(nCmdShow, WindowProc, this, L"Hestia Application", 1600, 900))
-    {
         return false;
-    }
 
     // Waitable Timer作成
     m_frameTimer = CreateWaitableTimerEx(
@@ -17,9 +27,17 @@ bool Application::Initialize(int nCmdShow)
         TIMER_ALL_ACCESS
     );
 
+    if(!m_frameTimer)
+        return false;
+
+    if(!LoadEngine())
+        return false;
+
     m_accumulatedTime = 0.0;
     m_lastFrameTime = Clock::now();
     m_running = true;
+
+    s_instance = this;
 
     return true;
 }
@@ -41,6 +59,7 @@ int Application::Run()
         while (m_accumulatedTime >= m_fixedDeltaTime)
         {
             // Engineの固定更新処理
+            m_engineAPI->FixedUpdate(m_engine, static_cast<float>(m_fixedDeltaTime));
 
             // Editorの固定更新処理
 
@@ -48,6 +67,7 @@ int Application::Run()
         }
 
         // Engineの更新処理
+        m_engineAPI->FrameExecute(m_engine, static_cast<float>(deltaTime));
 
         // Editorの更新処理
 
@@ -162,9 +182,10 @@ LRESULT Application::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     // Windowのメッセージ処理
     // 基本的にEngineやEditorのメッセージ処理に委譲する
 
-    /*
-    * m_engineAPI->ProcessWindowMessage(m_engine, hwnd, message, wParam, lParam);
-    * */
+    if (s_instance && s_instance->m_engineAPI && s_instance->m_engine)
+    {
+        s_instance->m_engineAPI->ProcessMessage(s_instance->m_engine, hwnd, msg, wParam, lParam);
+    }
 
     switch (msg)
     {
@@ -181,105 +202,49 @@ LRESULT Application::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 }
 
 
-ApplicationAPI Application::CreateApplicationAPI()
+bool Application::LoadEngine()
 {
-    ApplicationAPI api;
+    // Dllロード
+    m_engineModule = LoadLibraryW(L"Engine.dll");
+    if (!m_engineModule)
+        return false;
 
-    api.m_context = this;
+    // GetEngineAPI関数の取得
+    auto getEngineAPIFunc = reinterpret_cast<const Hestia::EngineAPI*(*)()>(
+        GetProcAddress(m_engineModule, "GetEngineAPI")
+    );
+    if (!getEngineAPIFunc)
+        return false;
 
-    // 関数ポインタを設定
+    // EngineAPIの取得
+    m_engineAPI = getEngineAPIFunc();
+    if (!m_engineAPI)
+        return false;
 
-    api.m_setTargetFPS = [](void* context, double fps)
-        {
-            static_cast<Application*>(context)->SetTargetFPS(fps);
-        };
+    // Engineを初期化して作成
+    Hestia::ApplicationAPI appAPI = CreateApplicationAPI();
+    m_engine = m_engineAPI->Create(&appAPI);
+    if (!m_engine)
+        return false;
 
-    api.m_getTargetFPS = [](void* context)
-        {
-            return static_cast<Application*>(context)->GetTargetFPS();
-        };
-
-    api.m_setUnlimitedFrameRate = [](void* context, bool unlimited)
-        {
-            static_cast<Application*>(context)->SetUnlimitedFrameRate(unlimited);
-        };
-
-    api.m_isUnlimitedFrameRate = [](void* context)
-        {
-            return static_cast<Application*>(context)->IsUnlimitedFrameRate();
-        };
-
-    api.m_setFixedDeltaTime = [](void* context, double deltaTime)
-        {
-            static_cast<Application*>(context)->SetFixedDeltaTime(deltaTime);
-        };
-
-    api.m_getFixedDeltaTime = [](void* context)
-        {
-            return static_cast<Application*>(context)->GetFixedDeltaTime();
-        };
-
-    api.m_requestQuit = [](void* context)
-        {
-            static_cast<Application*>(context)->RequestQuit();
-        };
-
-    return api;
+    return true;
 }
 
-void ApplicationAPI::SetTargetFPS(double fps) const
+void Application::UnloadEngine()
 {
-    if (m_setTargetFPS)
+    if (m_engine)
     {
-        m_setTargetFPS(m_context, fps);
-    }
-}
-double ApplicationAPI::GetTargetFPS() const
-{
-    if (m_getTargetFPS)
-    {
-        return m_getTargetFPS(m_context);
+        if (m_engineAPI)
+            m_engineAPI->Destroy(m_engine);
+        m_engine = nullptr;
     }
 
-    return 0.0;
+    m_engineAPI = nullptr;
+
+    if (m_engineModule)
+    {
+        FreeLibrary(m_engineModule);
+        m_engineModule = nullptr;
+    }
 }
 
-void ApplicationAPI::SetUnlimitedFrameRate(bool unlimited) const
-{
-    if (m_setUnlimitedFrameRate)
-    {
-        m_setUnlimitedFrameRate(m_context, unlimited);
-    }
-}
-bool ApplicationAPI::IsUnlimitedFrameRate() const
-{
-    if (m_isUnlimitedFrameRate)
-    {
-        return m_isUnlimitedFrameRate(m_context);
-    }
-    return false;
-}
-
-void ApplicationAPI::SetFixedDeltaTime(double deltaTime) const
-{
-    if (m_setFixedDeltaTime)
-    {
-        m_setFixedDeltaTime(m_context, deltaTime);
-    }
-}
-double ApplicationAPI::GetFixedDeltaTime() const
-{
-    if (m_getFixedDeltaTime)
-    {
-        return m_getFixedDeltaTime(m_context);
-    }
-    return 0.0;
-}
-
-void ApplicationAPI::RequestQuit() const
-{
-    if (m_requestQuit)
-    {
-        m_requestQuit(m_context);
-    }
-}

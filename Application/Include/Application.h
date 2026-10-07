@@ -1,62 +1,39 @@
-﻿#ifndef _APPLICATION_H_
+﻿/*=============================================================================
+
+ File   : Application.h
+ Desc   : Application クラスと実行時設定のインターフェースを宣言する。
+
+------------------------------------------------------------------------------
+
+ Date   : 2026/10/05
+ Author : Yokoyama Haruki
+
+=============================================================================*/
+
+#ifndef _APPLICATION_H_
 #define _APPLICATION_H_
 
 #include <cstdint>
 #include <chrono>
 
+#include "ApplicationAPI.h"
 #include "Window.h"
 
-
-struct ApplicationAPI
-{
-public:
-    void SetTargetFPS(double fps) const;
-    double GetTargetFPS() const;
-
-    void SetUnlimitedFrameRate(bool unlimited) const;
-    bool IsUnlimitedFrameRate() const;
-
-    void SetFixedDeltaTime(double deltaTime) const;
-    double GetFixedDeltaTime() const;
-
-    void RequestQuit() const;
-
-private:
-
-    // FPS目標値のプロパティを設定する関数ポインタ
-    void (*m_setTargetFPS)(void* context, double fps) = nullptr;
-    double (*m_getTargetFPS)(void* context) = nullptr;
-
-    // 無制限フレームレートのプロパティを設定する関数ポインタ
-    void (*m_setUnlimitedFrameRate)(void* context, bool unlimited) = nullptr;
-    bool (*m_isUnlimitedFrameRate)(void* context) = nullptr;
-
-    // 固定更新時間のプロパティを設定する関数ポインタ
-    void (*m_setFixedDeltaTime)(void* context, double deltaTime) = nullptr;
-    double (*m_getFixedDeltaTime)(void* context) = nullptr;
-    // アプリケーションの終了を要求する関数ポインタ
-    void (*m_requestQuit)(void* context) = nullptr;
-
-    // Applicationクラスのインスタンスポインタ
-    // dll側でApplication型が漏れないようにvoid*で保持する
-    void* m_context = nullptr;
-
-    friend class Application;
-};
-
+#include "Engine/Include/EngineAPI.h"
 
 class Application
 {
 	static constexpr double SPIN_WAIT_THRESHOLD = 0.0000005; // 500ns
 
+    inline static Application* s_instance = nullptr;
+
     using Clock = std::chrono::steady_clock;
     Window m_window;
 	int m_exitCode = 0;
-    /*
+
     HMODULE m_engineModule = nullptr;
     const Hestia::EngineAPI* m_engineAPI = nullptr;
-    Hestia::Engine* m_engine = nullptr;
-    */
+    Hestia::EngineHandle m_engine = nullptr;
 
 #if HESTIA_EDITOR
     // Editor m_editor;
@@ -75,12 +52,10 @@ class Application
 
     HANDLE m_frameTimer = nullptr;
 
-    /*
     bool LoadEngine();
     void UnloadEngine();
-    */
 
-    ApplicationAPI CreateApplicationAPI();
+    Hestia::ApplicationAPI CreateApplicationAPI();
 
     void ProcessMessages();
     void WaitUntil(Clock::time_point target);
@@ -121,4 +96,3 @@ public:
 
 
 #endif // _APPLICATION_H_
-
