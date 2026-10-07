@@ -18,11 +18,15 @@ namespace Hestia
     bool Engine::Initialize(const ApplicationAPI& applicationAPI)
     {
         m_applicationAPI = applicationAPI;
+        m_time.Initialize();
+        m_timeAPI.Initialize(&m_time);
         return true;
     }
 
     void Engine::Finalize()
     {
+        m_timeAPI.Finalize();
+        m_time.Finalize();
         m_applicationAPI = ApplicationAPI{};
     }
 
@@ -30,11 +34,13 @@ namespace Hestia
     {
     }
 
-    void Engine::FixedUpdate(float)
+    void Engine::FixedUpdate(float deltaTime)
     {
+        m_time.UpdateFixed(deltaTime);
     }
 
-    void Engine::FrameExecute(float)
+    void Engine::FrameExecute(float deltaTime)
     {
+        m_time.Update(deltaTime);
     }
 }

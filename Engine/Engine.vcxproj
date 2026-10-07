@@ -26,6 +26,8 @@
     <ClCompile Include="Source\DllMain.cpp" />
     <ClCompile Include="Source\Engine.cpp" />
     <ClCompile Include="Source\EngineAPI.cpp" />
+    <ClCompile Include="Source\Time\TimeSystem.cpp" />
+    <ClCompile Include="Source\Time\TimeAPI.cpp" />
     <ClCompile Include="Source\Pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Create</PrecompiledHeader>
@@ -37,6 +39,9 @@
   <ItemGroup>
     <ClInclude Include="Include\Engine.h" />
     <ClInclude Include="Include\EngineAPI.h" />
+    <ClInclude Include="Include\Time\TimeData.h" />
+    <ClInclude Include="Include\Time\TimeSystem.h" />
+    <ClInclude Include="Include\Time\TimeAPI.h" />
     <ClInclude Include="Include\pch.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

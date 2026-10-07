@@ -14,13 +14,15 @@
 #define _ENGINE_H_
 
 #include "EngineAPI.h"
+#include "Time/TimeSystem.h"
+#include "Time/TimeAPI.h"
 
 namespace Hestia
 {
     /// @brief System の更新と Application からの通知を取りまとめる Engine。
     /// 
     /// EngineAPI の入口だけがこの型を保持し、共有 Header には実体を公開しない。
-    /// System が未実装の間、通知・更新メソッドには配送先がなく何もしない。
+    /// 時間値を更新し、未実装の System への配送は後続の実装で接続する。
     class Engine
     {
     public:
@@ -52,6 +54,9 @@ namespace Hestia
     private:
         ApplicationAPI m_applicationAPI;
 
+        TimeSystem m_time;
+        TimeAPI m_timeAPI;
+
         /*
         // System と Boundary API は各 System の設計・実装時に有効化する。
         AssetSystem m_assets;
@@ -59,14 +64,12 @@ namespace Hestia
         InputSystem m_input;
         AudioSystem m_audio;
         PhysicsSystem m_physics;
-        TimeSystem m_time;
 
         AssetAPI m_assetAPI;
         GraphicsAPI m_graphicsAPI;
         InputAPI m_inputAPI;
         AudioAPI m_audioAPI;
         PhysicsAPI m_physicsAPI;
-        TimeAPI m_timeAPI;
 
         HMODULE m_gameModule = nullptr;
         GameEngineAPI m_gameEngineAPI;

@@ -59,19 +59,18 @@ namespace
         engineAPI->Destroy(nullptr);
     }
 
-    TEST(EngineAPI, EngineHandlesHaveIndependentLifetimes)
+    TEST(EngineAPI, EngineCanBeRecreatedAfterDestruction)
     {
         Hestia::ApplicationAPI applicationAPI;
         const Hestia::EngineAPI* engineAPI = GetEngineAPI();
         ASSERT_NE(engineAPI, nullptr);
         Hestia::EngineHandle firstEngine = engineAPI->Create(&applicationAPI);
-        Hestia::EngineHandle secondEngine = engineAPI->Create(&applicationAPI);
-
         ASSERT_NE(firstEngine, nullptr);
-        ASSERT_NE(secondEngine, nullptr);
-        EXPECT_NE(firstEngine, secondEngine);
 
         engineAPI->Destroy(firstEngine);
+
+        Hestia::EngineHandle secondEngine = engineAPI->Create(&applicationAPI);
+        ASSERT_NE(secondEngine, nullptr);
         engineAPI->FixedUpdate(secondEngine, 1.0f / 60.0f);
         engineAPI->Destroy(secondEngine);
     }

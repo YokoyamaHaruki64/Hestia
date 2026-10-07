@@ -44,6 +44,7 @@
   <ItemGroup>
     <ClCompile Include="Source\ApplicationTests.cpp" />
     <ClCompile Include="Source\EngineTests.cpp" />
+    <ClCompile Include="Source\TimeTests.cpp" />
     <ClCompile Include="..\ThirdParty\GoogleTest\googletest\src\gtest-all.cc" />
     <ClCompile Include="..\ThirdParty\GoogleTest\googletest\src\gtest_main.cc" />
   </ItemGroup>

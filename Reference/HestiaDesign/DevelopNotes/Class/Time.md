@@ -16,8 +16,10 @@ namespace Hestia
     class TimeSystem
     {
     public:
-        TimeSystem();
-        ~TimeSystem();
+        TimeSystem() = default;
+
+        void Initialize();
+        void Finalize();
 
         inline static float DeltaTime();
 
@@ -55,7 +57,9 @@ namespace Hestia
 
 `UpdateFixed()` はFixed Updateに使用する時間値を更新する。TotalTimeは通常フレームの `Update()` 側でのみ加算する。
 
-**所有・参照**：Engine が TimeSystem と TimeAPI を値として所有する。TimeSystem は TimeData を値保持し、private の s_instance は自身への非所有ポインタ。System 実体を公開する Getter は設けず、時間値の Getter を公開する。
+**所有・参照**：Engine が TimeSystem と TimeAPI を値として所有する。TimeSystem は TimeData を値保持し、private の s_instance は自身への非所有ポインタ。TimeSystem の既定コンストラクタは状態を初期化せず、Engine の Initialize／Finalize から明示的に TimeSystem の Initialize／Finalize を呼ぶ。Initialize は TimeData を初期値へ戻して s_instance を登録し、Finalize は登録を解除する。System 実体を公開する Getter は設けず、時間値の Getter を公開する。
+
+TimeAPI は TimeSystem の Initialize 後に Initialize(TimeSystem*) で参照先を設定する。終了時は TimeAPI::Finalize() で非所有参照を解除してから TimeSystem::Finalize() を呼ぶ。
 
 **決定（U03）**：通常の Update は Engine::FrameExecute 内で GameRuntime::Update より前に行う。FixedUpdate の呼び出し回数は Application が蓄積時間を消費して決め、Engine の固定更新経路で UpdateFixed を呼ぶ。System の lifecycle に一律の Initialize は要求しない。
 
@@ -107,6 +111,8 @@ namespace Hestia
     public:
         void Initialize(TimeSystem* system);
 
+        void Finalize();
+
         inline float DeltaTime() const;
 
         inline float UnscaledDeltaTime() const;
@@ -134,7 +140,7 @@ namespace Hestia
 [TimeData](#timedata)  
 [HestiaGame::Time](#hestiagametime)
 
-Engine.dll側では `Initialize()` で参照先を設定する。m_system と m_data はどちらも非所有。Getter は Header の inline 定義で m_data を読み、DLL 境界の関数呼び出しを行わない。上記は概念上の宣言だけを示す。
+Engine.dll側では TimeSystem の Initialize 後、TimeAPI の `Initialize()` で参照先を設定する。終了時は TimeAPI の `Finalize()` で m_system と m_data を null にしてから TimeSystem を終了する。m_system と m_data はどちらも非所有。Getter は Header の inline 定義で m_data を読み、DLL 境界の関数呼び出しを行わない。上記は概念上の宣言だけを示す。
 
 Initialize は m_system に対象 System、m_data に system->GetData() のアドレスを設定する。SetTimeScale は m_system に処理を渡す。
 

@@ -26,6 +26,7 @@ namespace Hestia
     struct EngineAPI
     {
         /// @brief Engine を生成して初期化する。
+        /// @pre 他の Engine が存在しない。同時生成は契約違反。
         EngineHandle (*Create)(const ApplicationAPI* applicationAPI);
 
         /// @brief Engine を終了処理して破棄する。
