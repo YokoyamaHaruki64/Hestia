@@ -1,96 +1,98 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="ソース ファイル">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="ヘッダー ファイル">
+    <Filter Include="Include">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="リソース ファイル">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Include\Log">
+      <UniqueIdentifier>{C97701DB-AB75-4B98-89F2-84A79C867021}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソース ファイル\Log">
+    <Filter Include="Include\Time">
+      <UniqueIdentifier>{4844d9e7-f340-4bfc-b483-629e01eabdb6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source\Log">
       <UniqueIdentifier>{9151D6DD-A172-49E4-B0DA-8626A6F58010}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\Log">
-      <UniqueIdentifier>{C97701DB-AB75-4B98-89F2-84A79C867021}</UniqueIdentifier>
+    <Filter Include="Source\Time">
+      <UniqueIdentifier>{6d3c2107-ca89-46cb-be45-d0d363db06d5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\DllMain.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\Pch.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\EngineAPI.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Time\TimeSystem.cpp">
-      <Filter>ソース ファイル</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Time\TimeAPI.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\Log\LogStorage.cpp">
-      <Filter>ソース ファイル\Log</Filter>
+      <Filter>Source\Log</Filter>
     </ClCompile>
     <ClCompile Include="Source\Log\Logger.cpp">
-      <Filter>ソース ファイル\Log</Filter>
+      <Filter>Source\Log</Filter>
     </ClCompile>
     <ClCompile Include="Source\Log\LogProcess.cpp">
-      <Filter>ソース ファイル\Log</Filter>
+      <Filter>Source\Log</Filter>
     </ClCompile>
     <ClCompile Include="Source\Log\LogSystem.cpp">
-      <Filter>ソース ファイル\Log</Filter>
+      <Filter>Source\Log</Filter>
     </ClCompile>
     <ClCompile Include="Source\Log\LogAPI.cpp">
-      <Filter>ソース ファイル\Log</Filter>
+      <Filter>Source\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Time\TimeAPI.cpp">
+      <Filter>Source\Time</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Time\TimeSystem.cpp">
+      <Filter>Source\Time</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Engine.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="Include\EngineAPI.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Time\TimeData.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Time\TimeSystem.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Time\TimeAPI.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>Include</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\LogData.h">
-      <Filter>ヘッダー ファイル\Log</Filter>
+      <Filter>Include\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\LogStorage.h">
-      <Filter>ヘッダー ファイル\Log</Filter>
+      <Filter>Include\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\Logger.h">
-      <Filter>ヘッダー ファイル\Log</Filter>
+      <Filter>Include\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\LogProcess.h">
-      <Filter>ヘッダー ファイル\Log</Filter>
+      <Filter>Include\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\LogSystem.h">
-      <Filter>ヘッダー ファイル\Log</Filter>
+      <Filter>Include\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\LogAPI.h">
-      <Filter>ヘッダー ファイル\Log</Filter>
+      <Filter>Include\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\pch.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Time\TimeSystem.h">
+      <Filter>Include\Time</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Time\TimeData.h">
+      <Filter>Include\Time</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Time\TimeAPI.h">
+      <Filter>Include\Time</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
