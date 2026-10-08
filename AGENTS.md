@@ -11,7 +11,7 @@ Use Japanese for user-facing responses, questions, and Q&A. Keep the design docu
 
 ## Coding Standard
 
-- Follow [CodingStandard](Docs/CodingStandard.md) for names, comments, file headers, and include guards.
+- Before creating, modifying, or reviewing code, ensure the relevant rules from [CodingStandard](Docs/CodingStandard.md) and [CodingExamples](Docs/CodingExamples.md) are available in the current context and apply them. Read the documents if needed; otherwise, do not reread unchanged content.
 - The include-path policy is undecided. Until it is settled, follow the existing style in each project.
 
 ## Implementation Rules
