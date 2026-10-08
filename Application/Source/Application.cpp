@@ -48,6 +48,8 @@ int Application::Run()
     {
         Clock::time_point currentTime = Clock::now();
 
+        ProcessMessages();
+
         if (!m_running) break;
 
         double deltaTime =
@@ -114,9 +116,7 @@ void Application::WaitUntil(Clock::time_point target)
 
     // すでにtargetを過ぎている場合は即座に戻る
     if (now >= target)
-    {
         return;
-    }
 
     if (now < spinTarget)
     {
@@ -130,7 +130,7 @@ void Application::WaitUntil(Clock::time_point target)
             LARGE_INTEGER dueTime;
             // dueTimeは100ナノ秒単位で指定する必要があるため、std::chrono::nanosecondsに変換してから100ナノ秒単位に変換する
             dueTime.QuadPart =
-                -std::chrono::duration_cast<std::chrono::microseconds>(target - now).count() * 10; // 100ナノ秒単位に変換するために10を掛ける
+                -std::chrono::duration_cast<std::chrono::microseconds>(spinTarget - now).count() * 10; // 100ナノ秒単位に変換するために10を掛ける
 
             // WaitableTimerをセットする
             SetWaitableTimer(
@@ -156,18 +156,18 @@ void Application::WaitUntil(Clock::time_point target)
             if (result == WAIT_OBJECT_0 + 1)
             {
                 ProcessMessages();
+                now = Clock::now();
+
                 continue;
             }
 
             break;
         }
     }
-    else
+
+    // targetまでSpinWait
+    while (Clock::now() < target)
     {
-        // targetまでSpinWait
-        while (Clock::now() < target)
-        {
-        }
     }
 
 }

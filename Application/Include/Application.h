@@ -23,7 +23,7 @@
 
 class Application
 {
-    static constexpr double SPIN_WAIT_THRESHOLD = 0.0001; // 0.1ms
+    static constexpr double SPIN_WAIT_THRESHOLD = 0.002; // 2ms
 
     inline static Application* s_instance = nullptr;
 
