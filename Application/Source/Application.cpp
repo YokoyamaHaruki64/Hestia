@@ -68,7 +68,7 @@ int Application::Run()
 
         // Engineの更新処理
         m_engineAPI->FrameExecute(m_engine, static_cast<float>(deltaTime));
-
+        OutputDebugString((L"DeltaTime= " + std::to_wstring(deltaTime) + L"\n").c_str());
         // Editorの更新処理
 
 

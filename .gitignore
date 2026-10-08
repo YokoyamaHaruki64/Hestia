@@ -2,6 +2,9 @@
 .vs/
 Build/
 
+# Runtime log output
+**/Logs/
+
 # Codex working notes
 /.codex/working/
 

@@ -1,6 +1,6 @@
 # Log System
 ---
-ログの受付・保持・処理を別のクラスに分け、LogSystemが所有とライフサイクルをまとめるクラス設計草案。
+ログの受付・保持・処理を別のクラスに分け、LogSystemが所有とライフサイクルをまとめるクラス設計と実装契約。
 GameのHestiaGame::Logはstatic関数から保持するLogAPIを呼び、LogAPIがLoggerのstatic記録関数へ委譲する。LogAPIは拡張時の接続先としてLogSystemへの非所有ポインタを保持する。
 LogSystemが処理スレッドのRunを持ち、LogStorageのTransfer・DrainとLogProcessの整形・出力を繰り返す。
 
@@ -29,6 +29,7 @@ namespace Hestia
         LogProcess m_process;
         std::thread m_thread;
         std::size_t m_drainCount = 0;
+        std::vector<LogEntry> m_entries;
 
         static LogSystem* s_instance;
     };
@@ -47,7 +48,7 @@ EngineがLogSystemとLogAPIを値として所有する。s_instanceは既存のS
 `Initialize()` は次の順で利用準備を行う。
 
 1. LogStorageの容量と受付状態を準備する。この時点では受付を閉じておく。
-2. LogProcess::Initializeで出力ファイルを開く。
+2. LogProcess::Initializeで出力ファイルを追記用に開く。処理batchの容量もスレッド開始前に確保する。
 3. LogStorageの受付を開き、LogSystemの処理スレッドでRunを開始する。成功後、所有するLoggerをInitializeでLogStorageへ接続し、Logger::s_instanceへ登録する。
 4. 全段階が成功した後に利用可能とし、EngineがLogAPIを接続する。
 
@@ -89,16 +90,13 @@ Runの最小スケッチは次の形とする。TransferPending内で、読み�
 ```cpp
 void Hestia::LogSystem::Run()
 {
-    std::vector<LogEntry> entries;
-    entries.reserve(m_drainCount);
-
     while (m_storage.IsAccepting() || !m_storage.IsEmpty())
     {
         m_storage.TransferPending(m_drainCount);
 
-        entries.clear();
-        m_storage.Drain(entries, m_drainCount);
-        m_process.Process(entries);
+        m_entries.clear();
+        m_storage.Drain(m_entries, m_drainCount);
+        m_process.Process(m_entries);
     }
 }
 ```
@@ -160,7 +158,7 @@ Loggerでstaticとする関数はLog、Warning、Error、Fatalの四つだけと
 
 非staticのInitializeはm_storageを設定し、thisをs_instanceへ登録する。別のLoggerが登録済みの場合はfalseを返す。Finalizeは自身の登録とm_storageを解除する。登録・解除は記録元が動作していない時点で行う。
 
-同時に稼働するLogSystemは一つとし、別のSystemがLoggerへ再登録する初期化は失敗として扱う。Game向けLogAPIも、そのSystemにだけ接続する。未接続期間の記録呼び出しの扱いは内部契約として実装前に確認する。
+同時に稼働するLogSystemは一つとし、別のSystemがLoggerへ再登録する初期化は失敗として扱う。Game向けLogAPIも、そのSystemにだけ接続する。Loggerが未接続の期間の記録呼び出しは、何もせず戻る。
 
 四つの関数は重要度だけを変えてWriteへ委譲する。本文・ファイル名・関数名は、呼び出しが戻る前にコピーする。string_viewやsource_locationの文字列参照をキューへ残さず、Game DLLのアンロード後も受付済みのログを処理できるようにする。
 
@@ -223,7 +221,7 @@ pendingは`std::queue<LogEntry>`を2本持ち、受付中は片方をLoggerの�
 
 pending側のqueueはLoggerのPushとLogSystem::RunからのTransferPendingがm_pendingMutexで同期する。読み取り側pending queueと出力待ちqueueはLogSystemの処理スレッドだけが操作する。SwitchPendingはTransferPendingから呼ぶLogStorageのprivate補助関数とする。
 
-IsAcceptingは受付状態をmutexで保護して読み取る。IsEmptyは2本のpending queueと出力待ちqueueのすべてが空かを返し、Finalize後のworker終了判定に使う。
+IsAcceptingは受付状態をmutexで保護して読み取る。IsEmptyはatomicなm_bufferedCountが0かで、2本のpending queueと出力待ちqueueのすべてが空かを返す。処理側以外からqueueを直接読み取らず、Finalize後のworker終了判定に使う。
 
 SwitchPendingは読み取り側queueが空のときだけ行う。LogStorage内部でm_pendingMutexを取得し、書き込み側queueに残件があればm_writeIndexとm_readIndexを交換してすぐに解除する。残件がなければ交換せずfalseを返す。queueそのものをswapするのではなく、読み書き対象のindexだけを切り替える。
 
@@ -241,7 +239,7 @@ LogStorageは処理スレッドの起動や新着通知を行わない。LogSyst
 
 保持順序はPushが成功した順とする。読み取り側queueを空にしてから次の交換を行うことで、2本のqueueをまたぐ受付順も維持する。複数スレッドの同時呼び出しについて、呼び出し開始時刻の厳密な順序までは保証しない。
 
-**提案**：書き込み側pending・読み取り側pending・出力待ちqueueの合計をstorageCapacity以下に制限する。出力batchは別途最大N件に制限する。m_bufferedCountはPush時に増やし、queue間のswapとTransferでは変えず、Drain時に減らす。上限判定と増加は他のPushに割り込まれないように行う。満杯の場合は破棄件数を残す。低重要度を優先して破棄する方式、容量の具体値、本文の最大長や総バイト数制限は未確定。Fatalも容量超過や出力失敗によって失われ得るため、必ず残す要件がある場合は専用経路を別途検討する。
+**実装契約**：書き込み側pending・読み取り側pending・出力待ちqueueの合計をstorageCapacity以下に制限する。出力batchは別途最大N件に制限する。m_bufferedCountはPush時に増やし、index切り替えとTransferでは変えず、Drain時に減らす。上限判定と増加は他のPushに割り込まれないように行う。満杯の場合は重要度に関係なく新着を破棄し、破棄件数を保持する。本文の最大長や総バイト数制限は未確定。Fatalも容量超過や出力失敗によって失われ得るため、必ず残す要件がある場合は専用経路を別途検討する。
 
 LogStorageが保持するのは未処理ログ。Editorで閲覧する処理済み履歴は別の責務であり、表示機能を追加する段階で設計する。
 
@@ -273,11 +271,11 @@ namespace Hestia
 [LogEntry](#logentry)  
 [LogSystem](#logsystem)
 
-Initializeは出力先を開き、失敗時はfalseを返す。ProcessはLogSystem::Runから呼ばれ、渡されたbatchを同期的に整形・出力する。空のbatchでは何もしない。LogStorageを参照せず、スレッドの起動や反復制御も行わない。
+Initializeは既存内容を消さず追記用に出力先を開き、失敗時はfalseを返す。親フォルダは呼び出し側で用意する。ProcessはLogSystem::Runから呼ばれ、渡されたbatchを同期的に整形・出力する。空のbatchでは何もしない。LogStorageを参照せず、スレッドの起動や反復制御も行わない。
 
 FinalizeはLogSystemが処理スレッドをjoinした後に呼び、出力先をflush・closeする。ProcessとFinalizeを並行実行しない。
 
-LogEntryの所有者はLogSystemのbatchであり、LogProcessはProcessの呼び出し中だけspanで借用する。Processが戻った後、Runが次のbatchのために要素を解放する。初期の整形は重要度、時刻、本文、ファイル・行・関数、スレッドIDを含む一件ごとの出力とする草案。同じログの集約、Console出力、Editorへの配送は必要性を確認して追加する。
+LogEntryの所有者はLogSystemのbatchであり、LogProcessはProcessの呼び出し中だけspanで借用する。Processが戻った後、Runが次のbatchのために要素を解放する。整形は重要度、UTC時刻、ファイル・行・関数、スレッドIDを含むヘッダーを出力し、次の行から本文を2スペース下げて出力する。本文中の改行はそのまま出力し、後続行にも同じインデントを付ける。同じログの集約、Console出力、Editorへの配送は必要性を確認して追加する。
 
 出力失敗を同じLoggerへ再記録すると再帰するため、LogProcess内部の失敗状態として保持する。稼働中の書き込み失敗をEngineへ通知する方法、代替出力先、flush間隔は未確定。通常終了による排出は、出力先が正常である場合の保証であり、プロセス強制終了時の保存は保証しない。
 
@@ -343,7 +341,7 @@ void Hestia::Logger::Log(std::string_view message,
 
 Gameからの利用はAPI接続中に限る。未接続時の利用は内部契約違反として扱う草案。Facadeを経由する場合はFacadeの呼び出し地点でsource_locationを取得し、そのまま渡す。APIの実装内で取り直さない。
 
-EngineがLogAPIをGameEngineAPIへ格納し、GameRuntimeがGameのFacadeへ接続する。既存のEngine／GameEngineAPI／GameRuntimeの宣言にはまだLogの枠がないため、それらへのmember追加とBind・Unbindは、この草案を確認した後の接続変更として扱う。
+EngineはLogSystemとLogAPIを所有し、InitializeでLogSystem → LogAPI → TimeSystem／TimeAPIの順に接続する。FinalizeではTimeSystem／TimeAPIを先に終了し、LogAPIを切り離してLogSystemを最後に終了する。GameEngineAPIへの格納とGameRuntimeからGameのFacadeへの接続は後続の変更として扱う。
 
 ### HestiaGame::Log
 ---
@@ -487,7 +485,7 @@ namespace Hestia
 }
 ```
 
-空の出力先、容量0、Drain件数0は初期化失敗として扱う草案。Drain件数は保持容量以下とする。具体的な出力場所、ファイル命名、既定容量とDrain件数は未確定。
+明示設定で空の出力先、容量0、Drain件数0、Drain件数が保持容量を超える場合は初期化失敗とする。引数なしの `LogSystem::Initialize()` は起動時の作業フォルダにLogsフォルダを作成する。初期化時刻を `yyyyMMdd_HHmmss_ffff.txt` 形式にしたファイルを作成し、容量4096件、Drain256件を既定値とする。出力先決定・フォルダ作成・ファイル名生成はLogSystem内部で行い、Engineは引数なしのInitializeを呼ぶ。
 
 ### 記録経路と所有関係
 ---
@@ -506,4 +504,4 @@ flowchart LR
 
 Engine → LogSystem／LogAPIは所有、LogSystem → Logger／LogStorage／LogProcess／処理スレッドも所有とする。LogAPI → LogSystem、HestiaGame::Log → LogAPI、Loggerのm_storage → LogStorage、Logger::s_instance → Loggerは非所有参照とする。LogProcessはStorageを参照しない。
 
-この草案の確認点は、受付中の文字列コピー、複数記録元からの配送、容量超過時の破棄、初期化失敗時の後片付け、Finalizeでの残件排出、Game DLLアンロード後の残件処理。現在はMarkdown上のクラス設計であり、実装のビルド・スレッド動作・保存結果は未検証。
+確認対象は、受付中の文字列コピー、複数記録元からの配送、容量超過時の破棄、初期化失敗時の後片付け、Finalizeでの残件排出。実装はEngine/Include/LogとEngine/Source/Logに置き、Test/Hestia_Tests/Source/LogTests.cppで検証する。Game DLLとFacadeは未接続のため、実際のDLLアンロードを伴う確認は後続で行う。

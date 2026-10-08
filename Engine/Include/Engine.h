@@ -16,13 +16,15 @@
 #include "EngineAPI.h"
 #include "Time/TimeSystem.h"
 #include "Time/TimeAPI.h"
+#include "Log/LogSystem.h"
+#include "Log/LogAPI.h"
 
 namespace Hestia
 {
     /// @brief System の更新と Application からの通知を取りまとめる Engine。
     /// 
     /// EngineAPI の入口だけがこの型を保持し、共有 Header には実体を公開しない。
-    /// 時間値を更新し、未実装の System への配送は後続の実装で接続する。
+    /// ログの受付・出力と時間値の更新を管理する。
     class Engine
     {
     public:
@@ -53,6 +55,9 @@ namespace Hestia
 
     private:
         ApplicationAPI m_applicationAPI;
+
+        LogSystem m_log;
+        LogAPI m_logAPI;
 
         TimeSystem m_time;
         TimeAPI m_timeAPI;

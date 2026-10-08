@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="ソース ファイル\Log">
+      <UniqueIdentifier>{9151D6DD-A172-49E4-B0DA-8626A6F58010}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Log">
+      <UniqueIdentifier>{C97701DB-AB75-4B98-89F2-84A79C867021}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\DllMain.cpp">
@@ -33,6 +39,21 @@
     <ClCompile Include="Source\Time\TimeAPI.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Log\LogStorage.cpp">
+      <Filter>ソース ファイル\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Log\Logger.cpp">
+      <Filter>ソース ファイル\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Log\LogProcess.cpp">
+      <Filter>ソース ファイル\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Log\LogSystem.cpp">
+      <Filter>ソース ファイル\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Log\LogAPI.cpp">
+      <Filter>ソース ファイル\Log</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Engine.h">
@@ -49,6 +70,24 @@
     </ClInclude>
     <ClInclude Include="Include\Time\TimeAPI.h">
       <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\LogData.h">
+      <Filter>ヘッダー ファイル\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\LogStorage.h">
+      <Filter>ヘッダー ファイル\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\Logger.h">
+      <Filter>ヘッダー ファイル\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\LogProcess.h">
+      <Filter>ヘッダー ファイル\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\LogSystem.h">
+      <Filter>ヘッダー ファイル\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\LogAPI.h">
+      <Filter>ヘッダー ファイル\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\pch.h">
       <Filter>ヘッダー ファイル</Filter>
