@@ -1,6 +1,10 @@
 ﻿# VisualStudio
 .vs/
 Build/
+/Library/
+
+# ThirdParty distribution libraries
+!/ThirdParty/Library/**/*.lib
 
 # Runtime log output
 **/Logs/
@@ -9,12 +13,7 @@ Build/
 /.codex/working/
 
 # GameAssets
-Assets/**
-
-!Assets/**/
-!Assets/**/*.cpp
-!Assets/**/*.h
-!Assets/**/*.cscript
+/Assets/**
 
 # Ignore Reference
 Reference/DX12/
