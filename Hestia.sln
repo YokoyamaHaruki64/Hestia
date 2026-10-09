@@ -19,6 +19,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ソリューション項目
 		Common\Include\WindowsHeaders.h = Common\Include\WindowsHeaders.h
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Common", "Common\Common.vcxproj", "{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug_Editor|x64 = Debug_Editor|x64
@@ -54,6 +56,16 @@ Global
 		{A64B0C45-88A2-46CD-91BA-5F38BF10E724}.Release_Game|x64.ActiveCfg = Test|x64
 		{A64B0C45-88A2-46CD-91BA-5F38BF10E724}.Test|x64.ActiveCfg = Test|x64
 		{A64B0C45-88A2-46CD-91BA-5F38BF10E724}.Test|x64.Build.0 = Test|x64
+		{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}.Debug_Editor|x64.ActiveCfg = Debug|x64
+		{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}.Debug_Editor|x64.Build.0 = Debug|x64
+		{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}.Debug_Game|x64.ActiveCfg = Debug|x64
+		{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}.Debug_Game|x64.Build.0 = Debug|x64
+		{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}.Release_Editor|x64.ActiveCfg = Release|x64
+		{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}.Release_Editor|x64.Build.0 = Release|x64
+		{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}.Release_Game|x64.ActiveCfg = Release|x64
+		{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}.Release_Game|x64.Build.0 = Release|x64
+		{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}.Test|x64.ActiveCfg = Debug|x64
+		{1CAD1A6F-C175-4541-BE2C-A87882B3A27D}.Test|x64.Build.0 = Debug|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

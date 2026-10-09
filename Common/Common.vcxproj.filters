@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Include">
+      <UniqueIdentifier>{db02398b-99cf-4e63-b600-8a54147d0076}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Include\Color.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\DllAPI.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Curve.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\MathCommon.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Matrix3x3.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Matrix3x3_SIMD.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Matrix4x4.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Matrix4x4_SIMD.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Quaternion.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Quaternion_SIMD.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\SimdInterop.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Vector2.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Vector2_SIMD.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Vector3.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Vector3_SIMD.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Vector4.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Math\Vector4_SIMD.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Random.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\WindowsHeaders.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\HMath.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\LibMain.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
