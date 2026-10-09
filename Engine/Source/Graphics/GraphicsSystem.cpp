@@ -15,6 +15,7 @@
 
 #include "Graphics/DX12Backend.h"
 #include "Graphics/TextureManager.h"
+#include "Log/LogSystem.h"
 
 namespace Hestia
 {
@@ -41,6 +42,9 @@ namespace Hestia
         m_view = Matrix4x4::Identity();
         m_projection = Matrix4x4::OrthographicLH(
             static_cast<float>(width), static_cast<float>(height), 0.1f, 100.0f);
+
+        m_renderQueue.reserve(DX12Backend::MAX_DRAW_COUNT);
+
         m_DX12Backend = std::move(backend);
         TextureManager::Initialize(m_DX12Backend.get());
         s_instance = this;

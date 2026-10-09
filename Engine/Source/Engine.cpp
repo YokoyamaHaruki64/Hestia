@@ -75,16 +75,19 @@ namespace Hestia
         mat.textures.push_back(GraphicsSystem::LoadTexture(L"../Assets/Textures/texture_test_2048_rgba.png"));
         Matrix4x4_SIMD worldMatrix = Matrix4x4_SIMD::Identity();
         worldMatrix.Scale(800.0f, 800.0f, 1.0f);
-        worldMatrix.RotateZ(TimeSystem::TotalTime());
+        worldMatrix.RotateZ(0.0f);
         worldMatrix.Translate(0.0f, 0.0f, 1.0f);
-        GraphicsSystem::Submit(
-            RenderData{
-            worldMatrix,
-            mat,
-            dxMesh2D,
-            L"../Shaders/Build/VS_Sprite.cso",
-            L"../Shaders/Build/PS_Sprite.cso"
-        });
+
+        for (int i = 0; i < 10000; ++i)
+        {
+            GraphicsSystem::Submit(RenderData{
+                worldMatrix,
+                mat,
+                dxMesh2D,
+                L"../Shaders/Build/VS_Sprite.cso",
+                L"../Shaders/Build/PS_Sprite.cso"
+            });
+        }
 
         m_graphics.Render();
     }

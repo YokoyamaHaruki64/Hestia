@@ -17,6 +17,7 @@
 #include "Graphics/TextureManager.h"
 
 #include "Time/TimeSystem.h"
+#include "Log/LogSystem.h"
 
 #include <dxgidebug.h>
 
@@ -806,16 +807,42 @@ bool DX12Backend::BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4
 
 void Hestia::DX12Backend::Draw()
 {
+    long long bindObjectTime = 0;
+    long long bindMaterialTime = 0;
+    long long setupPipelineTime = 0;
+    long long drawMeshTime = 0;
+
     for(int i = 0; i < m_currentFrameData.size(); ++i)
     {
         RenderData& data = m_currentFrameData[i];
+        auto start = std::chrono::high_resolution_clock::now();
 
         BindObject(data.worldMatrix, i);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        bindObjectTime += duration.count();
+        start = std::chrono::high_resolution_clock::now();
         BindMaterial(data.material);
+        end = std::chrono::high_resolution_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        bindMaterialTime += duration.count();
+        start = std::chrono::high_resolution_clock::now();
         SetupPipeline(data.vsShaderPath, data.psShaderPath);
+        end = std::chrono::high_resolution_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        setupPipelineTime += duration.count();
         m_FrameContexts[m_frameIndex].drewMesh.push_back(data.mesh);
+        start = std::chrono::high_resolution_clock::now();
         DrawMesh(data.mesh);
+        end = std::chrono::high_resolution_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        drawMeshTime += duration.count();
     }
+
+    Logger::Log("BindObject Time: " + std::to_string(bindObjectTime) + " microseconds");
+    Logger::Log("BindMaterial Time: " + std::to_string(bindMaterialTime) + " microseconds");
+    Logger::Log("SetupPipeline Time: " + std::to_string(setupPipelineTime) + " microseconds");
+    Logger::Log("DrawMesh Time: " + std::to_string(drawMeshTime) + " microseconds");
 }
 
 void DX12Backend::EndDraw()
@@ -1201,6 +1228,7 @@ void DX12Backend::BindMaterial(const Material& material)
 			static_cast<UINT>(RootParameterIndex::PerMaterialCBV),
 			m_PerMaterialCB.constantBuffer->GetGPUVirtualAddress() + offset);
 
+
     // Texture設定
     for(int i = 0; i < MAX_MATERIAL_TEXTURE; ++i)
     {
@@ -1224,6 +1252,7 @@ void DX12Backend::BindMaterialTexture(int slot, const DXTexture& texture)
 	m_BoundMaterialSRVs[slot] = texture.srvHeapIndex;
 }
 
+// 4 microseconds の固定負荷
 void DX12Backend::CommitMaterialTexture()
 {
 	// MasterHeapからVisibleHeapにコピー
