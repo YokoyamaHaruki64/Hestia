@@ -15,3 +15,6 @@ Assets/**
 !Assets/**/*.cpp
 !Assets/**/*.h
 !Assets/**/*.cscript
+
+# Ignore Reference
+Reference/DX12/
