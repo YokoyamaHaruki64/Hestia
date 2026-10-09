@@ -70,6 +70,8 @@ public:
     int Run();
     void Finalize();
 
+    HWND GetWindowHandle() const { return m_window.GetHandle(); }
+
     void SetTargetFPS(double fps)
     {
         m_targetFPS = fps;

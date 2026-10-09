@@ -18,6 +18,7 @@
 #include "Time/TimeAPI.h"
 #include "Log/LogSystem.h"
 #include "Log/LogAPI.h"
+#include "Graphics/GraphicsSystem.h"
 
 namespace Hestia
 {
@@ -61,11 +62,11 @@ namespace Hestia
 
         TimeSystem m_time;
         TimeAPI m_timeAPI;
+        GraphicsSystem m_graphics;
 
         /*
         // System と Boundary API は各 System の設計・実装時に有効化する。
         AssetSystem m_assets;
-        GraphicsSystem m_graphics;
         InputSystem m_input;
         AudioSystem m_audio;
         PhysicsSystem m_physics;

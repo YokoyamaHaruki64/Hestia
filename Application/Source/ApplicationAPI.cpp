@@ -59,62 +59,15 @@ Hestia::ApplicationAPI Application::CreateApplicationAPI()
             static_cast<Application*>(context)->RequestQuit();
         };
 
+    api.m_getWindowHandle = [](void* context)
+        {
+            return static_cast<Application*>(context)->GetWindowHandle();
+        };
+
     return api;
 }
 
-void Hestia::ApplicationAPI::SetTargetFPS(double fps) const
-{
-    if (m_setTargetFPS)
-    {
-        m_setTargetFPS(m_context, fps);
-    }
-}
-double Hestia::ApplicationAPI::GetTargetFPS() const
-{
-    if (m_getTargetFPS)
-    {
-        return m_getTargetFPS(m_context);
-    }
 
-    return 0.0;
-}
 
-void Hestia::ApplicationAPI::SetUnlimitedFrameRate(bool unlimited) const
-{
-    if (m_setUnlimitedFrameRate)
-    {
-        m_setUnlimitedFrameRate(m_context, unlimited);
-    }
-}
-bool Hestia::ApplicationAPI::IsUnlimitedFrameRate() const
-{
-    if (m_isUnlimitedFrameRate)
-    {
-        return m_isUnlimitedFrameRate(m_context);
-    }
-    return false;
-}
 
-void Hestia::ApplicationAPI::SetFixedDeltaTime(double deltaTime) const
-{
-    if (m_setFixedDeltaTime)
-    {
-        m_setFixedDeltaTime(m_context, deltaTime);
-    }
-}
-double Hestia::ApplicationAPI::GetFixedDeltaTime() const
-{
-    if (m_getFixedDeltaTime)
-    {
-        return m_getFixedDeltaTime(m_context);
-    }
-    return 0.0;
-}
 
-void Hestia::ApplicationAPI::RequestQuit() const
-{
-    if (m_requestQuit)
-    {
-        m_requestQuit(m_context);
-    }
-}
