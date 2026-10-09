@@ -22,7 +22,6 @@
 #include <d3d12.h>
 #include <d3dcompiler.h>
 #include <dxgi1_6.h>
-#include <DirectXMath.h>
 
 // 基本型・診断
 #include <cassert>
