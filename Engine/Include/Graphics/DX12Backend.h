@@ -13,6 +13,8 @@
 #ifndef _DX12_BACKEND_H_
 #define _DX12_BACKEND_H_
 
+#include "Common/Include/WindowsHeaders.h"
+
 #include <d3d12.h>
 #include <d3dcompiler.h>
 #include <dxgi1_6.h>
@@ -33,10 +35,10 @@ using Microsoft::WRL::ComPtr;
 #include <array>
 #include <queue>
 #include <cstdint>
-#include "Common/Include/WindowsHeaders.h"
 
 #include "HMath.h"
 #include "Graphics/DX12Object.h"
+#include "Graphics/GPUResourceStorage.h"
 
 namespace Hestia
 {
@@ -53,7 +55,6 @@ namespace Hestia
             int visibleSRVCount = 0;	// SRVをコミットした数
 
             UINT64 fenceValue = 0; // フレームのフェンス値
-            std::vector<DXMesh> drewMesh; // Frame Fence 完了まで GPU 資源を保持
         };
 
         struct WaitingResource
@@ -98,6 +99,12 @@ namespace Hestia
                     contexts.push_back(std::move(context));
                 }
                 return true;
+            }
+
+            void Finalize()
+            {
+                contexts.clear();
+                m_Device.Reset();
             }
 
             void ReleaseContext(UINT64 completedFenceValue)
@@ -195,7 +202,11 @@ namespace Hestia
 
         DXDepthStencil m_DepthStencil;
 
-        DXTexture m_nullTexture; // Nullテクスチャ
+        DXTexture m_whiteTexture; // Material の既定 Texture
+        GPUResourceStorage<Mesh, DXMesh> m_gpuMeshes;
+        GPUResourceStorage<Texture, DXTexture> m_gpuTextures;
+        std::array<DXVertexBuffer, static_cast<size_t>(VertexStream::Count)> m_defaultStreamBuffers;
+        std::array<size_t, static_cast<size_t>(VertexStream::Count)> m_defaultStreamCapacities{};
 
         D3D12_VIEWPORT m_Viewport{};
         D3D12_RECT m_ScissorRect{};
@@ -273,7 +284,7 @@ namespace Hestia
             return true;
         }
 
-        bool CreateShaderResourceView(ID3D12Resource* resource, int& srvHeapIndex, D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc = nullptr);
+        bool CreateShaderResourceView(ID3D12Resource* resource, uint32_t& srvHeapIndex, D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc = nullptr);
         bool CreateRenderTargetView(ID3D12Resource* resource, int& rtvHeapIndex, D3D12_RENDER_TARGET_VIEW_DESC* rtvDesc = nullptr);
         bool CreateDepthStencilView(ID3D12Resource* resource, int& dsvHeapIndex, D3D12_DEPTH_STENCIL_VIEW_DESC* dsvDesc = nullptr);
 
@@ -291,7 +302,7 @@ namespace Hestia
             handle.ptr += m_DSVIncrementSize * dsvHeapIndex;
             return handle;
         }
-        D3D12_CPU_DESCRIPTOR_HANDLE GetSRVHandle(int srvHeapIndex)
+        D3D12_CPU_DESCRIPTOR_HANDLE GetSRVHandle(uint32_t srvHeapIndex)
         {
             D3D12_CPU_DESCRIPTOR_HANDLE handle = m_SRVMasterHeapStart;
             handle.ptr += m_SRVIncrementSize * srvHeapIndex;
@@ -303,8 +314,33 @@ namespace Hestia
             return ++m_globalFenceValue;
         }
 
-        void WaitForGPU();
+        bool WaitForGPU();
         void DrawMesh(const DXMesh& mesh);
+        bool CreateMesh(const Mesh& mesh, DXMesh& result);
+        bool EnsureDefaultStreamBuffers(size_t vertexCount);
+        bool CreateVertexStreamBuffer(
+            VertexStream stream,
+            const void* data,
+            size_t vertexCount,
+            DXVertexBuffer& result);
+        bool CreateIndexBuffer(
+            const uint32_t* indices,
+            size_t indexCount,
+            ComPtr<ID3D12Resource>& indexBuffer,
+            D3D12_INDEX_BUFFER_VIEW& indexBufferView);
+        bool UploadBufferToDefault(
+            const void* data,
+            size_t byteSize,
+            D3D12_RESOURCE_STATES finalState,
+            ComPtr<ID3D12Resource>& resource);
+        void RetireResource(ComPtr<ID3D12Resource> resource);
+        bool UploadTextureResource(
+            DXTexture& texture,
+            const TextureDesc& desc,
+            const void* pixels,
+            size_t rowPitch,
+            size_t slicePitch);
+        bool CreateWhiteTexture();
 
     public:
         static constexpr size_t MAX_DRAW_COUNT = MAX_MATERIAL_COUNT;
@@ -322,19 +358,33 @@ namespace Hestia
         void Draw();
         void EndDraw();
 
-        bool CreateVertexBuffer(
-            const Vertex* vertices,
-            size_t vertexCount,
-            ComPtr<ID3D12Resource>& vertexBuffer,
-            D3D12_VERTEX_BUFFER_VIEW& vertexBufferView);
+        /// @brief CPU Mesh の Stream と Index を Default Heap Buffer へ登録
+        /// @param handle CPU Mesh と共有する Handle
+        /// @param mesh 登録する Mesh の Stream と Index
+        /// @note Handle、Mesh 内容、重複登録を実行時に確認する
+        /// @return 成功: true / 無効または不一致 Handle・不正 Mesh・重複 Handle・GPU 作成失敗: false
+        bool UploadMesh(AssetHandle<Mesh> handle, const Mesh& mesh);
 
-        bool CreateIndexBuffer(
-            const uint32_t* indices,
-            size_t indexCount,
-            ComPtr<ID3D12Resource>& indexBuffer,
-            D3D12_INDEX_BUFFER_VIEW& indexBufferView);
+        /// @brief RGBA8 Texture を作成して画素を同じ Direct Queue へ送信
+        /// @param handle CPU Texture と共有する Handle
+        /// @param desc 画像寸法、Format、Mip 数
+        /// @param pixels 先頭 Mip の画素データ
+        /// @param rowPitch 1 行のバイト数
+        /// @param slicePitch 画素データ全体のバイト数
+        /// @return 成功: true / 無効 Handle・不正 pitch・未初期化・重複 Handle・GPU 作成失敗: false
+        /// @note 復帰前に画素を Upload Resource へコピーし、Fence 完了まで同 Resource を保持
+        bool UploadTexture(
+            AssetHandle<Texture> handle,
+            const TextureDesc& desc,
+            const void* pixels,
+            size_t rowPitch,
+            size_t slicePitch);
 
-        bool UploadTexture(DXTexture& texture, const std::vector<D3D12_SUBRESOURCE_DATA>& subresources);
+        /// @brief Index と Generation が一致する GPU Mesh の有無を確認
+        /// @param handle 確認する Mesh Handle
+        /// @note Handle と登録済み GPU Resource の存在を実行時に確認する
+        /// @return 有効な GPU Mesh が登録済み: true / 無効・未登録・不一致: false
+        bool HasMesh(AssetHandle<Mesh> handle) const;
 
         bool SetupPipeline(
             std::filesystem::path vsPath,
@@ -342,11 +392,7 @@ namespace Hestia
 
         void BindObject(const Matrix4x4_SIMD& worldMatrix, size_t objectIndex);
         void BindMaterial(const Material& material);
-        bool CreateMesh(const Mesh& mesh, DXMesh& result);
-        void BindMaterialTexture(int slot, const DXTexture& texture);
         void CommitMaterialTexture();
-        void ResetMaterialTextureBinding();
-
         ID3D12GraphicsCommandList* GetCommandList()
         {
             return m_FrameContexts[m_frameIndex].commandList.Get();

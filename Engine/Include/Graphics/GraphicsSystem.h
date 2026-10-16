@@ -14,7 +14,7 @@
 #define _GRAPHICS_SYSTEM_H_
 
 #include "Graphics/DX12Object.h"
-#include <filesystem>
+#include <cstddef>
 #include <memory>
 #include "Common/Include/WindowsHeaders.h"
 
@@ -37,13 +37,28 @@ namespace Hestia
         /// @brief 次の Render が使用する行ベクトル用 Projection を設定する
         static void SetProj(const Matrix4x4& projection);
 
-        /// @brief CPU Mesh を GPU へ登録する仮の Engine 内部 API
-        /// @return 登録成功: true / 未初期化・無効な入力・GPU 資源作成失敗: false
-        static bool CreateMesh(const Mesh& mesh, DXMesh& result);
+        /// @brief Mesh の頂点 Stream と Index を GPU へ登録
+        /// @param handle CPU Mesh と共有する Handle
+        /// @param mesh 登録済み Mesh の CPU データ
+        /// @note Handle と Mesh の一致、および Mesh の妥当性を実行時に確認
+        /// @return 登録成功: true / 未初期化・Handle 不一致・無効な Mesh・GPU 資源作成失敗: false
+        bool UploadMesh(AssetHandle<Mesh> handle, const Mesh& mesh);
 
-        /// @brief 画像を読み込み、GPU Texture の仮ハンドルを返す
-        /// @return 成功: 0 以上 / 未初期化・読み込み失敗: -1
-        static int LoadTexture(const std::filesystem::path& path);
+        /// @brief Texture 画素を GPU へ登録
+        /// @param handle CPU Texture と共有する Handle
+        /// @param desc Texture の寸法・Format・Mip 情報
+        /// @param pixels 先頭 Mip の画素データ
+        /// @param rowPitch 1 行のバイト数
+        /// @param slicePitch 画素データ全体のバイト数
+        /// @note desc・pixel pointer・pitch を実行時に確認
+        /// @note 復帰前に pixels を Upload Resource へコピーし、Fence 完了まで保持
+        /// @return 登録成功: true / 未初期化・無効な入力・GPU 資源作成失敗: false
+        bool UploadTexture(
+            AssetHandle<Texture> handle,
+            const TextureDesc& desc,
+            const void* pixels,
+            size_t rowPitch,
+            size_t slicePitch);
 
         GraphicsSystem();
         ~GraphicsSystem();

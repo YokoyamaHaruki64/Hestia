@@ -13,6 +13,8 @@
 #ifndef _APPLICATION_API_H_
 #define _APPLICATION_API_H_
 
+#include "Common/Include/WindowsHeaders.h"
+
 class Application;
 
 namespace Hestia

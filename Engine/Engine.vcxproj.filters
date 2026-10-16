@@ -24,8 +24,14 @@
     <Filter Include="Include\Graphics">
       <UniqueIdentifier>{9d932c7d-b547-4f94-bd3c-74958c0e9867}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Include\Asset">
+      <UniqueIdentifier>{254fd7f4-31a3-43df-9aa6-dad5d3dc522b}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Graphics">
       <UniqueIdentifier>{fe012d92-e77d-4e08-a76b-29a92e6ea7b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Asset">
+      <UniqueIdentifier>{d52a25a3-2639-4771-a4e5-e7639cf60e2b}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Core">
       <UniqueIdentifier>{8d41f9e1-c7b0-4f3d-becf-cad61805212a}</UniqueIdentifier>
@@ -56,13 +62,25 @@
     <ClCompile Include="Source\Time\TimeSystem.cpp">
       <Filter>Source\Time</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Asset\AssetType.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\AssetDB.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\AssetLoader.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\AssetSystem.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\AssetAPI.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Backend.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp">
-      <Filter>Source\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Graphics\TextureManager.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\DllMain.cpp">
@@ -115,16 +133,37 @@
     <ClInclude Include="Include\Time\TimeAPI.h">
       <Filter>Include\Time</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Asset\AssetHandle.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetType.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetDB.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetStorage.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetLoader.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetSystem.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetAPI.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Backend.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\GraphicsSystem.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\TextureManager.h">
+    <ClInclude Include="Include\Graphics\DX12Object.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\DX12Object.h">
+    <ClInclude Include="Include\Graphics\GPUResourceStorage.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
   </ItemGroup>

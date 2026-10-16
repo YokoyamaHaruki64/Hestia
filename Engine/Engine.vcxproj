@@ -26,9 +26,13 @@
     <ClCompile Include="Source\DllMain.cpp" />
     <ClCompile Include="Source\Engine.cpp" />
     <ClCompile Include="Source\EngineAPI.cpp" />
+    <ClCompile Include="Source\Asset\AssetType.cpp" />
+    <ClCompile Include="Source\Asset\AssetDB.cpp" />
+    <ClCompile Include="Source\Asset\AssetLoader.cpp" />
+    <ClCompile Include="Source\Asset\AssetSystem.cpp" />
+    <ClCompile Include="Source\Asset\AssetAPI.cpp" />
     <ClCompile Include="Source\Graphics\DX12Backend.cpp" />
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp" />
-    <ClCompile Include="Source\Graphics\TextureManager.cpp" />
     <ClCompile Include="Source\Time\TimeSystem.cpp" />
     <ClCompile Include="Source\Time\TimeAPI.cpp" />
     <ClCompile Include="Source\Log\LogStorage.cpp" />
@@ -47,10 +51,17 @@
   <ItemGroup>
     <ClInclude Include="Include\Engine.h" />
     <ClInclude Include="Include\EngineAPI.h" />
+    <ClInclude Include="Include\Asset\AssetHandle.h" />
+    <ClInclude Include="Include\Asset\AssetType.h" />
+    <ClInclude Include="Include\Asset\AssetDB.h" />
+    <ClInclude Include="Include\Asset\AssetStorage.h" />
+    <ClInclude Include="Include\Asset\AssetLoader.h" />
+    <ClInclude Include="Include\Asset\AssetSystem.h" />
+    <ClInclude Include="Include\Asset\AssetAPI.h" />
     <ClInclude Include="Include\Graphics\DX12Backend.h" />
     <ClInclude Include="Include\Graphics\DX12Object.h" />
     <ClInclude Include="Include\Graphics\GraphicsSystem.h" />
-    <ClInclude Include="Include\Graphics\TextureManager.h" />
+    <ClInclude Include="Include\Graphics\GPUResourceStorage.h" />
     <ClInclude Include="Include\Time\TimeData.h" />
     <ClInclude Include="Include\Time\TimeSystem.h" />
     <ClInclude Include="Include\Time\TimeAPI.h" />
