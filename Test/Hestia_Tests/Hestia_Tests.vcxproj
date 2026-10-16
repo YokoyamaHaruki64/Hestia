@@ -39,11 +39,14 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source\ApplicationTests.cpp" />
     <ClCompile Include="Source\EngineTests.cpp" />
+    <ClCompile Include="Source\AssetTests.cpp" />
+    <ClCompile Include="Source\AssetGraphicsTests.cpp" />
     <ClCompile Include="Source\TimeTests.cpp" />
     <ClCompile Include="Source\LogTests.cpp" />
     <ClCompile Include="Source\MathTests.cpp">

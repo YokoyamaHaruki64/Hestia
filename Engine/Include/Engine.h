@@ -19,6 +19,8 @@
 #include "Log/LogSystem.h"
 #include "Log/LogAPI.h"
 #include "Graphics/GraphicsSystem.h"
+#include "Asset/AssetSystem.h"
+#include "Asset/AssetAPI.h"
 
 namespace Hestia
 {
@@ -30,6 +32,7 @@ namespace Hestia
     {
     public:
         Engine() = default;
+        ~Engine();
 
         /// @brief Application API を保持し、Engine を利用可能にする。
         /// @param applicationAPI Application から渡された共有 API。
@@ -63,6 +66,18 @@ namespace Hestia
         TimeSystem m_time;
         TimeAPI m_timeAPI;
         GraphicsSystem m_graphics;
+        AssetSystem m_assets;
+        AssetAPI m_assetAPI;
+
+        Material m_debugMaterial;
+        AssetHandle<Mesh> m_debugMesh;
+
+        bool m_logInitialized = false;
+        bool m_timeInitialized = false;
+        bool m_timeAPIInitialized = false;
+        bool m_graphicsInitialized = false;
+        bool m_assetsInitialized = false;
+        bool m_assetAPIInitialized = false;
 
         /*
         // System と Boundary API は各 System の設計・実装時に有効化する。

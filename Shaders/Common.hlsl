@@ -4,7 +4,7 @@ struct VSInput
     float3 position : POSITION;
     float2 uv       : TEXCOORD0;
     float3 normal   : NORMAL;
-    float3 tangent : TANGENT;
+    float4 tangent : TANGENT;
     float4 color    : COLOR;
 };
 
@@ -14,7 +14,7 @@ struct PSInput_Default
     float3 worldPos : POSITION;
     float2 uv       : TEXCOORD0;
     float3 normal   : NORMAL;
-    float3 tangent  : TANGENT;
+    float4 tangent  : TANGENT;
     float4 color    : COLOR;
 };
 

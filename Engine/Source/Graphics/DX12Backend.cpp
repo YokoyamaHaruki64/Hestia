@@ -14,12 +14,13 @@
 
 #include "Graphics/DX12Backend.h"
 #include "D3DX12/d3dx12.h"
-#include "Graphics/TextureManager.h"
 
 #include "Time/TimeSystem.h"
 #include "Log/LogSystem.h"
 
 #include <dxgidebug.h>
+#include <cstddef>
+#include <limits>
 
 using namespace Hestia;
 
@@ -32,10 +33,13 @@ constexpr UINT Align256(UINT size)
 
 bool DX12Backend::CreateShaderResourceView(
 	ID3D12Resource * resource,
-	int& srvHeapIndex, 
+	uint32_t& srvHeapIndex,
 	D3D12_SHADER_RESOURCE_VIEW_DESC* srvDesc)
 {
-	if(m_SRVMasterHeapIndex >= MAX_MASTER_SRV_COUNT)
+	if (!m_Device || !resource || !m_SRVMasterHeap)
+		return false;
+
+	if (m_SRVMasterHeapIndex >= MAX_MASTER_SRV_COUNT)
 	{
 		MessageBox(nullptr, L"Exceeded maximum SRV count.", L"Error", MB_OK);
 		return false;
@@ -51,7 +55,7 @@ bool DX12Backend::CreateShaderResourceView(
 		handle);
 
 	// SRVヒープのインデックスを返す
-	srvHeapIndex = m_SRVMasterHeapIndex;
+	srvHeapIndex = static_cast<uint32_t>(m_SRVMasterHeapIndex);
 
 	// SRVヒープのインデックスを更新
 	m_SRVMasterHeapIndex++;
@@ -415,16 +419,6 @@ bool DX12Backend::Initialize(HWND hWnd, int width, int height)
 		return false;
 	}
 
-    // NullTextureの作成
-    D3D12_SHADER_RESOURCE_VIEW_DESC nullDesc{};
-    nullDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    nullDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    nullDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    nullDesc.Texture2D.MipLevels = 1;
-    if (!CreateShaderResourceView(nullptr, m_nullTexture.srvHeapIndex, &nullDesc)) return false;
-
-    ResetMaterialTextureBinding();
-
 	// CommandAllocatorとCommandListの作成
 	for (int i = 0; i < FRAME_COUNT; ++i)
 	{
@@ -465,7 +459,11 @@ bool DX12Backend::Initialize(HWND hWnd, int width, int height)
     if (!m_FenceEvent) return false;
 
 
-	m_Fence->Signal(0);
+	if (!CheckResult(m_Fence->Signal(0), L"Failed to initialize fence.")) return false;
+
+	// 白 Texture は公開 Upload API の有効化前に内部作成
+	if (!CreateWhiteTexture()) return false;
+	m_BoundMaterialSRVs.fill(static_cast<int>(m_whiteTexture.m_masterSRVIndex));
 
 	auto rtvHandle = GetRTVHandle(m_sceneColors[m_sceneColorIndex].rtvHeapIndex);
 	auto dsvHandle = GetDSVHandle(m_DepthStencil.dsvHeapIndex);
@@ -620,11 +618,11 @@ bool DX12Backend::Initialize(HWND hWnd, int width, int height)
 	// InputLayoutの設定
 	static constexpr D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
 	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        { "TANGENT",  0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, static_cast<UINT>(offsetof(NormalTangentVertex, m_tangent)), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 3, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
 	m_InputLayoutDesc.NumElements = _countof(inputElementDescs);
 	m_InputLayoutDesc.pInputElementDescs = inputElementDescs;
@@ -693,28 +691,82 @@ bool DX12Backend::Initialize(HWND hWnd, int width, int height)
 
 void DX12Backend::Finalize()
 {
-	// GPUの完了を待機
-	if (m_CommandQueue && m_Fence && m_FenceEvent)
-	{
-		WaitForGPU();
-	}
+    m_IsInitialized = false;
+    if (m_CommandQueue && m_Fence && !WaitForGPU())
+        return;
 
-	// FenceEventのクローズ
-	if (m_FenceEvent)
-	{
-		CloseHandle(m_FenceEvent);
-		m_FenceEvent = nullptr;
-	}
+    // Upload と Draw が参照しなくなってから GPU Resource を解放
+    if (m_PerObjectCB.constantBuffer && m_PerObjectCB.mappedData)
+        m_PerObjectCB.constantBuffer->Unmap(0, nullptr);
+    if (m_PerMaterialCB.constantBuffer && m_PerMaterialCB.mappedData)
+        m_PerMaterialCB.constantBuffer->Unmap(0, nullptr);
+    m_PerObjectCB.mappedData = nullptr;
+    m_PerMaterialCB.mappedData = nullptr;
 
-	m_IsInitialized = false;
     m_currentFrameData.clear();
+    m_gpuMeshes.Clear();
+    m_gpuTextures.Clear();
+    m_defaultStreamBuffers = {};
+    m_defaultStreamCapacities.fill(0);
+    m_whiteTexture = {};
+    m_SystemTextures.clear();
+    while (!m_WaitingResources.empty())
+        m_WaitingResources.pop();
+    m_UploadContextPool.Finalize();
+
     for (auto& frame : m_FrameContexts)
-        frame.drewMesh.clear();
+    {
+        frame.commandList.Reset();
+        frame.commandAllocator.Reset();
+        frame.perFrameCB.Reset();
+        frame.srvVisibleHeap.Reset();
+        frame.fenceValue = 0;
+        frame.visibleSRVCount = 0;
+    }
 
+    for (auto& sceneColor : m_sceneColors)
+        sceneColor = {};
+    m_DepthStencil = {};
+    for (auto& backBuffer : m_BackBuffers)
+        backBuffer.Reset();
+    m_PerObjectCB.constantBuffer.Reset();
+    m_PerMaterialCB.constantBuffer.Reset();
+    m_PerMaterialCB.materialCache.clear();
+    m_PerMaterialCB.maxIndex = 0;
+    m_CurrentPipelineState.Reset();
+    m_PipelineCache.clear();
+    m_RootSignature.Reset();
+    m_RTVHeap.Reset();
+    m_DSVHeap.Reset();
+    m_SRVMasterHeap.Reset();
+    m_SwapChain.Reset();
+    m_CommandQueue.Reset();
+    m_Fence.Reset();
+    m_Device.Reset();
+
+    if (m_FenceEvent)
+    {
+        CloseHandle(m_FenceEvent);
+        m_FenceEvent = nullptr;
+    }
+
+    m_frameIndex = 0;
+    m_sceneColorIndex = 0;
+    m_RTVHeapIndex = 0;
+    m_DSVHeapIndex = 0;
+    m_SRVMasterHeapIndex = 0;
+    m_RTVIncrementSize = 0;
+    m_DSVIncrementSize = 0;
+    m_SRVIncrementSize = 0;
+    m_globalFenceValue = 0;
+    m_AllowTearing = false;
+    m_BoundMaterialSRVs.fill(-1);
 }
-
 void DX12Backend::Update()
 {
+	if (!m_IsInitialized || !m_Fence)
+		return;
+
 	const UINT64 completedValue = m_Fence->GetCompletedValue();
 
 	// コピー完了したリソースをキューから削除
@@ -740,14 +792,14 @@ bool DX12Backend::BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4
 
 	// フェンスの完了を待機
 	// 該当フレームのフェンスが完了していない場合完了するまで待機する
-	if( frame.fenceValue != 0 && m_Fence->GetCompletedValue() < frame.fenceValue)
+	if (frame.fenceValue != 0 && m_Fence->GetCompletedValue() < frame.fenceValue)
 	{
-		m_Fence->SetEventOnCompletion(frame.fenceValue, m_FenceEvent);
-		WaitForSingleObject(m_FenceEvent, INFINITE);
+		if (FAILED(m_Fence->SetEventOnCompletion(frame.fenceValue, m_FenceEvent)) ||
+			WaitForSingleObject(m_FenceEvent, INFINITE) != WAIT_OBJECT_0)
+			return false;
 	}
 
 	// コマンドアロケータとコマンドリストのリセット
-    frame.drewMesh.clear();
     if (FAILED(frame.commandAllocator->Reset()) ||
         FAILED(frame.commandList->Reset(frame.commandAllocator.Get(), m_CurrentPipelineState.Get())))
         return false;
@@ -812,28 +864,40 @@ void Hestia::DX12Backend::Draw()
     long long setupPipelineTime = 0;
     long long drawMeshTime = 0;
 
-    for(int i = 0; i < m_currentFrameData.size(); ++i)
+    for (size_t i = 0; i < m_currentFrameData.size(); ++i)
     {
         RenderData& data = m_currentFrameData[i];
-        auto start = std::chrono::high_resolution_clock::now();
+        const DXMesh* mesh = m_gpuMeshes.Get(data.mesh);
+        if (!mesh)
+            continue;
 
+        auto start = std::chrono::high_resolution_clock::now();
         BindObject(data.worldMatrix, i);
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         bindObjectTime += duration.count();
+
         start = std::chrono::high_resolution_clock::now();
         BindMaterial(data.material);
         end = std::chrono::high_resolution_clock::now();
         duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         bindMaterialTime += duration.count();
+
         start = std::chrono::high_resolution_clock::now();
-        SetupPipeline(data.vsShaderPath, data.psShaderPath);
+
+        const bool pipelineReady = SetupPipeline(data.vsShaderPath, data.psShaderPath);
+        if (pipelineReady && m_CurrentPipelineState)
+            m_FrameContexts[m_frameIndex].commandList->SetPipelineState(m_CurrentPipelineState.Get());
+
         end = std::chrono::high_resolution_clock::now();
         duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         setupPipelineTime += duration.count();
-        m_FrameContexts[m_frameIndex].drewMesh.push_back(data.mesh);
+
+        if (!pipelineReady || !m_CurrentPipelineState)
+            continue;
+
         start = std::chrono::high_resolution_clock::now();
-        DrawMesh(data.mesh);
+        DrawMesh(*mesh);
         end = std::chrono::high_resolution_clock::now();
         duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         drawMeshTime += duration.count();
@@ -844,7 +908,6 @@ void Hestia::DX12Backend::Draw()
     Logger::Log("SetupPipeline Time: " + std::to_string(setupPipelineTime) + " microseconds");
     Logger::Log("DrawMesh Time: " + std::to_string(drawMeshTime) + " microseconds");
 }
-
 void DX12Backend::EndDraw()
 {
 	ID3D12GraphicsCommandList* commandList = m_FrameContexts[m_frameIndex].commandList.Get();
@@ -892,7 +955,12 @@ void DX12Backend::EndDraw()
 	m_CommandQueue->ExecuteCommandLists(_countof(commandLists), commandLists);
 
 	// シグナルの送信
-	m_CommandQueue->Signal(m_Fence.Get(), GetNextFenceValue());
+	const UINT64 fenceValue = GetNextFenceValue();
+	if (!CheckResult(m_CommandQueue->Signal(m_Fence.Get(), fenceValue), L"Failed to signal frame fence."))
+	{
+		m_IsInitialized = false;
+		return;
+	}
 	m_FrameContexts[m_frameIndex].fenceValue = m_globalFenceValue;
 
 	// Present
@@ -906,195 +974,409 @@ void DX12Backend::EndDraw()
     m_currentFrameData.clear();
 }
 
-bool DX12Backend::CreateVertexBuffer(
-    const Vertex* vertices,
-	size_t vertexCount, 
-	ComPtr<ID3D12Resource>& vertexBuffer,
-	D3D12_VERTEX_BUFFER_VIEW& vertexBufferView)
+bool DX12Backend::UploadBufferToDefault(
+    const void* data,
+    size_t byteSize,
+    D3D12_RESOURCE_STATES finalState,
+    ComPtr<ID3D12Resource>& resource)
 {
-	// 頂点バッファの作成
-	D3D12_HEAP_PROPERTIES heapProperties{};
-    heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-	heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+    if (!m_Device || !m_CommandQueue || !m_Fence || !data || byteSize == 0)
+        return false;
 
-	D3D12_RESOURCE_DESC resourceDesc{};
-	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	resourceDesc.Alignment = 0;
+    // Default Heap と転送用 Upload Heap を作成
+    D3D12_HEAP_PROPERTIES defaultHeap{};
+    defaultHeap.Type = D3D12_HEAP_TYPE_DEFAULT;
+    const auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(static_cast<UINT64>(byteSize));
+    resource.Reset();
 
-	resourceDesc.Width = sizeof(Vertex) * vertexCount;
-	resourceDesc.Height = 1;
+    HRESULT hr = m_Device->CreateCommittedResource(
+        &defaultHeap,
+        D3D12_HEAP_FLAG_NONE,
+        &bufferDesc,
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        nullptr,
+        IID_PPV_ARGS(resource.GetAddressOf()));
 
-	resourceDesc.DepthOrArraySize = 1;
-	resourceDesc.MipLevels = 1;
-	resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+    if (!CheckResult(hr, L"Failed to create default buffer."))
+        return false;
 
-	resourceDesc.SampleDesc.Count = 1;
-	resourceDesc.SampleDesc.Quality = 0;
+    D3D12_HEAP_PROPERTIES uploadHeap{};
+    uploadHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
+    ComPtr<ID3D12Resource> uploadResource;
+    hr = m_Device->CreateCommittedResource(
+        &uploadHeap,
+        D3D12_HEAP_FLAG_NONE,
+        &bufferDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(uploadResource.GetAddressOf()));
+    if (!CheckResult(hr, L"Failed to create buffer upload resource."))
+        return false;
 
-	resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    void* mappedData = nullptr;
+    hr = uploadResource->Map(0, nullptr, &mappedData);
+    if (!CheckResult(hr, L"Failed to map buffer upload resource."))
+        return false;
 
-	HRESULT hr = m_Device->CreateCommittedResource(
-		&heapProperties,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(vertexBuffer.GetAddressOf()));
+    // 呼び出し元のデータを Upload Resource へコピー
+    memcpy(mappedData, data, byteSize);
+    const D3D12_RANGE writtenRange{ 0, byteSize };
+    uploadResource->Unmap(0, nullptr);
 
-	if (!CheckResult(hr, L"Failed to create vertex buffer.")) return false;
+    int contextIndex = -1;
+    if (!m_UploadContextPool.GetFreeIndex(contextIndex))
+        return false;
 
-	// VertexBufferViewの設定
-	vertexBufferView.BufferLocation = vertexBuffer->GetGPUVirtualAddress();
-	vertexBufferView.SizeInBytes = static_cast<UINT>(sizeof(Vertex) * vertexCount);
-	vertexBufferView.StrideInBytes = sizeof(Vertex);
+    const UINT64 fenceValue = GetNextFenceValue();
+    auto commandList = m_UploadContextPool.GetResetCommandList(contextIndex, fenceValue);
+    if (!commandList)
+        return false;
 
-	// 頂点バッファのマッピング
-	void* pVertexDataBegin = nullptr;
-	hr = vertexBuffer->Map(0, nullptr, &pVertexDataBegin);
-	if (!CheckResult(hr, L"Failed to map vertex buffer.")) return false;
+    // CopyBufferRegionで Default Heap へコピー
+    commandList->CopyBufferRegion(resource.Get(), 0, uploadResource.Get(), 0, byteSize);
+    if (finalState != D3D12_RESOURCE_STATE_COPY_DEST)
+    {
+        const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+            resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, finalState);
+        commandList->ResourceBarrier(1, &barrier);
+    }
 
-	memcpy(pVertexDataBegin, vertices, sizeof(Vertex) * vertexCount);
-	vertexBuffer->Unmap(0, nullptr);
+    hr = commandList->Close();
+    if (!CheckResult(hr, L"Failed to close buffer upload command list."))
+        return false;
 
-	return true;
+    ID3D12CommandList* commandLists[] = { commandList.Get() };
+    m_CommandQueue->ExecuteCommandLists(1, commandLists);
+    // Copy 完了 Fence まで両 Resource を保持
+    m_WaitingResources.push({ uploadResource, fenceValue });
+    m_WaitingResources.push({ resource, fenceValue });
+
+    if (!CheckResult(m_CommandQueue->Signal(m_Fence.Get(), fenceValue), L"Failed to signal buffer upload."))
+        return false;
+
+    return true;
+}
+
+bool DX12Backend::CreateVertexStreamBuffer(
+    VertexStream stream,
+    const void* data,
+    size_t vertexCount,
+    DXVertexBuffer& result)
+{
+    if (!data || vertexCount == 0)
+        return false;
+
+    size_t stride = 0;
+    switch (stream)
+    {
+    case VertexStream::Position:
+        stride = sizeof(PositionVertex);
+        break;
+    case VertexStream::NormalTangent:
+        stride = sizeof(NormalTangentVertex);
+        break;
+    case VertexStream::PrimaryTexCoord:
+        stride = sizeof(PrimaryTexCoordVertex);
+        break;
+    case VertexStream::Color:
+        stride = sizeof(ColorVertex);
+        break;
+    case VertexStream::Count:
+        return false;
+    }
+
+    if (stride == 0 || vertexCount > std::numeric_limits<UINT>::max() / stride)
+        return false;
+
+    const size_t byteSize = stride * vertexCount;
+    if (!UploadBufferToDefault(
+        data,
+        byteSize,
+        D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+        result.m_resource))
+        return false;
+
+    result.m_view.BufferLocation = result.m_resource->GetGPUVirtualAddress();
+    result.m_view.SizeInBytes = static_cast<UINT>(byteSize);
+    result.m_view.StrideInBytes = static_cast<UINT>(stride);
+    return true;
 }
 
 bool DX12Backend::CreateIndexBuffer(
     const uint32_t* indices,
-	size_t indexCount,
-	ComPtr<ID3D12Resource>& indexBuffer,
-	D3D12_INDEX_BUFFER_VIEW& indexBufferView)
+    size_t indexCount,
+    ComPtr<ID3D12Resource>& indexBuffer,
+    D3D12_INDEX_BUFFER_VIEW& indexBufferView)
 {
-	// インデックスバッファの作成
-	D3D12_HEAP_PROPERTIES heapProperties{};
-	heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-	heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-	heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+    if (!indices || indexCount == 0 ||
+        indexCount > std::numeric_limits<UINT>::max() / sizeof(uint32_t))
+        return false;
 
-	D3D12_RESOURCE_DESC resourceDesc{};
-	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	resourceDesc.Alignment = 0;
+    const size_t byteSize = sizeof(uint32_t) * indexCount;
+    if (!UploadBufferToDefault(
+        indices,
+        byteSize,
+        D3D12_RESOURCE_STATE_INDEX_BUFFER,
+        indexBuffer))
+        return false;
 
-    resourceDesc.Width = sizeof(uint32_t) * indexCount;
-	resourceDesc.Height = 1;
-
-	resourceDesc.DepthOrArraySize = 1;
-	resourceDesc.MipLevels = 1;
-	resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-
-	resourceDesc.SampleDesc.Count = 1;
-	resourceDesc.SampleDesc.Quality = 0;
-
-	resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-
-	HRESULT hr = m_Device->CreateCommittedResource(
-		&heapProperties,
-		D3D12_HEAP_FLAG_NONE,
-		&resourceDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(indexBuffer.GetAddressOf()));
-
-	if (!CheckResult(hr, L"Failed to create index buffer.")) return false;
-
-	// IndexBufferViewの設定
-	indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
-    indexBufferView.SizeInBytes = static_cast<UINT>(sizeof(uint32_t) * indexCount);
+    indexBufferView.BufferLocation = indexBuffer->GetGPUVirtualAddress();
+    indexBufferView.SizeInBytes = static_cast<UINT>(byteSize);
     indexBufferView.Format = DXGI_FORMAT_R32_UINT;
-
-	// インデックスバッファのマッピング
-	void* pIndexDataBegin = nullptr;
-	hr = indexBuffer->Map(0, nullptr, &pIndexDataBegin);
-	if (!CheckResult(hr, L"Failed to map index buffer.")) return false;
-
-    memcpy(pIndexDataBegin, indices, sizeof(uint32_t) * indexCount);
-	indexBuffer->Unmap(0, nullptr);
-
-	return true;
+    return true;
 }
 
-bool DX12Backend::UploadTexture(DXTexture& texture, const std::vector<D3D12_SUBRESOURCE_DATA>& subresources)
+bool DX12Backend::EnsureDefaultStreamBuffers(size_t vertexCount)
 {
-	UINT64 uploadBufferSize =
-		GetRequiredIntermediateSize(texture.resource.Get(), 0, subresources.size());
+    if (vertexCount == 0 ||
+        vertexCount > std::numeric_limits<UINT>::max() / sizeof(NormalTangentVertex) ||
+        vertexCount > std::numeric_limits<UINT>::max() / sizeof(PrimaryTexCoordVertex) ||
+        vertexCount > std::numeric_limits<UINT>::max() / sizeof(ColorVertex))
+        return false;
 
-	// UploadResourceの作成
-	D3D12_HEAP_PROPERTIES heapProperties{};
-	heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+    // 法線と接線の既定値
+    const size_t normalIndex = static_cast<size_t>(VertexStream::NormalTangent);
+    if (m_defaultStreamCapacities[normalIndex] < vertexCount ||
+        !m_defaultStreamBuffers[normalIndex].m_resource)
+    {
+        std::vector<NormalTangentVertex> vertices(vertexCount);
+        for (auto& vertex : vertices)
+        {
+            vertex.m_normal = { 0.0f, 0.0f, -1.0f };
+            vertex.m_tangent = { 1.0f, 0.0f, 0.0f, 1.0f };
+        }
 
-	auto uploadResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize);
+        DXVertexBuffer buffer;
+        if (!CreateVertexStreamBuffer(VertexStream::NormalTangent, vertices.data(), vertexCount, buffer))
+            return false;
+        RetireResource(std::move(m_defaultStreamBuffers[normalIndex].m_resource));
+        m_defaultStreamBuffers[normalIndex] = std::move(buffer);
+        m_defaultStreamCapacities[normalIndex] = vertexCount;
+    }
 
-	ComPtr<ID3D12Resource> uploadResource;
+    // UV の既定値
+    const size_t uvIndex = static_cast<size_t>(VertexStream::PrimaryTexCoord);
+    if (m_defaultStreamCapacities[uvIndex] < vertexCount ||
+        !m_defaultStreamBuffers[uvIndex].m_resource)
+    {
+        std::vector<PrimaryTexCoordVertex> vertices(vertexCount);
+        DXVertexBuffer buffer;
+        if (!CreateVertexStreamBuffer(VertexStream::PrimaryTexCoord, vertices.data(), vertexCount, buffer))
+            return false;
+        RetireResource(std::move(m_defaultStreamBuffers[uvIndex].m_resource));
+        m_defaultStreamBuffers[uvIndex] = std::move(buffer);
+        m_defaultStreamCapacities[uvIndex] = vertexCount;
+    }
 
-	HRESULT hr = m_Device->CreateCommittedResource(
-		&heapProperties,
-		D3D12_HEAP_FLAG_NONE,
-		&uploadResourceDesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(uploadResource.GetAddressOf()));
+    // 頂点カラーの既定値
+    const size_t colorIndex = static_cast<size_t>(VertexStream::Color);
+    if (m_defaultStreamCapacities[colorIndex] < vertexCount ||
+        !m_defaultStreamBuffers[colorIndex].m_resource)
+    {
+        std::vector<ColorVertex> vertices(vertexCount);
+        for (auto& vertex : vertices)
+            vertex.m_color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
-	if (!CheckResult(hr, L"Failed to create upload resource.")) return false;
+        DXVertexBuffer buffer;
+        if (!CreateVertexStreamBuffer(VertexStream::Color, vertices.data(), vertexCount, buffer))
+            return false;
+        RetireResource(std::move(m_defaultStreamBuffers[colorIndex].m_resource));
+        m_defaultStreamBuffers[colorIndex] = std::move(buffer);
+        m_defaultStreamCapacities[colorIndex] = vertexCount;
+    }
 
-	// CommandListの取得
-	int freeIndex;
-	if (!m_UploadContextPool.GetFreeIndex(freeIndex)) return false;
+    return true;
+}
 
-	const UINT64 fenceValue = GetNextFenceValue();
-	auto commandList = m_UploadContextPool.GetResetCommandList(freeIndex, fenceValue);
-	if (!commandList) return false;
+void DX12Backend::RetireResource(ComPtr<ID3D12Resource> resource)
+{
+    if (!resource || !m_CommandQueue || !m_Fence || m_globalFenceValue == 0 ||
+        m_Fence->GetCompletedValue() >= m_globalFenceValue)
+        return;
 
-	// データのコピー:UpdateSubresourcesは以下2つを行う
-	// uploadResourceにsubresourcesのデータをコピー
-	// texture.resourceにuploadResourceのデータをコピーするコマンド発行(CopyTextureRegion)
+    m_WaitingResources.push({ std::move(resource), m_globalFenceValue });
+}
+
+bool DX12Backend::UploadTextureResource(
+    DXTexture& texture,
+    const TextureDesc& desc,
+    const void* pixels,
+    size_t rowPitch,
+    size_t slicePitch)
+{
+    if (!m_Device || !m_CommandQueue || !m_Fence || !pixels)
+        return false;
+
+    // Format と Pitch を確認
+    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+    switch (desc.m_format)
+    {
+    case TextureFormat::RGBA8Unorm:
+        format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        break;
+    case TextureFormat::RGBA8Srgb:
+        format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+        break;
+    default:
+        return false;
+    }
+
+    if (desc.m_width > std::numeric_limits<size_t>::max() / 4)
+        return false;
+
+    const size_t minimumRowPitch = static_cast<size_t>(desc.m_width) * 4;
+    if (rowPitch < minimumRowPitch || rowPitch > static_cast<size_t>(std::numeric_limits<LONG_PTR>::max()) ||
+        desc.m_height > std::numeric_limits<size_t>::max() / rowPitch)
+        return false;
+
+    const size_t minimumSlicePitch = rowPitch * static_cast<size_t>(desc.m_height);
+    if (slicePitch < minimumSlicePitch ||
+        slicePitch > static_cast<size_t>(std::numeric_limits<LONG_PTR>::max()))
+        return false;
+
+    // Default Heap Texture を作成
+    const auto textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+        format,
+        desc.m_width,
+        desc.m_height,
+        1,
+        static_cast<UINT16>(desc.m_mipLevels));
+    D3D12_HEAP_PROPERTIES defaultHeap{};
+    defaultHeap.Type = D3D12_HEAP_TYPE_DEFAULT;
+    texture.m_resource.Reset();
+
+    HRESULT hr = m_Device->CreateCommittedResource(
+        &defaultHeap,
+        D3D12_HEAP_FLAG_NONE,
+        &textureDesc,
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        nullptr,
+        IID_PPV_ARGS(texture.m_resource.GetAddressOf()));
+    if (!CheckResult(hr, L"Failed to create texture resource."))
+        return false;
+
+    // CPU 画素を Upload Resource 経由で Default Texture へ転送
+    const UINT64 uploadBufferSize = GetRequiredIntermediateSize(texture.m_resource.Get(), 0, 1);
+    if (uploadBufferSize == 0)
+        return false;
+
+    D3D12_HEAP_PROPERTIES uploadHeap{};
+    uploadHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
+    const auto uploadDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize);
+    ComPtr<ID3D12Resource> uploadResource;
+    hr = m_Device->CreateCommittedResource(
+        &uploadHeap,
+        D3D12_HEAP_FLAG_NONE,
+        &uploadDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(uploadResource.GetAddressOf()));
+    if (!CheckResult(hr, L"Failed to create texture upload resource."))
+        return false;
+
+    int contextIndex = -1;
+    if (!m_UploadContextPool.GetFreeIndex(contextIndex))
+        return false;
+
+    const UINT64 fenceValue = GetNextFenceValue();
+    auto commandList = m_UploadContextPool.GetResetCommandList(contextIndex, fenceValue);
+    if (!commandList)
+        return false;
+
+    D3D12_SUBRESOURCE_DATA subresource{};
+    subresource.pData = pixels;
+    subresource.RowPitch = static_cast<LONG_PTR>(rowPitch);
+    subresource.SlicePitch = static_cast<LONG_PTR>(slicePitch);
     const UINT64 copiedBytes = UpdateSubresources(
-		commandList.Get(),
-		texture.resource.Get(),
-		uploadResource.Get(),
-		0, 0,
-		subresources.size(),
-		subresources.data());
+        commandList.Get(),
+        texture.m_resource.Get(),
+        uploadResource.Get(),
+        0,
+        0,
+        1,
+        &subresource);
     if (copiedBytes == 0)
     {
         commandList->Close();
         return false;
     }
 
-	// CopyTextureRegionがUploadResourceを参照するため、CopyTextureRegionの完了までUploadResourceを解放しないようにする
-	m_WaitingResources.push({ uploadResource, fenceValue });
-    m_WaitingResources.push({ texture.resource, fenceValue });
+    const auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+        texture.m_resource.Get(),
+        D3D12_RESOURCE_STATE_COPY_DEST,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    commandList->ResourceBarrier(1, &barrier);
 
-	D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-		texture.resource.Get(),
-		D3D12_RESOURCE_STATE_COPY_DEST,
-		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    hr = commandList->Close();
+    if (!CheckResult(hr, L"Failed to close texture upload command list."))
+        return false;
 
-	commandList->ResourceBarrier(1,&barrier);
+    ID3D12CommandList* commandLists[] = { commandList.Get() };
+    m_CommandQueue->ExecuteCommandLists(1, commandLists);
+    m_WaitingResources.push({ uploadResource, fenceValue });
+    m_WaitingResources.push({ texture.m_resource, fenceValue });
 
-	// コマンドリストのクローズ
-	hr = commandList->Close();
-	if (!CheckResult(hr, L"Failed to close command list.")) return false;
+    if (!CheckResult(m_CommandQueue->Signal(m_Fence.Get(), fenceValue), L"Failed to signal texture upload."))
+        return false;
 
-	// コマンドリストの実行
-	ID3D12CommandList* commandLists[] = { commandList.Get() };
-	m_CommandQueue->ExecuteCommandLists(1,commandLists);
-
-	// フェンスのシグナル送信
-    if (!CheckResult(m_CommandQueue->Signal(m_Fence.Get(), fenceValue), L"Failed to signal texture upload.")) return false;
-	
-	// SRVの作成
-	if(!CreateShaderResourceView(texture.resource.Get(), texture.srvHeapIndex))
-	{
-		MessageBox(nullptr, L"Failed to create SRV for texture.", L"Error", MB_OK);
-		return false;
-	}
-
-	return true;
+    // 成功した Texture に SRV を割り当てる
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+    srvDesc.Format = format;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    srvDesc.Texture2D.MipLevels = desc.m_mipLevels;
+    return CreateShaderResourceView(texture.m_resource.Get(), texture.m_masterSRVIndex, &srvDesc);
 }
 
+bool DX12Backend::CreateWhiteTexture()
+{
+    TextureDesc desc;
+    desc.m_width = 1;
+    desc.m_height = 1;
+    desc.m_mipLevels = 1;
+    desc.m_format = TextureFormat::RGBA8Unorm;
+    const std::array<uint8_t, 4> pixels{ 255, 255, 255, 255 };
+    return UploadTextureResource(m_whiteTexture, desc, pixels.data(), pixels.size(), pixels.size());
+}
+
+bool DX12Backend::UploadMesh(AssetHandle<Mesh> handle, const Mesh& mesh)
+{
+    if (!m_IsInitialized || !handle.IsValid() ||
+        handle.m_index != mesh.m_handle.m_index ||
+        handle.m_generation != mesh.m_handle.m_generation ||
+        !mesh.IsValid() || !m_gpuMeshes.CanRegister(handle))
+        return false;
+
+    DXMesh gpuMesh;
+    if (!CreateMesh(mesh, gpuMesh))
+        return false;
+
+    return m_gpuMeshes.Register(handle, std::move(gpuMesh));
+}
+
+bool DX12Backend::UploadTexture(
+    AssetHandle<Texture> handle,
+    const TextureDesc& desc,
+    const void* pixels,
+    size_t rowPitch,
+    size_t slicePitch)
+{
+    if (!m_IsInitialized || !handle.IsValid() || !desc.IsValid() ||
+        !pixels || !m_gpuTextures.CanRegister(handle))
+        return false;
+
+    DXTexture gpuTexture;
+    if (!UploadTextureResource(gpuTexture, desc, pixels, rowPitch, slicePitch))
+        return false;
+
+    return m_gpuTextures.Register(handle, std::move(gpuTexture));
+}
+
+bool DX12Backend::HasMesh(AssetHandle<Mesh> handle) const
+{
+    return m_gpuMeshes.Get(handle) != nullptr;
+}
 bool DX12Backend::SetupPipeline(std::filesystem::path vsPath, std::filesystem::path psPath)
 {
 	// PipelineCacheの確認
@@ -1191,7 +1473,6 @@ void DX12Backend::BindObject(const Matrix4x4_SIMD& worldMatrix, size_t objectInd
 
 void DX12Backend::BindMaterial(const Material& material)
 {
-    auto& frame = m_FrameContexts[m_frameIndex];
     auto it = m_PerMaterialCB.materialCache.find(material.name);
     int materialIndex = 0;
 
@@ -1205,51 +1486,44 @@ void DX12Backend::BindMaterial(const Material& material)
         m_PerMaterialCB.materialCache[material.name] = materialIndex;
     }
 
-    int index = m_frameIndex * MAX_MATERIAL_COUNT + materialIndex;
-	MaterialConstants materialConstants{
-		material.diffuseColor,
-		material.specularColor,
-		material.emissionColor,
-		material.roughness,
-		material.metallic
-	};
+    const int index = m_frameIndex * MAX_MATERIAL_COUNT + materialIndex;
+    MaterialConstants materialConstants{
+        material.diffuseColor,
+        material.specularColor,
+        material.emissionColor,
+        material.roughness,
+        material.metallic
+    };
 
-    size_t offset = m_PerMaterialCB.SIZE * index;
+    const size_t offset = m_PerMaterialCB.SIZE * index;
 
-	// DataをPerMaterial ConstantBufferに書き込む
-	memcpy(
-		reinterpret_cast<uint8_t*>(m_PerMaterialCB.mappedData) + offset,
-		&materialConstants,
-		sizeof(MaterialConstants));
+    // DataをPerMaterial ConstantBufferに書き込む
+    memcpy(
+        reinterpret_cast<uint8_t*>(m_PerMaterialCB.mappedData) + offset,
+        &materialConstants,
+        sizeof(MaterialConstants));
 
-	// GPUAddressを設定
-	m_FrameContexts[m_frameIndex].commandList
-		->SetGraphicsRootConstantBufferView(
-			static_cast<UINT>(RootParameterIndex::PerMaterialCBV),
-			m_PerMaterialCB.constantBuffer->GetGPUVirtualAddress() + offset);
+    // GPUAddressを設定
+    m_FrameContexts[m_frameIndex].commandList
+        ->SetGraphicsRootConstantBufferView(
+            static_cast<UINT>(RootParameterIndex::PerMaterialCBV),
+            m_PerMaterialCB.constantBuffer->GetGPUVirtualAddress() + offset);
 
-
-    // Texture設定
-    for(int i = 0; i < MAX_MATERIAL_TEXTURE; ++i)
+    // 欠損・不一致 Handle は白 Texture に置き換えて全 Slot を設定
+    for (int i = 0; i < MAX_MATERIAL_TEXTURE; ++i)
     {
-        if(i < material.textures.size())
-            BindMaterialTexture(i, TextureManager::GetTexture(material.textures[i]));
-        else
-            BindMaterialTexture(i, m_nullTexture);
+        const DXTexture* texture = &m_whiteTexture;
+        if (static_cast<size_t>(i) < material.textures.size())
+        {
+            const DXTexture* registered = m_gpuTextures.Get(material.textures[i]);
+            if (registered)
+                texture = registered;
+        }
+
+        m_BoundMaterialSRVs[i] = static_cast<int>(texture->m_masterSRVIndex);
     }
 
     CommitMaterialTexture();
-}
-
-void DX12Backend::BindMaterialTexture(int slot, const DXTexture& texture)
-{
-	if(slot < 0 || slot >= MAX_MATERIAL_TEXTURE)
-	{
-		MessageBox(nullptr, L"Invalid material texture slot.", L"Error", MB_OK);
-		return;
-	}
-
-	m_BoundMaterialSRVs[slot] = texture.srvHeapIndex;
 }
 
 // 4 microseconds の固定負荷
@@ -1262,19 +1536,16 @@ void DX12Backend::CommitMaterialTexture()
 
 	for(int i = 0; i < MAX_MATERIAL_TEXTURE; ++i)
 	{
-		if (m_BoundMaterialSRVs[i] >= 0)
-		{
-			auto srcHandle = GetSRVHandle(m_BoundMaterialSRVs[i]);
+		auto srcHandle = GetSRVHandle(m_BoundMaterialSRVs[i]);
 
 			auto dstHandle = visibleStart;
 			dstHandle.ptr += offset + m_SRVIncrementSize * i;
 
-			m_Device->CopyDescriptorsSimple(
-				1,
-				dstHandle,
-				srcHandle,
-				D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		}
+		m_Device->CopyDescriptorsSimple(
+			1,
+			dstHandle,
+			srcHandle,
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
 
 
@@ -1294,55 +1565,109 @@ void DX12Backend::CommitMaterialTexture()
 
 }
 
-void DX12Backend::ResetMaterialTextureBinding()
-{
-	m_BoundMaterialSRVs.fill(m_nullTexture.srvHeapIndex);
-}
-
 bool DX12Backend::CreateMesh(const Mesh& mesh, DXMesh& result)
 {
-    if(!CreateVertexBuffer(
-        mesh.vertices.data(),mesh.vertices.size(),
-        result.vertexBuffer,result.vertexBufferView))
+    // 必須 Position と存在する Optional Stream を作成
+    const size_t vertexCount = mesh.m_positions.size();
+    result = {};
+    if (!EnsureDefaultStreamBuffers(vertexCount))
         return false;
 
+    const size_t positionIndex = static_cast<size_t>(VertexStream::Position);
+    if (!CreateVertexStreamBuffer(
+        VertexStream::Position,
+        mesh.m_positions.data(),
+        vertexCount,
+        result.m_streams[positionIndex]))
+        return false;
+
+    const size_t normalIndex = static_cast<size_t>(VertexStream::NormalTangent);
+    if (!mesh.m_normalTangents.empty() && !CreateVertexStreamBuffer(
+        VertexStream::NormalTangent,
+        mesh.m_normalTangents.data(),
+        mesh.m_normalTangents.size(),
+        result.m_streams[normalIndex]))
+        return false;
+
+    const size_t uvIndex = static_cast<size_t>(VertexStream::PrimaryTexCoord);
+    if (!mesh.m_primaryTexCoords.empty() && !CreateVertexStreamBuffer(
+        VertexStream::PrimaryTexCoord,
+        mesh.m_primaryTexCoords.data(),
+        mesh.m_primaryTexCoords.size(),
+        result.m_streams[uvIndex]))
+        return false;
+
+    const size_t colorIndex = static_cast<size_t>(VertexStream::Color);
+    if (!mesh.m_colors.empty() && !CreateVertexStreamBuffer(
+        VertexStream::Color,
+        mesh.m_colors.data(),
+        mesh.m_colors.size(),
+        result.m_streams[colorIndex]))
+        return false;
+
+    // Index Buffer を作成
     if (!CreateIndexBuffer(
-        mesh.indices.data(), mesh.indices.size(),
-        result.indexBuffer, result.indexBufferView))
+        mesh.m_indices.data(),
+        mesh.m_indices.size(),
+        result.m_indexBuffer,
+        result.m_indexView))
         return false;
 
-    result.indexCount = static_cast<UINT>(mesh.indices.size());
-
+    result.m_vertexCount = static_cast<uint32_t>(vertexCount);
+    result.m_indexCount = static_cast<uint32_t>(mesh.m_indices.size());
     return true;
 }
 
 void DX12Backend::DrawMesh(const DXMesh& mesh)
 {
-    auto* cmd = m_FrameContexts[m_frameIndex].commandList.Get();
-    cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    cmd->IASetVertexBuffers(0, 1, &mesh.vertexBufferView);
-    cmd->IASetIndexBuffer(&mesh.indexBufferView);
-    cmd->DrawIndexedInstanced(mesh.indexCount, 1, 0, 0, 0);
+    std::array<D3D12_VERTEX_BUFFER_VIEW, static_cast<size_t>(VertexStream::Count)> views{};
+
+    for (size_t i = 0; i < views.size(); ++i)
+    {
+        const DXVertexBuffer* stream = &mesh.m_streams[i];
+        if (!stream->m_resource)
+        {
+            stream = &m_defaultStreamBuffers[i];
+        }
+
+        views[i] = stream->m_view;
+    }
+
+    auto* commandList = m_FrameContexts[m_frameIndex].commandList.Get();
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->IASetVertexBuffers(0, static_cast<UINT>(views.size()), views.data());
+    commandList->IASetIndexBuffer(&mesh.m_indexView);
+    commandList->DrawIndexedInstanced(mesh.m_indexCount, 1, 0, 0, 0);
 }
 
-void DX12Backend::WaitForGPU()
+bool DX12Backend::WaitForGPU()
 {
-	const UINT64 fenceValue = GetNextFenceValue();
+    if (!m_CommandQueue || !m_Fence)
+        return true;
 
+    const UINT64 fenceValue = GetNextFenceValue();
     if (FAILED(m_CommandQueue->Signal(m_Fence.Get(), fenceValue)))
-        return;
+        return false;
 
-	if (m_Fence->GetCompletedValue() < fenceValue)
-	{
-        if (FAILED(m_Fence->SetEventOnCompletion(fenceValue, m_FenceEvent)))
-            return;
+    if (m_Fence->GetCompletedValue() >= fenceValue)
+        return true;
 
-		WaitForSingleObject(
-			m_FenceEvent,
-			INFINITE);
-	}
+    HANDLE eventHandle = m_FenceEvent;
+    const bool ownsEvent = eventHandle == nullptr;
+    if (ownsEvent)
+        eventHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+    if (!eventHandle)
+        return false;
+
+    const bool eventSet = SUCCEEDED(m_Fence->SetEventOnCompletion(fenceValue, eventHandle));
+    const bool completed = eventSet &&
+        WaitForSingleObject(eventHandle, INFINITE) == WAIT_OBJECT_0 &&
+        m_Fence->GetCompletedValue() >= fenceValue;
+    if (ownsEvent)
+        CloseHandle(eventHandle);
+
+    return completed;
 }
-
 bool DX12Backend::UploadContextPool::CreateUploadContext(UploadContext& context)
 {
 	// CommandAllocatorの作成

@@ -15,45 +15,126 @@
 
 namespace Hestia
 {
-    static Mesh mesh2D;
-    static DXMesh dxMesh2D;
+    Engine::~Engine()
+    {
+        Finalize();
+    }
+
     bool Engine::Initialize(const ApplicationAPI& applicationAPI)
     {
         if (!m_log.Initialize())
             return false;
 
+        m_logInitialized = true;
         m_applicationAPI = applicationAPI;
 
         m_time.Initialize();
+        m_timeInitialized = true;
+
         if (!m_graphics.Initialize(m_applicationAPI.GetWindowHandle(), 1600, 900))
+        {
+            Finalize();
             return false;
+        }
+        m_graphicsInitialized = true;
+
+        if (!m_assets.Initialize(&m_graphics))
+        {
+            Finalize();
+            return false;
+        }
+        m_assetsInitialized = true;
 
         m_logAPI.Initialize(&m_log);
         m_timeAPI.Initialize(&m_time);
+        m_timeAPIInitialized = true;
+        m_assetAPI.Initialize(&m_assets);
+        m_assetAPIInitialized = true;
 
-        // デバッグ用の平面メッシュを作成する
-        mesh2D.vertices = {
-            { Vector3(-0.5f,  0.5f, 0.0f), Vector2(0.0f, 0.0f), Vector3(0, 0, -1), Vector3(1, 0, 0), Color::White() },
-            { Vector3(0.5f,  0.5f, 0.0f), Vector2(1.0f, 0.0f), Vector3(0, 0, -1), Vector3(1, 0, 0), Color::White() },
-            { Vector3(-0.5f, -0.5f, 0.0f), Vector2(0.0f, 1.0f), Vector3(0, 0, -1), Vector3(1, 0, 0), Color::White() },
-            { Vector3(0.5f, -0.5f, 0.0f), Vector2(1.0f, 1.0f), Vector3(0, 0, -1), Vector3(1, 0, 0), Color::White() },
+        // デバッグ用平面を位置・UV・色の Stream で登録
+        auto mesh = std::make_unique<Mesh>();
+        mesh->m_positions = {
+            { { -0.5f,  0.5f, 0.0f } },
+            { {  0.5f,  0.5f, 0.0f } },
+            { { -0.5f, -0.5f, 0.0f } },
+            { {  0.5f, -0.5f, 0.0f } },
         };
+        mesh->m_primaryTexCoords = {
+            { { 0.0f, 0.0f } },
+            { { 1.0f, 0.0f } },
+            { { 0.0f, 1.0f } },
+            { { 1.0f, 1.0f } },
+        };
+        mesh->m_colors = {
+            { { 1.0f, 1.0f, 1.0f, 1.0f } },
+            { { 1.0f, 1.0f, 1.0f, 1.0f } },
+            { { 1.0f, 1.0f, 1.0f, 1.0f } },
+            { { 1.0f, 1.0f, 1.0f, 1.0f } },
+        };
+        mesh->m_indices = { 0, 1, 2, 2, 1, 3 };
 
-        mesh2D.indices = { 0, 1, 2, 2, 1, 3 };
-        GraphicsSystem::CreateMesh(mesh2D, dxMesh2D);
+        m_debugMesh = m_assetAPI.Register<Mesh>("DebugPlane", mesh.release());
+        if (!m_debugMesh.IsValid())
+        {
+            Finalize();
+            return false;
+        }
+
+        // Texture は Engine 初期化時に一度だけ解決
+        m_debugMaterial = Material::Default();
+        const auto textureHandle = m_assetAPI.Load<Texture>("TextureTest");
+        if (!textureHandle.IsValid())
+        {
+            Finalize();
+            return false;
+        }
+        m_debugMaterial.textures.push_back(textureHandle);
         return true;
     }
 
     void Engine::Finalize()
     {
-        m_timeAPI.Finalize();
-        m_time.Finalize();
-        m_graphics.Finalize();
+        if (m_assetAPIInitialized)
+        {
+            m_assetAPI.Finalize();
+            m_assetAPIInitialized = false;
+        }
+
+        if (m_assetsInitialized)
+        {
+            m_assets.Finalize();
+            m_assetsInitialized = false;
+        }
+
+        if (m_graphicsInitialized)
+        {
+            m_graphics.Finalize();
+            m_graphicsInitialized = false;
+        }
+
+        if (m_timeAPIInitialized)
+        {
+            m_timeAPI.Finalize();
+            m_timeAPIInitialized = false;
+        }
+
+        if (m_timeInitialized)
+        {
+            m_time.Finalize();
+            m_timeInitialized = false;
+        }
+
+        m_debugMaterial = Material{};
+        m_debugMesh = {};
         m_applicationAPI = ApplicationAPI{};
 
-        // 他の System の終了処理が記録できるよう、ログは最後に終了する。
-        m_logAPI.Finalize();
-        m_log.Finalize();
+        if (m_logInitialized)
+        {
+            // 他の System の終了処理が記録できるよう、ログは最後に終了する
+            m_logAPI.Finalize();
+            m_log.Finalize();
+            m_logInitialized = false;
+        }
     }
 
     void Engine::ProcessMessage(HWND, UINT, WPARAM, LPARAM)
@@ -62,17 +143,19 @@ namespace Hestia
 
     void Engine::FixedUpdate(float deltaTime)
     {
-        m_time.UpdateFixed(deltaTime);
+        if (m_timeInitialized)
+            m_time.UpdateFixed(deltaTime);
     }
 
     void Engine::FrameExecute(float deltaTime)
     {
+        if (!m_graphicsInitialized || !m_timeInitialized || !m_debugMesh.IsValid())
+            return;
+
         m_time.Update(deltaTime);
 
         Logger::Log("FrameExecute: DeltaTime= " + std::to_string(TimeSystem::DeltaTime()));
 
-        Material mat = Material::Default();
-        mat.textures.push_back(GraphicsSystem::LoadTexture(L"../Assets/Textures/texture_test_2048_rgba.png"));
         Matrix4x4_SIMD worldMatrix = Matrix4x4_SIMD::Identity();
         worldMatrix.Scale(800.0f, 800.0f, 1.0f);
         worldMatrix.RotateZ(0.0f);
@@ -82,8 +165,8 @@ namespace Hestia
         {
             GraphicsSystem::Submit(RenderData{
                 worldMatrix,
-                mat,
-                dxMesh2D,
+                m_debugMaterial,
+                m_debugMesh,
                 L"../Shaders/Build/VS_Sprite.cso",
                 L"../Shaders/Build/PS_Sprite.cso"
             });

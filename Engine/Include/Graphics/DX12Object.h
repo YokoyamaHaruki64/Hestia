@@ -13,16 +13,21 @@
 #ifndef _DX12_OBJECT_H_
 #define _DX12_OBJECT_H_
 
+#include "Common/Include/WindowsHeaders.h"
+
 #include <d3d12.h>
 #include <d3dcompiler.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 
 #include <string>
+#include <string_view>
 #include <vector>
+#include <array>
 #include <cstdint>
 #include <cstddef>
 
+#include "Asset/AssetType.h"
 #include "HMath.h"
 #include "Color.h"
 
@@ -30,36 +35,25 @@ using Microsoft::WRL::ComPtr;
 
 namespace Hestia
 {
-    using TextureHandle = int;
-
     struct DXRenderTexture
     {
         ComPtr<ID3D12Resource> resource;
         int rtvHeapIndex = -1; // RTVヒープのインデックス
-        int srvHeapIndex = -1; // SRVヒープのインデックス
+        uint32_t srvHeapIndex = UINT32_MAX; // SRVヒープのインデックス
     };
 
     struct DXDepthStencil
     {
         ComPtr<ID3D12Resource> resource;
-        int dsvHeapIndex = -1;			// DSVヒープのインデックス
-        int depthSrvHeapIndex = -1;		// DepthのSRVヒープのインデックス
-        int stencilSrvHeapIndex = -1;	// StencilのSRVヒープのインデックス
+        int dsvHeapIndex = -1; // DSVヒープのインデックス
+        uint32_t depthSrvHeapIndex = UINT32_MAX; // DepthのSRVヒープのインデックス
+        uint32_t stencilSrvHeapIndex = UINT32_MAX; // StencilのSRVヒープのインデックス
     };
 
     struct DXTexture
     {
-        ComPtr<ID3D12Resource> resource;
-        int srvHeapIndex = -1; // SRVヒープのインデックス
-    };
-
-    struct Vertex
-    {
-        Vector3 position;
-        Vector2 uv;
-        Vector3 normal;
-        Vector3 tangent;
-        Color color;
+        ComPtr<ID3D12Resource> m_resource;
+        uint32_t m_masterSRVIndex = UINT32_MAX;
     };
 
     struct PerFrameConstants
@@ -84,7 +78,7 @@ namespace Hestia
         Color emissionColor = Color::Black();
         float roughness = 0.5f;
         float metallic = 0.0f;
-        std::vector<TextureHandle> textures;
+        std::vector<AssetHandle<Texture>> textures;
 
         static Material Default()
         {
@@ -97,24 +91,21 @@ namespace Hestia
             mat.metallic = 0.0f;
             return mat;
         }
-
     };
 
-    // Mesh構造体
-    // 仮構成
-    struct Mesh
+    struct DXVertexBuffer
     {
-        std::vector<Vertex> vertices;
-        std::vector<uint32_t> indices;
+        ComPtr<ID3D12Resource> m_resource;
+        D3D12_VERTEX_BUFFER_VIEW m_view{};
     };
 
     struct DXMesh
     {
-        ComPtr<ID3D12Resource> vertexBuffer;
-        D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
-        ComPtr<ID3D12Resource> indexBuffer;
-        D3D12_INDEX_BUFFER_VIEW indexBufferView{};
-        uint32_t indexCount = 0;
+        std::array<DXVertexBuffer, static_cast<size_t>(VertexStream::Count)> m_streams;
+        ComPtr<ID3D12Resource> m_indexBuffer;
+        D3D12_INDEX_BUFFER_VIEW m_indexView{};
+        uint32_t m_vertexCount = 0;
+        uint32_t m_indexCount = 0;
     };
 
     struct MaterialConstants
@@ -126,16 +117,15 @@ namespace Hestia
         float metallic = 0.0f;
     };
 
-    // レンダリングに必要なデータをまとめた構造体
-    // 仮構成、最終的にMaterialやMeshはIDになる
     struct RenderData
     {
         Matrix4x4_SIMD worldMatrix = Matrix4x4_SIMD::Identity();
         Material material;
-        DXMesh mesh;
+        AssetHandle<Mesh> mesh;
 
         std::wstring_view vsShaderPath;
         std::wstring_view psShaderPath;
     };
 }
+
 #endif // _DX12_OBJECT_H_

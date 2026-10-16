@@ -1,21 +1,19 @@
 ﻿/*=============================================================================
 
  File   : GraphicsSystem.cpp
- Desc   : 
+ Desc   : GraphicsSystem の初期化、Asset Upload、描画受付を実装する。
 
- ------------------------------------------------------------------------------
+------------------------------------------------------------------------------
 
  Date   : 2026/10/08
  Author : Yokoyama Haruki
 
-===============================================================================*/
+=============================================================================*/
 
 #include "pch.h"
 #include "Graphics/GraphicsSystem.h"
 
 #include "Graphics/DX12Backend.h"
-#include "Graphics/TextureManager.h"
-#include "Log/LogSystem.h"
 
 namespace Hestia
 {
@@ -34,7 +32,6 @@ namespace Hestia
         if (m_DX12Backend || !hWnd || width <= 0 || height <= 0)
             return false;
 
-
         auto backend = std::make_unique<DX12Backend>();
         if (!backend->Initialize(hWnd, width, height))
             return false;
@@ -44,33 +41,29 @@ namespace Hestia
             static_cast<float>(width), static_cast<float>(height), 0.1f, 100.0f);
 
         m_renderQueue.reserve(DX12Backend::MAX_DRAW_COUNT);
-
         m_DX12Backend = std::move(backend);
-        TextureManager::Initialize(m_DX12Backend.get());
         s_instance = this;
         return true;
     }
 
     void GraphicsSystem::Finalize()
     {
-        if (!m_DX12Backend)
-            return;
+        if (m_DX12Backend)
+        {
+            m_DX12Backend->Finalize();
+            m_DX12Backend.reset();
+        }
 
-        m_DX12Backend->Finalize();
-        TextureManager::Finalize();
         m_renderQueue.clear();
-        m_DX12Backend.reset();
         if (s_instance == this)
             s_instance = nullptr;
     }
 
-
-
-
     bool GraphicsSystem::Submit(RenderData renderData)
     {
-        if (!s_instance || s_instance->m_renderQueue.size() >= DX12Backend::MAX_DRAW_COUNT ||
-            !renderData.mesh.vertexBuffer || !renderData.mesh.indexBuffer || renderData.mesh.indexCount == 0)
+        if (!s_instance || !s_instance->m_DX12Backend ||
+            s_instance->m_renderQueue.size() >= DX12Backend::MAX_DRAW_COUNT ||
+            !s_instance->m_DX12Backend->HasMesh(renderData.mesh))
             return false;
 
         s_instance->m_renderQueue.push_back(std::move(renderData));
@@ -89,14 +82,20 @@ namespace Hestia
             s_instance->m_projection = projection;
     }
 
-    bool GraphicsSystem::CreateMesh(const Mesh& mesh, DXMesh& result)
+    bool GraphicsSystem::UploadMesh(AssetHandle<Mesh> handle, const Mesh& mesh)
     {
-        return s_instance && s_instance->m_DX12Backend->CreateMesh(mesh, result);
+        return m_DX12Backend && m_DX12Backend->UploadMesh(handle, mesh);
     }
 
-    int GraphicsSystem::LoadTexture(const std::filesystem::path& path)
+    bool GraphicsSystem::UploadTexture(
+        AssetHandle<Texture> handle,
+        const TextureDesc& desc,
+        const void* pixels,
+        size_t rowPitch,
+        size_t slicePitch)
     {
-        return s_instance ? TextureManager::LoadTexture(path) : -1;
+        return m_DX12Backend && m_DX12Backend->UploadTexture(
+            handle, desc, pixels, rowPitch, slicePitch);
     }
 
     void GraphicsSystem::Render()
@@ -108,6 +107,7 @@ namespace Hestia
 
         if (!m_DX12Backend->BeginDraw(m_renderQueue, m_view, m_projection))
             return;
+
         m_DX12Backend->Draw();
         m_DX12Backend->EndDraw();
     }
