@@ -7,6 +7,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $testRoot = $PSScriptRoot
+$repositoryRoot = Split-Path $testRoot -Parent
 $project = Join-Path $testRoot 'Hestia_Tests\Hestia_Tests.vcxproj'
 $binary = Join-Path $testRoot 'Build\bin\x64\Test\Hestia_Tests.exe'
 $runId = '{0}-{1}' -f (Get-Date -Format 'yyyyMMdd-HHmmss'), [guid]::NewGuid().ToString('N').Substring(0, 8)
@@ -75,6 +76,7 @@ try {
         $project,
         '/t:Build',
         '/p:Configuration=Test;Platform=x64',
+        "/p:SolutionDir=$repositoryRoot/",
         '/m',
         '/nologo',
         '/clp:verbosity=minimal;summary;ForceNoAlign',
