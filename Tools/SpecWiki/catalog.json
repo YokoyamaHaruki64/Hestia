@@ -36,6 +36,7 @@
       "notes": [{ "text": "Entityの実行対象はComponent構成から決まり、Process所属一覧は持たない。共有ComponentだけならRemoveProcess後も対象Processが一致し続ける。初期構成指定の生成APIとPrefabは将来案。", "sources": ["Docs/Implementation/ECS/README.md", "Docs/OpenDecisions.md"] }]
     },
     "Implementation/ECS/Process.md": { "order": 30, "label": "Process実行と型", "summary": "要求Componentの照合、Chunk単位の呼び出し、実行順と変更反映を確認する。" },
+    "Implementation/ECS/DevelopmentGuide.md": { "order": 40, "label": "開発手引き", "summary": "Processの目的から必要なデータを整理し、Component定義・関数実装・登録・Entity操作・検証へ進む手順。" },
     "Implementation/Asset/README.md": { "summary": "名前Cache、CPU Assetの登録、TextureデコードとGPU転送の成否を確認する。", "diagrams": ["asset"] },
     "CodingStandard.md": { "category": "guides", "order": 10, "summary": "名前、コメント、処理構成、includeパスの規約。" },
     "CodingExamples.md": { "category": "guides", "order": 20, "summary": "LogProcessを題材にしたヘッダー・実装・コメントの記述例。" },
