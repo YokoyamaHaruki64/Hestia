@@ -21,6 +21,7 @@
 #include "Graphics/GraphicsSystem.h"
 #include "Asset/AssetSystem.h"
 #include "Asset/AssetAPI.h"
+#include "ECS/ECSSystem.h"
 
 namespace Hestia
 {
@@ -68,6 +69,7 @@ namespace Hestia
         GraphicsSystem m_graphics;
         AssetSystem m_assets;
         AssetAPI m_assetAPI;
+        ECSSystem m_ecs;
 
         Material m_debugMaterial;
         AssetHandle<Mesh> m_debugMesh;
@@ -78,6 +80,7 @@ namespace Hestia
         bool m_graphicsInitialized = false;
         bool m_assetsInitialized = false;
         bool m_assetAPIInitialized = false;
+        bool m_ecsInitialized = false;
 
         /*
         // System と Boundary API は各 System の設計・実装時に有効化する。
