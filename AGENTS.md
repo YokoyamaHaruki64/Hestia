@@ -36,6 +36,7 @@ Use Japanese for user-facing responses, questions, and Q&A. Keep the design docu
 - Do not inspect or modify trailing whitespace; leave it to editor settings.
 - For documentation changes, use [VerifyDocs](Tools/Verify/VerifyDocs.cmd) to check links and conflict markers in the target scope. See the [usage guide](Tools/Verify/README.md) for arguments and scope.
 - For ordinary implementation checks, use [VerifyProject](Tools/Verify/VerifyProject.cmd) to build the target project's `Debug_Editor|x64` configuration; MSBuild builds its declared project dependencies. Use [BuildSolution](Tools/Verify/BuildSolution.cmd) for all four x64 configurations when the task explicitly covers them or configuration-specific behavior needs verification.
+- Run build and test commands (`VerifyProject`, `BuildSolution`, `RunTests`, and direct MSBuild invocations) outside the sandbox using command-scoped escalation and approval. See [BuildTroubleshooting](Docs/BuildTroubleshooting.md) for suspected environment-related causes and remedies.
 - At completion, distinguish behavior that was verified from behavior and scope that remain unverified.
 
 ## Commit Messages
