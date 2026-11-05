@@ -26,6 +26,13 @@
     <ClCompile Include="Source\DllMain.cpp" />
     <ClCompile Include="Source\Engine.cpp" />
     <ClCompile Include="Source\EngineAPI.cpp" />
+    <ClCompile Include="Source\ECS\ComponentRegistry.cpp" />
+    <ClCompile Include="Source\ECS\Entity.cpp" />
+    <ClCompile Include="Source\ECS\Archetype.cpp" />
+    <ClCompile Include="Source\ECS\Chunk.cpp" />
+    <ClCompile Include="Source\ECS\ECSProcess.cpp" />
+    <ClCompile Include="Source\ECS\ECSWorld.cpp" />
+    <ClCompile Include="Source\ECS\ECSSystem.cpp" />
     <ClCompile Include="Source\Asset\AssetType.cpp" />
     <ClCompile Include="Source\Asset\AssetDB.cpp" />
     <ClCompile Include="Source\Asset\AssetLoader.cpp" />
@@ -51,6 +58,15 @@
   <ItemGroup>
     <ClInclude Include="Include\Engine.h" />
     <ClInclude Include="Include\EngineAPI.h" />
+    <ClInclude Include="Include\ECS\ComponentRegistry.h" />
+    <ClInclude Include="Include\ECS\Component.h" />
+    <ClInclude Include="Include\ECS\Entity.h" />
+    <ClInclude Include="Include\ECS\Archetype.h" />
+    <ClInclude Include="Include\ECS\Chunk.h" />
+    <ClInclude Include="Include\ECS\ECSProcess.h" />
+    <ClInclude Include="Include\ECS\ECSProcessExecution.h" />
+    <ClInclude Include="Include\ECS\ECSWorld.h" />
+    <ClInclude Include="Include\ECS\ECSSystem.h" />
     <ClInclude Include="Include\Asset\AssetHandle.h" />
     <ClInclude Include="Include\Asset\AssetType.h" />
     <ClInclude Include="Include\Asset\AssetDB.h" />
