@@ -1,0 +1,104 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 1260" role="img" aria-labelledby="process-title process-desc">
+<title id="process-title">ECS Processの生成・登録、対象照合と実行の流れ</title>
+<desc id="process-desc">RegisterProcessで関数の重複と受付状態を確認し、TraitsからComponent要求と共通入口を作る。WorldはProcessを所有し、既存および新規Archetypeとの一致をキャッシュする。Runはphaseの合うProcessを登録順に選び、非空ChunkごとにInvokeを介して元の関数へSoA配列を渡す。全Chunkの終了後に構造変更を反映する。</desc>
+<defs>
+<marker id="process-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#52675d"/></marker>
+</defs>
+<style>
+text{font-family:'Yu Gothic UI',Meiryo,sans-serif;font-size:15px;fill:#24362d}
+.box{fill:#fff;stroke:#a8bbb0;stroke-width:1.4}.data{fill:#edf4ef;stroke:#9eb5a6;stroke-width:1.4}
+.line{fill:none;stroke:#52675d;stroke-width:1.5;marker-end:url(#process-arrow)}.reference{stroke-dasharray:6 4}
+.label{font-size:18px;font-weight:600}.small{font-size:13px;fill:#586b60}.code{font-family:Consolas,monospace;font-size:14px}
+.step{font-size:13px;font-weight:700;fill:#476253}
+</style>
+<rect width="1040" height="1260" fill="#fbfcfa"/>
+
+<text x="28" y="32" class="label">1. Processを生成してWorldへ登録する</text>
+<text x="28" y="56" class="small">初期化中の登録期間。関数指定からphase・要求Component・呼び出し入口を組み立てる。</text>
+
+<rect class="box" x="28" y="78" width="522" height="96" rx="5"/>
+<text x="46" y="104" class="step">01  関数とphaseを指定</text>
+<text x="46" y="132" class="code">world.RegisterProcess&lt;Function&gt;(phase)</text>
+<text x="46" y="156" class="small">ProcessKeyを作り、CanRegisterProcessで受付・重複を確認</text>
+<path class="line" d="M289 174V207"/>
+
+<rect class="box" x="28" y="207" width="522" height="112" rx="5"/>
+<text x="46" y="234" class="step">02  ECSProcess::Create&lt;Function&gt;</text>
+<text x="46" y="262" class="code">Traits = ECSProcessFunctionTraits&lt;decltype(Function)&gt;</text>
+<text x="46" y="286" class="small">BuildComponents(registry) → 型ID・Read/Writeの要求一覧</text>
+<text x="46" y="307" class="small">m_phaseと、m_invoke = Traits::Invoke&lt;Function&gt;を設定</text>
+<path class="line" d="M289 319V352"/>
+
+<rect class="box" x="28" y="352" width="522" height="99" rx="5"/>
+<text x="46" y="379" class="step">03  World.RegisterProcessImpl</text>
+<text x="46" y="407">既存ArchetypeをMatchesArchetypeで照合</text>
+<text x="46" y="431" class="small">要求型がすべて揃うものをRegisterArchetypeでキャッシュ</text>
+<path class="line" d="M289 451V484"/>
+
+<rect class="data" x="28" y="484" width="522" height="82" rx="5"/>
+<text x="46" y="511" class="step">04  WorldがProcessを所有</text>
+<text x="46" y="539" class="code">m_processes : vector&lt;unique_ptr&lt;ECSProcess&gt;&gt;</text>
+<text x="46" y="558" class="small">登録順を保持。共通入口 → indexの索引も登録</text>
+
+<rect x="610" y="78" width="402" height="186" rx="5" fill="#f5f6f2" stroke="#cbd5cc"/>
+<text x="629" y="108" class="label">登録の前提・失敗</text>
+<text x="629" y="137" class="small">・Component型はRegistryへ登録済み</text>
+<text x="629" y="162" class="small">・const T*はRead、T*はWriteとして記録</text>
+<text x="629" y="187" class="small">・同じ関数は別phaseでも重複登録しない</text>
+<text x="629" y="212" class="small">・同型Componentの重複要求は生成時にIDで検査</text>
+<text x="629" y="237" class="small">受付不可・生成／登録失敗はfalse</text>
+
+<rect class="box" x="610" y="300" width="402" height="83" rx="5"/>
+<text x="629" y="329">後から新しいArchetypeができた場合</text>
+<text x="629" y="354" class="small">GetOrCreateArchetypeが登録済みProcessを照合</text>
+<text x="629" y="375" class="small">Entity生成・AddProcess等による構成変更で発生</text>
+<path class="line" d="M811 383V422"/>
+<rect class="data" x="610" y="422" width="402" height="144" rx="5"/>
+<text x="629" y="451" class="label">Processごとの実行対象キャッシュ</text>
+<text x="629" y="480" class="code">m_archetypes : ECSProcessArchetype[]</text>
+<text x="629" y="507" class="small">Archetype* ＋ 関数引数順のcolumnIndices</text>
+<text x="629" y="532" class="small">Archetypeは非所有参照。不一致の構成は登録しない。</text>
+<text x="629" y="554" class="small">毎回全Entityを検索せず、対応する列を保持する。</text>
+<path class="line reference" d="M550 405H580V494H610"/>
+
+<path d="M28 609H1012" fill="none" stroke="#ccd8ce"/>
+<text x="28" y="645" class="label">2. phaseの合うProcessを、Chunk単位で実行する</text>
+
+<rect class="box" x="28" y="678" width="522" height="81" rx="5"/>
+<text x="46" y="705" class="step">05  World.Run(phase)</text>
+<text x="46" y="734">phaseが一致するProcessを登録順に選ぶ</text>
+<text x="46" y="752" class="small">m_isRunningProcessをtrueにしてprocess-&gt;Run()</text>
+<path class="line" d="M289 759V797"/>
+
+<rect class="box" x="28" y="797" width="522" height="94" rx="5"/>
+<text x="46" y="824" class="step">06  ECSProcess::Run</text>
+<text x="46" y="851">キャッシュした各ArchetypeのChunkを順に走査</text>
+<text x="46" y="876" class="code">m_invoke(chunk, columnIndices)  // 空Chunkは除く</text>
+<path class="line reference" d="M811 566V594H565V810H550"/>
+<rect x="610" y="678" width="402" height="104" rx="5" fill="#f5f6f2" stroke="#cbd5cc"/>
+<text x="629" y="708">Read / Writeは要求情報として保持</text>
+<text x="629" y="736" class="small">現在は登録順・逐次実行。</text>
+<text x="629" y="761" class="small">並列ジョブの依存スケジューリングは行わない。</text>
+<path class="line" d="M289 891V930"/>
+
+<rect class="box" x="28" y="930" width="522" height="97" rx="5"/>
+<text x="46" y="957" class="step">07  Traits::Invoke → InvokeImpl → 元のFunction</text>
+<text x="46" y="985" class="code">Function(count, entities, Components*...)</text>
+<text x="46" y="1010" class="small">row 0の各SoA列を要求型へcastし、引数順に渡す</text>
+<path class="line" d="M550 978H580V844H550"/>
+<text x="610" y="1005" class="small">次のChunkへ繰り返す</text>
+<rect x="610" y="822" width="402" height="137" rx="5" fill="#f8f3e8" stroke="#c6b486"/>
+<text x="629" y="852">countはChunk内の構築済み全row数</text>
+<text x="629" y="881" class="small">inactive・破棄予約済みEntityも含まれる。</text>
+<text x="629" y="906" class="small">activeだけ処理したい関数はIsActiveを確認する。</text>
+<text x="629" y="931" class="small">Entity配列と各Component配列の同じ添字が対応。</text>
+<path class="line" d="M289 1027V1080"/>
+<text x="307" y="1059" class="small">そのProcessの全Chunkが終了</text>
+
+<rect class="data" x="28" y="1080" width="984" height="91" rx="5"/>
+<text x="46" y="1108" class="step">08  Worldへ戻り、構造変更を反映して次のProcessへ</text>
+<text x="46" y="1136">m_isRunningProcess = false → FlushChanges() → 同じphaseの次のProcess</text>
+<text x="46" y="1159" class="small">Entityの実体破棄はこの時点ではなくEndFrame。Chunkの走査中は構造変更要求を保留する。</text>
+<text x="28" y="1207" class="small">関数例外時は残りのChunk走査を中断。Worldがログを記録し、構造変更反映後に現在のRunを終了する。</text>
+<text x="28" y="1234" class="small">実線：呼び出し・処理の順序　破線：実行対象キャッシュの準備・参照。Engine統合経路の成立確認とは区別する。</text>
+</svg>

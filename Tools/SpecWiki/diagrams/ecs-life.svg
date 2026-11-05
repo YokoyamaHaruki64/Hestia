@@ -1,0 +1,20 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" role="img" aria-labelledby="life-title life-desc">
+<title id="life-title">Entityの予約、生成、破棄予約と解放</title>
+<desc id="life-desc">Process実行中の生成はPendingCreateを経てProcess完了後にAliveへ移る。実行外では直接生成する。PendingCreateの破棄要求は取消。Aliveの破棄要求は破棄bitを設定し、EndFrameまで実体を残してからslotを解放する。</desc>
+<defs><marker id="life-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#52675d"/></marker></defs>
+<style>text{font-family:'Yu Gothic UI',Meiryo,sans-serif;font-size:15px;fill:#24362d}.box{fill:#fff;stroke:#a8bbb0;stroke-width:1.4}.line{fill:none;stroke:#52675d;stroke-width:1.5;marker-end:url(#life-arrow)}.small{font-size:13px;fill:#586b60}.label{font-size:17px;font-weight:600}</style>
+<rect class="box" x="28" y="125" width="177" height="92" rx="5"/><text x="49" y="160" class="label">Free</text><text x="49" y="187" class="small">slot未割当</text>
+<path class="line" d="M205 171H332"/><text x="216" y="116" class="small">CreateEntity</text><text x="216" y="138" class="small">Process実行中</text>
+<rect class="box" x="332" y="125" width="264" height="92" rx="5"/><text x="351" y="160" class="label">PendingCreate</text><text x="351" y="187" class="small">Handleのみ予約・実体未構築</text>
+<path class="line" d="M596 171H722"/><text x="609" y="116" class="small">Process完了後</text><text x="609" y="138" class="small">生成を反映</text>
+<rect class="box" x="722" y="125" width="210" height="92" rx="5"/><text x="742" y="160" class="label">Alive</text><text x="742" y="187" class="small">Entity・Componentを保持</text>
+<path class="line" d="M116 125V48H826V125"/><text x="278" y="35" class="small">CreateEntity：Process実行外はその場で構築</text>
+<path class="line" d="M464 217V279H116V217"/><text x="208" y="266" class="small">DestroyEntity：生成取消・slot解放</text>
+<path class="line" d="M826 217V329"/><text x="650" y="270" class="small">DestroyEntity</text>
+<rect x="628" y="329" width="304" height="103" rx="5" fill="#f8f3e8" stroke="#c6b486"/>
+<text x="649" y="360" class="label">Alive ＋ 破棄予約bit</text><text x="649" y="386" class="small">IsActiveはfalse</text><text x="649" y="410" class="small">実体・Componentはまだ生存</text>
+<path class="line" d="M628 381H70V217"/><text x="234" y="366" class="small">EndFrame：実体破棄・穴詰め・世代更新</text>
+<rect x="28" y="476" width="904" height="59" rx="4" fill="#edf4f0"/>
+<text x="46" y="501">GetEntity / GetComponent：PendingCreateではnullptr。Aliveは構造変更時の借用制限に従う。</text>
+<text x="46" y="524" class="small">generation更新後は古いHandleを拒否。全世代周回後の再一致は許容する。</text>
+</svg>

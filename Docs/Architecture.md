@@ -1,4 +1,4 @@
-# Hestia 実装リポジトリの全体構造
+﻿# Hestia 実装リポジトリの全体構造
 
 ## 読み方と適用範囲
 
@@ -27,7 +27,7 @@ Engine 内部の System を Game.dll に直接公開しない。`XxxAPI` が Sys
 | `AudioSystem` | 再生状態を担う草案。ライブラリ、データ型、操作は未確定。[Subsystems](../Reference/HestiaDesign/DevelopNotes/Class/Subsystems.md) |
 | `PhysicsSystem` | 固定更新で物理を進める草案。物理実体、World との所有関係、更新順は未確定。[Subsystems](../Reference/HestiaDesign/DevelopNotes/Class/Subsystems.md) |
 
-**未確定事項**：ECS の NativeECS／Sparse Script は [Plan1](../Reference/HestiaDesign/ECS/ECSArchitecture_Plan1.md) と [Plan2](../Reference/HestiaDesign/ECS/ECSArchitecture_Plan2.md) に構想があるが、DevelopNotes の Engine member や GameRuntime の所有型へ自動的に加えない。`WorldSystem`／`LoggerSystem` の具体的な配置もこのコピーからは確定できない。[OpenDecisions](./OpenDecisions.md)
+Engine内部のArchetype ECSはECSSystemと単一ECSWorldとして実装した。現在の所有関係・phase・生成と破棄は[実装仕様書のECS](Implementation/ECS/README.md)を参照する。NativeECS／Sparse Scriptの構想は[Plan1](../Reference/HestiaDesign/ECS/ECSArchitecture_Plan1.md)と[Plan2](../Reference/HestiaDesign/ECS/ECSArchitecture_Plan2.md)にあるが、GameRuntimeの所有型とGame向けAPIは引き続き未確定。`WorldSystem`／`LoggerSystem`という別Systemは追加していない。[OpenDecisions](./OpenDecisions.md)
 
 ## 所有、非所有参照、DLL 境界
 
@@ -48,6 +48,8 @@ Asset の候補設計では `AssetHandle<T>` は非所有の識別子、CPU Asse
 
 **未確定事項**：`Create` 失敗時の返し方と部分初期化の後片付け、各 System の生成・終了順、Editor と GPU 資源の終了順は実装前に決める。[Engine](../Reference/HestiaDesign/DevelopNotes/Class/Engine.md)、[OpenDecisions](./OpenDecisions.md)
 
-## 現行コードとの差分
+## 初期調査時点のコードとの差分（履歴）
 
-現行の [Application.h](../Application/Include/Application.h) と [Application.cpp](../Application/Source/Application.cpp) は Window・Waitable Timer・`ApplicationAPI` の一部・固定刻みループを持つが、Engine のロードと更新はコメントまたは未実装で、`ApplicationAPI` はグローバル名前空間にある。`GetWindowHandle` も未実装である。[Engine/dllmain.cpp](../Engine/dllmain.cpp) は DLL エントリのみで、EngineAPI や System はまだない。[Window.cpp](../Application/Source/Window.cpp) と [Application.cpp](../Application/Source/Application.cpp) の Window Message／Window 終了処理も資料の経路とは一致していない。今回はコードを変更しない。
+以下は初期整理時点の記録であり、現在の実装状況ではない。現在のコードの責務・所有・呼出順は[実装仕様書](Implementation/README.md)を参照する。
+
+現行の [Application.h](../Application/Include/Application.h) と [Application.cpp](../Application/Source/Application.cpp) は Window・Waitable Timer・`ApplicationAPI` の一部・固定刻みループを持つが、Engine のロードと更新はコメントまたは未実装で、`ApplicationAPI` はグローバル名前空間にある。`GetWindowHandle` も未実装である。[DllMain.cpp](../Engine/Source/DllMain.cpp) は DLL エントリのみで、EngineAPI や System はまだない。[Window.cpp](../Application/Source/Window.cpp) と [Application.cpp](../Application/Source/Application.cpp) の Window Message／Window 終了処理も資料の経路とは一致していない。今回はコードを変更しない。
