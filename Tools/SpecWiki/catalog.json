@@ -5,6 +5,7 @@
     { "id": "engine", "parent": "runtime", "title": "Engine・DLL境界", "description": "Systemの所有、初期化・終了、APIテーブルと更新順序。" },
     { "id": "time", "parent": "runtime", "title": "Time", "description": "通常・固定更新の時間値、時間倍率と非所有API。" },
     { "id": "ecs", "parent": "runtime", "title": "ECS", "description": "World、Archetype、Chunk、構造変更とEntityの寿命。" },
+    { "id": "ecs-processes", "parent": "runtime", "title": "ECSProcess", "description": "個別のProcessが扱うComponent、更新順、公開操作の仕様。" },
     { "id": "asset", "parent": "runtime", "title": "Asset", "description": "名前解決、CPU側の所有、画像ロードとGPU転送。" },
     { "id": "graphics", "parent": "runtime", "title": "Graphics・Shader", "description": "描画提出、DX12資源と同期、Shaderとのデータ受け渡し。" },
     { "id": "log", "parent": "runtime", "title": "Log", "description": "Logger、二つのpending、処理スレッドと出力の寿命。" },
@@ -17,12 +18,15 @@
     { "directory": "Implementation/Engine", "category": "engine" },
     { "directory": "Implementation/Time", "category": "time" },
     { "directory": "Implementation/ECS", "category": "ecs" },
+    { "directory": "Implementation/ECSProcess", "category": "ecs-processes" },
     { "directory": "Implementation/Asset", "category": "asset" },
     { "directory": "Implementation/Graphics", "category": "graphics" },
     { "directory": "Implementation/Log", "category": "log" },
     { "directory": "Implementation/Common", "category": "common" }
   ],
   "pages": {
+    "Design/Transform.md": { "category": "design", "order": 40, "label": "Transformの設計", "summary": "Transformのクラス構成、Local TRSを正本にする契約とGame向けFacadeの設計。" },
+    "Implementation/ECSProcess/Transform.md": { "label": "Transform", "summary": "必須Component、親子関係、World行列の更新順とDLL公開Facadeの現行仕様。" },
     "Implementation/README.md": { "category": "runtime", "label": "全体概要", "summary": "実装仕様書の索引、全体の接続、実装済みの対象範囲を確認する。", "diagrams": ["system"] },
     "Implementation/Application/README.md": { "summary": "WindowとEngineの起動、フレーム進行、現在の終了処理を確認する。" },
     "Implementation/Engine/README.md": {
@@ -50,7 +54,7 @@
     "OpenDecisions.md": { "category": "design", "order": 30, "summary": "実装前に整理された未確定事項と資料間の差分。", "notes": [{ "text": "実装前の検討資料。ApplicationAPIの名前空間、HWND取得、Engineロード等について、現在のコードと異なる過去の状態が記載されている。", "sources": ["Application/Include/ApplicationAPI.h", "Application/Source/Application.cpp"] }] }
   },
   "diagrams": {
-    "ecs-process": { "title": "Processの生成・登録から実行まで", "caption": "RegisterProcessでProcessを生成してWorldへ登録し、要求Componentが揃うArchetypeをキャッシュする。Run(phase)は登録順・Chunk単位で関数を呼ぶ。AddProcessはEntityのComponent構成を変更する操作で、Processオブジェクトを生成する操作ではない。現在のRegisterECSにはゲームProcessの登録はなく、この図はWorldとProcessの実装された仕組みを説明する。", "sources": ["Docs/Implementation/ECS/Process.md", "Engine/Include/ECS/ECSWorld.h", "Engine/Include/ECS/ECSProcess.h", "Engine/Include/ECS/ECSProcessExecution.h", "Engine/Source/ECS/ECSWorld.cpp", "Engine/Source/ECS/ECSProcess.cpp"] },
+    "ecs-process": { "title": "Processの生成・登録から実行まで", "caption": "RegisterProcessでProcessを生成してWorldへ登録し、要求Componentが揃うArchetypeをキャッシュする。Run(phase)は登録順・Chunk単位で関数を呼ぶ。AddProcessはEntityのComponent構成を変更する。RegisterECSはTransformProcessをPreRenderに登録する。", "sources": ["Docs/Implementation/ECS/Process.md", "Docs/Implementation/ECSProcess/Transform.md", "Engine/Include/ECS/ECSWorld.h", "Engine/Include/ECS/ECSProcess.h", "Engine/Include/ECS/ECSProcessExecution.h", "Engine/Source/ECS/ECSWorld.cpp", "Engine/Source/ECS/ECSProcess.cpp"] },
     "system": { "title": "Systemの所有とDLL境界", "caption": "実線は所有、破線は非所有の接続。GameRuntimeなど未実装の予定要素は含めない。", "sources": ["Docs/Implementation/README.md", "Engine/Include/Engine.h", "Application/Include/Application.h"] },
     "frame": { "title": "コードに記述されたフレーム進行", "caption": "固定更新は蓄積時間に応じて0回以上。通常更新ではTimeとECS phaseを進め、Render後にEndFrameを置く。実機上の成立はビルド・単体テストの結果と区別する。", "sources": ["Docs/Implementation/Engine/README.md", "Application/Source/Application.cpp", "Engine/Source/Engine.cpp"] },
     "asset": { "title": "CPU登録とGPU転送", "caption": "CPU AssetのHandleが有効でもGPU転送成功とは限らない。GetはCPU実体を借用する。", "sources": ["Docs/Implementation/Asset/README.md", "Engine/Source/Asset/AssetSystem.cpp", "Engine/Source/Asset/AssetLoader.cpp"] },

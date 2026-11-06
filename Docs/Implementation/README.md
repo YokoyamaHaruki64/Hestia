@@ -15,6 +15,7 @@
 | Asset | [Asset](Asset/README.md) | [Types](Asset/Types.md) |
 | Graphics / DX12 / Shader | [Graphics](Graphics/README.md) | [Types](Graphics/Types.md) |
 | ECS | [ECS](ECS/README.md) | [Types](ECS/Types.md)、[Process](ECS/Process.md)、[開発手引き](ECS/DevelopmentGuide.md) |
+| ECSProcess | [Transform](ECSProcess/Transform.md) | [Transformの設計](../Design/Transform.md) |
 | Common / 数学・色・乱数 | [Common](Common/README.md) | [Types](Common/Types.md) |
 
 ## 全体の接続
@@ -25,7 +26,7 @@ ApplicationがWindowとフレーム進行を管理し、Engine.dllのAPIテー�
 
 ## 対象の境界
 
-Input、Audio、Physics、Editor、GameRuntime、HestiaGameのFacadeは、現在の稼働コードとして実装されたシステムに数えない。Engine.h内のコメント化された宣言を実装済みとは扱わない。PCH、DLL入口、Windows Header、DLL exportマクロはEngine/Commonの補助部分として扱う。外部ライブラリ本体、テスト基盤、ビルド・検証ツールはエンジンのランタイムシステムから除外する。
+Game向けの `HestiaGame::Transform` はEngine.dllから公開する。Input、Audio、Physics、Editor、GameRuntimeは、現在の稼働コードとして実装されたシステムに数えない。Engine.h内のコメント化された宣言を実装済みとは扱わない。PCH、DLL入口、Windows Header、DLL exportマクロはEngine/Commonの補助部分として扱う。外部ライブラリ本体、テスト基盤、ビルド・検証ツールはエンジンのランタイムシステムから除外する。
 
 各文書はソースの静的調査を根拠とする。2026-11-05にはEngineのDebug_EditorビルドとECS関連19件のテストが成功した。全体テストには5件の失敗が残り、GPU描画・Window操作の実機確認は行っていない。条件と未解消事項は[ECSの検証記録](ECS/README.md#検証記録2026-11-05)を参照する。
 

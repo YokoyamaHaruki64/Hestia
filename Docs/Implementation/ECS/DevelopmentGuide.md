@@ -21,7 +21,7 @@ Processの要求を設計の出発点とする。1つのProcessが複数Componen
 - デフォルト構築可能で、Move構築と破棄がnoexceptの型にする。非自明型やMove-only型も扱える。所有資源がある場合は、Move後の所有権と破棄を型側で正しく管理する。
 - Componentの構築・Move・破棄からECS操作を呼ばない。構造変更中の再入やEntity取得を前提にした初期化は行わない。
 - 外部資源への参照は、所有者と有効期間を決める。Entityへの長期参照にはEntityHandleを使い、構造変更で移動するEntity／Componentの生ポインタを保持しない。
-- Name／Tag／Layerは全Entityに存在する通常Component。追加する機能でも、この必須構成を維持する。
+- Name／Tag／LayerとTransform／TransformCache／TransformHierarchyは全Entityに存在する必須Component。TransformのLocal値と階層を変更するときは、dirty伝播や親子参照を更新する専用操作を使う。 [Transformの操作入口](../ECSProcess/Transform.md)
 
 Componentのデータを独自にバイトコピーして移行しない。構築・Move・破棄とSoAへの配置はRegistry／World／Chunkへ任せる。
 
@@ -58,7 +58,7 @@ Componentのデータを独自にバイトコピーして移行しない。構�
 
 ## 5. Entityへ適用する
 
-- CreateEntityはName／Tag／Layerだけで生成する。AddProcessで不足する要求Componentを追加し、GetComponentで値を設定・編集する。追加時に既存Componentの値は維持される。
+- CreateEntityは必須6 Componentで生成する。AddProcessで不足する要求Componentを追加し、通常ComponentはGetComponentで値を設定・編集する。追加時に既存Componentの値は維持される。 [必須Component](README.md#所有と初期化)
 - Process実行外の生成・追加・削除は即時反映される。Process実行中は、現在のProcessの全Chunk処理が終わってから、次のProcessの前に要求順で反映される。
 - 生成待ちHandleへのGetEntity／GetComponentはnullptrになる。生成直後に追加要求は出せるが、反映前に値へアクセスできないことを踏まえて初期値設定の手順を決める。
 - RemoveProcessは対象Processの要求から、必須Componentと現在一致する他Processの要求を除いて削除する。固有Componentがなければ対象Processも一致したままになるため、常にそのProcessを停止するAPIとしては扱わない。
