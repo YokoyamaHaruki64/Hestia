@@ -1,12 +1,19 @@
-#VisualStudio
+﻿# VisualStudio
 .vs/
-x64/
-**/x64/
+Build/
+/Library/
+
+# ThirdParty distribution libraries
+!/ThirdParty/Library/**/*.lib
+
+# Runtime log output
+**/Logs/
+
+# Codex working notes
+/.codex/working/
 
 # GameAssets
-Assets/**
+/Assets/**
 
-!Assets/**/
-!Assets/**/*.cpp
-!Assets/**/*.h
-!Assets/**/*.cscript
+# Ignore Reference
+Reference/DX12/

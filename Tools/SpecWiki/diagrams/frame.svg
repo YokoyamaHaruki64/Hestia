@@ -1,0 +1,25 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" role="img" aria-labelledby="frame-title frame-desc">
+<title id="frame-title">固定更新と通常フレームの呼出順</title>
+<desc id="frame-desc">メッセージ処理後に経過時間を蓄積し、固定刻み以上の間はTime更新とECS FixedUpdateを繰り返す。その後Time通常更新、ECSの四phase、描画提出、Render、EndFrameへ進む。現在のECS呼び出しに不整合がある。</desc>
+<defs><marker id="frame-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#52675d"/></marker></defs>
+<style>text{font-family:'Yu Gothic UI',Meiryo,sans-serif;font-size:15px;fill:#24362d}.box{fill:#fff;stroke:#a8bbb0;stroke-width:1.4}.line{fill:none;stroke:#52675d;stroke-width:1.5;marker-end:url(#frame-arrow)}.small{font-size:13px;fill:#586b60}.label{font-size:17px;font-weight:600}</style>
+<text x="29" y="34" class="label">Application：固定更新を0回以上</text><text x="508" y="34" class="label">Engine：通常フレームを1回</text>
+<rect class="box" x="29" y="62" width="360" height="74" rx="5"/><text x="49" y="93">Window Messageを処理</text><text x="49" y="117" class="small">終了でなければ、経過時間を蓄積</text>
+<path class="line" d="M210 136V167"/>
+<path d="M210 167 389 222 210 277 29 222Z" fill="#edf4f0" stroke="#a8bbb0" stroke-width="1.4"/><text x="210" y="217" text-anchor="middle">蓄積時間 ≥ 固定刻み？</text><text x="210" y="240" text-anchor="middle" class="small">刻みは既定1/60秒</text>
+<path class="line" d="M210 277V325"/><text x="222" y="305" class="small">はい</text>
+<rect class="box" x="29" y="325" width="360" height="90" rx="5"/><text x="49" y="355">Engine.FixedUpdate</text><text x="49" y="380" class="small">Time.UpdateFixed → ECS FixedUpdate</text><text x="49" y="401" class="small">Application側で蓄積から固定刻みを引く</text>
+<path class="line" d="M29 370H12V222H29"/>
+<path class="line" d="M389 222H468V99H508"/><text x="404" y="207" class="small">いいえ</text>
+<rect class="box" x="508" y="62" width="420" height="74" rx="5"/><text x="528" y="93">Time.Update</text><text x="528" y="117" class="small">通常のdelta・total時間を更新</text>
+<path class="line" d="M718 136V167"/>
+<rect class="box" x="508" y="167" width="420" height="88" rx="5"/><text x="528" y="198">ECS phaseを順に実行</text><text x="528" y="226" class="small">FrameBegin → Update → LateUpdate → PreRender</text><text x="528" y="247" class="small">各phase内はProcess登録順</text>
+<path class="line" d="M718 255V286"/>
+<rect class="box" x="508" y="286" width="420" height="64" rx="5"/><text x="528" y="325">デバッグ描画をSubmit</text>
+<path class="line" d="M718 350V381"/>
+<rect class="box" x="508" y="381" width="420" height="64" rx="5"/><text x="528" y="420">Graphics.Render</text>
+<path class="line" d="M718 445V476"/>
+<rect class="box" x="508" y="476" width="420" height="74" rx="5"/><text x="528" y="507">ECS.EndFrame</text><text x="528" y="531" class="small">破棄予約済みEntityの実体を解放</text>
+<text x="29" y="470" class="small">Process中の構造変更は、</text><text x="29" y="493" class="small">そのProcessの全Chunk実行後に反映。</text><text x="29" y="521" class="small">Entityの実体破棄はEndFrameまで待つ。</text>
+<rect x="29" y="575" width="899" height="29" rx="3" fill="#f4eee0"/><text x="44" y="595" class="small">コードに記述された呼出順の説明。非static ECS関数の呼び出し不整合があり、統合動作は未確認。</text>
+</svg>

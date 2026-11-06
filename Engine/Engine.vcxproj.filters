@@ -1,0 +1,263 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Include">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Include\Log">
+      <UniqueIdentifier>{C97701DB-AB75-4B98-89F2-84A79C867021}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Time">
+      <UniqueIdentifier>{4844d9e7-f340-4bfc-b483-629e01eabdb6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source\Log">
+      <UniqueIdentifier>{9151D6DD-A172-49E4-B0DA-8626A6F58010}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Time">
+      <UniqueIdentifier>{6d3c2107-ca89-46cb-be45-d0d363db06d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Graphics">
+      <UniqueIdentifier>{9d932c7d-b547-4f94-bd3c-74958c0e9867}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Asset">
+      <UniqueIdentifier>{254fd7f4-31a3-43df-9aa6-dad5d3dc522b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\ECS">
+      <UniqueIdentifier>{8fae9e19-035f-4e76-a90c-48ea0918ce21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Graphics">
+      <UniqueIdentifier>{fe012d92-e77d-4e08-a76b-29a92e6ea7b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Asset">
+      <UniqueIdentifier>{d52a25a3-2639-4771-a4e5-e7639cf60e2b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\ECS">
+      <UniqueIdentifier>{3a5bca59-8a8c-44eb-a22e-ae4cfd0a144c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Core">
+      <UniqueIdentifier>{8d41f9e1-c7b0-4f3d-becf-cad61805212a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader">
+      <UniqueIdentifier>{c55028f7-d8ca-4d4c-b230-209de01120a8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\Log\LogStorage.cpp">
+      <Filter>Source\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Log\Logger.cpp">
+      <Filter>Source\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Log\LogProcess.cpp">
+      <Filter>Source\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Log\LogSystem.cpp">
+      <Filter>Source\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Log\LogAPI.cpp">
+      <Filter>Source\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Time\TimeAPI.cpp">
+      <Filter>Source\Time</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Time\TimeSystem.cpp">
+      <Filter>Source\Time</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\AssetType.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\AssetDB.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\AssetLoader.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\AssetSystem.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\AssetAPI.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\DX12Backend.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\GraphicsSystem.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\DllMain.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\EngineAPI.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\ComponentRegistry.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\Entity.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\Archetype.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\Chunk.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\ECSProcess.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\ECSWorld.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\ECSSystem.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Pch.cpp">
+      <Filter>Source\Core</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Include\Engine.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\EngineAPI.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\ComponentRegistry.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\Component.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\Entity.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\Archetype.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\Chunk.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\ECSProcess.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\ECSProcessExecution.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\ECSWorld.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\ECSSystem.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\LogData.h">
+      <Filter>Include\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\LogStorage.h">
+      <Filter>Include\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\Logger.h">
+      <Filter>Include\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\LogProcess.h">
+      <Filter>Include\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\LogSystem.h">
+      <Filter>Include\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Log\LogAPI.h">
+      <Filter>Include\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\pch.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Time\TimeSystem.h">
+      <Filter>Include\Time</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Time\TimeData.h">
+      <Filter>Include\Time</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Time\TimeAPI.h">
+      <Filter>Include\Time</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetHandle.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetType.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetDB.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetStorage.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetLoader.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetSystem.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\AssetAPI.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\DX12Backend.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\GraphicsSystem.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\DX12Object.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\GPUResourceStorage.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Shaders\Common.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Shaders\PS_Sprite.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Shaders\VS_Sprite.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Include\Transform">
+      <UniqueIdentifier>{75e0a098-e072-4826-91ab-9d48865b407c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Game">
+      <UniqueIdentifier>{d8d63ad3-8e26-48a3-9eb5-4c75b5c10ef0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Transform">
+      <UniqueIdentifier>{1fba6bd2-452e-4d5e-9035-97965d0a1671}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Include\Transform\TransformData.h">
+      <Filter>Include\Transform</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Transform\TransformProcess.h">
+      <Filter>Include\Transform</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Game\Transform.h">
+      <Filter>Include\Game</Filter>
+    </ClInclude>
+    <ClCompile Include="Source\Transform\TransformProcess.cpp">
+      <Filter>Source\Transform</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Transform\TransformFacade.cpp">
+      <Filter>Source\Transform</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

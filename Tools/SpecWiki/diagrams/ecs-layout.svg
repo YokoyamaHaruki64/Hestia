@@ -1,0 +1,26 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 590" role="img" aria-labelledby="layout-title layout-desc">
+<title id="layout-title">EntityHandleとslotからChunkのSoA列を参照する構造</title>
+<desc id="layout-desc">Handleのindexとgenerationをslot表で照合し、Archetype、Chunk、rowを得る。ChunkではEntity列とComponentごとの列が連続し、同じrowが対応する。配置図は模式図でbyte比率ではない。</desc>
+<defs><marker id="layout-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#52675d"/></marker></defs>
+<style>text{font-family:'Yu Gothic UI',Meiryo,sans-serif;font-size:15px;fill:#24362d}.box{fill:#fff;stroke:#a8bbb0;stroke-width:1.4}.line{fill:none;stroke:#52675d;stroke-width:1.5;marker-end:url(#layout-arrow)}.small{font-size:13px;fill:#586b60}.label{font-size:17px;font-weight:600}</style>
+<rect class="box" x="27" y="28" width="226" height="85" rx="4"/><text x="46" y="60" class="label">EntityHandle</text><text x="46" y="86" class="small">index（下位30bit）・generation</text>
+<path class="line" d="M253 71H317"/>
+<rect class="box" x="317" y="28" width="291" height="85" rx="4"/><text x="337" y="60" class="label">Worldのslot表</text><text x="337" y="86" class="small">世代・状態・Archetype・Chunk・row</text>
+<path class="line" d="M608 71H676"/>
+<rect class="box" x="676" y="28" width="257" height="85" rx="4"/><text x="695" y="60" class="label">Archetype</text><text x="695" y="86" class="small">型IDの集合・Layout・Chunk群</text>
+<path class="line" d="M805 113V170H501V207"/><text x="536" y="158" class="small">共通Layoutで配置（Registryの型情報を借用）</text>
+<rect x="27" y="207" width="906" height="290" rx="6" fill="#f0f5f1" stroke="#c3d1c7"/>
+<text x="48" y="239" class="label">固定サイズChunk：既定16KiB</text><text x="48" y="266" class="small">Entity列を先頭に、Component列をalignmentとpadding込みで配置</text>
+<g transform="translate(47 294)">
+<rect class="box" width="200" height="158"/><rect class="box" x="215" width="200" height="158"/><rect class="box" x="430" width="200" height="158"/><rect class="box" x="645" width="220" height="158"/>
+<text x="15" y="29">Entity列</text><text x="230" y="29">Name列</text><text x="445" y="29">Tag列</text><text x="660" y="29">Layer・追加Component列</text>
+<path d="M0 44H865M0 80H865M0 116H865" fill="none" stroke="#dce4dd"/>
+<rect x="0" y="80" width="865" height="36" fill="#dbeade"/>
+<text x="15" y="69" class="small">row 0</text><text x="230" y="69" class="small">Name[0]</text><text x="445" y="69" class="small">Tag[0]</text><text x="660" y="69" class="small">Layer[0] …</text>
+<text x="15" y="104">row 1</text><text x="230" y="104">Name[1]</text><text x="445" y="104">Tag[1]</text><text x="660" y="104">Layer[1] …</text>
+<text x="15" y="143" class="small">row 2 …</text><text x="230" y="143" class="small">Name[2] …</text><text x="445" y="143" class="small">Tag[2] …</text><text x="660" y="143" class="small">Layer[2] …</text>
+</g>
+<text x="48" y="480" class="small">強調した同じrowが、一つのEntityのデータに対応する（byte比率ではない模式図）</text>
+<text x="27" y="535">構造変更でChunk・rowが変わる → slotを更新 → Handleから現在位置を再取得</text>
+<text x="27" y="562" class="small">行の穴は末尾rowで詰めるため、行順は保持しない。Entity / Componentへの生ポインタは長期保持しない。</text>
+</svg>
