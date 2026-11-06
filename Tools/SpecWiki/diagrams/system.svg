@@ -1,0 +1,27 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 590" role="img" aria-labelledby="system-title system-desc">
+<title id="system-title">ApplicationとEngine内のSystemの所有関係</title>
+<desc id="system-desc">ApplicationはWindowを所有し、EngineAPIとHandleでDLLを操作する。EngineはLog、Time、Graphics、Asset、ECSを所有する。ApplicationAPIとAssetからGraphicsへの接続は非所有。</desc>
+<defs><marker id="system-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#52675d"/></marker></defs>
+<style>text{font-family:'Yu Gothic UI',Meiryo,sans-serif;fill:#24362d;font-size:15px}.box{fill:white;stroke:#a8bbb0;stroke-width:1.4}.label{font-weight:600;font-size:18px}.small{font-size:13px;fill:#586b60}.line{fill:none;stroke:#52675d;stroke-width:1.5;marker-end:url(#system-arrow)}.borrow{stroke-dasharray:6 4}</style>
+<rect x="275" y="25" width="660" height="492" rx="8" fill="#f1f5f1" stroke="#cad6cd"/>
+<text x="298" y="57" class="small">Engine.dll 内部</text>
+<rect class="box" x="26" y="92" width="205" height="103" rx="5"/>
+<text x="47" y="124" class="label">Application</text><text x="47" y="151" class="small">Window・フレーム進行</text><text x="47" y="174" class="small">DLLロード状態・Handle</text>
+<rect class="box" x="26" y="277" width="205" height="82" rx="5"/>
+<text x="47" y="310" class="label">Window</text><text x="47" y="337" class="small">HWNDとタイトル</text>
+<path class="line" d="M128 195V277"/><text x="140" y="240" class="small">所有</text>
+<rect class="box" x="388" y="92" width="353" height="103" rx="5"/>
+<text x="410" y="125" class="label">Engine</text><text x="410" y="153" class="small">Systemを値所有・更新と終了を調停</text><text x="410" y="176" class="small">ApplicationAPIを値で保持</text>
+<path class="line borrow" d="M231 124H388"/><text x="246" y="108" class="small">EngineAPI</text>
+<path class="line borrow" d="M388 172H231"/><text x="244" y="198" class="small">ApplicationAPI</text><text x="242" y="219" class="small">contextは非所有</text>
+<path d="M564 195V237H379M564 237H832M379 237V273M605 237V273M832 237V273" fill="none" stroke="#52675d" stroke-width="1.5"/>
+<text x="579" y="226" class="small">所有</text>
+<rect class="box" x="299" y="273" width="162" height="66" rx="4"/><text x="318" y="312" class="label">LogSystem</text>
+<rect class="box" x="517" y="273" width="176" height="66" rx="4"/><text x="535" y="312" class="label">TimeSystem</text>
+<rect class="box" x="739" y="273" width="173" height="66" rx="4"/><text x="754" y="312" class="label">ECSSystem</text>
+<path d="M489 237V370H413V398M489 370H718V398" fill="none" stroke="#52675d" stroke-width="1.5"/>
+<rect class="box" x="299" y="398" width="229" height="79" rx="4"/><text x="319" y="429" class="label">AssetSystem</text><text x="319" y="455" class="small">CPU実体・名前索引を所有</text>
+<rect class="box" x="614" y="398" width="298" height="79" rx="4"/><text x="634" y="429" class="label">GraphicsSystem</text><text x="634" y="455" class="small">DX12Backend・GPU資源を所有</text>
+<path class="line borrow" d="M528 447H614"/><text x="537" y="433" class="small">借用</text>
+<path class="line" d="M37 555H98"/><text x="113" y="560" class="small">所有</text><path class="line borrow" d="M220 555H281"/><text x="296" y="560" class="small">非所有の参照・API接続</text>
+</svg>

@@ -51,6 +51,13 @@ namespace Hestia
         m_assetAPI.Initialize(&m_assets);
         m_assetAPIInitialized = true;
 
+        if (!m_ecs.Initialize())
+        {
+            Finalize();
+            return false;
+        }
+        m_ecsInitialized = true;
+
         // デバッグ用平面を位置・UV・色の Stream で登録
         auto mesh = std::make_unique<Mesh>();
         mesh->m_positions = {
@@ -94,6 +101,12 @@ namespace Hestia
 
     void Engine::Finalize()
     {
+        if (m_ecsInitialized)
+        {
+            m_ecs.Finalize();
+            m_ecsInitialized = false;
+        }
+
         if (m_assetAPIInitialized)
         {
             m_assetAPI.Finalize();
@@ -144,7 +157,11 @@ namespace Hestia
     void Engine::FixedUpdate(float deltaTime)
     {
         if (m_timeInitialized)
+        {
             m_time.UpdateFixed(deltaTime);
+            if (m_ecsInitialized)
+                ECSSystem::Run(ECSProcessPhase::FixedUpdate);
+        }
     }
 
     void Engine::FrameExecute(float deltaTime)
@@ -154,7 +171,15 @@ namespace Hestia
 
         m_time.Update(deltaTime);
 
-        Logger::Log("FrameExecute: DeltaTime= " + std::to_string(TimeSystem::DeltaTime()));
+        if (m_ecsInitialized)
+        {
+            // phase順にProcessを実行し、各phase内は登録順を維持する
+            ECSSystem::Run(ECSProcessPhase::FrameBegin);
+            ECSSystem::Run(ECSProcessPhase::Update);
+            ECSSystem::Run(ECSProcessPhase::LateUpdate);
+            ECSSystem::Run(ECSProcessPhase::PreRender);
+        }
+         Logger::Log("FrameExecute: DeltaTime= " + std::to_string(TimeSystem::DeltaTime()));
 
         Matrix4x4_SIMD worldMatrix = Matrix4x4_SIMD::Identity();
         worldMatrix.Scale(800.0f, 800.0f, 1.0f);
@@ -173,5 +198,9 @@ namespace Hestia
         }
 
         m_graphics.Render();
+
+        // 描画が終わるまでEntity実体を維持し、破棄予約をFrame末尾で確定する
+        if (m_ecsInitialized)
+            ECSSystem::EndFrame();
     }
 }

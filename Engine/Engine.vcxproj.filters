@@ -27,11 +27,17 @@
     <Filter Include="Include\Asset">
       <UniqueIdentifier>{254fd7f4-31a3-43df-9aa6-dad5d3dc522b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Include\ECS">
+      <UniqueIdentifier>{8fae9e19-035f-4e76-a90c-48ea0918ce21}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source\Graphics">
       <UniqueIdentifier>{fe012d92-e77d-4e08-a76b-29a92e6ea7b2}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Asset">
       <UniqueIdentifier>{d52a25a3-2639-4771-a4e5-e7639cf60e2b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\ECS">
+      <UniqueIdentifier>{3a5bca59-8a8c-44eb-a22e-ae4cfd0a144c}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source\Core">
       <UniqueIdentifier>{8d41f9e1-c7b0-4f3d-becf-cad61805212a}</UniqueIdentifier>
@@ -92,6 +98,27 @@
     <ClCompile Include="Source\EngineAPI.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
+    <ClCompile Include="Source\ECS\ComponentRegistry.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\Entity.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\Archetype.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\Chunk.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\ECSProcess.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\ECSWorld.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ECS\ECSSystem.cpp">
+      <Filter>Source\ECS</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Pch.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
@@ -102,6 +129,33 @@
     </ClInclude>
     <ClInclude Include="Include\EngineAPI.h">
       <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\ComponentRegistry.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\Component.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\Entity.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\Archetype.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\Chunk.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\ECSProcess.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\ECSProcessExecution.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\ECSWorld.h">
+      <Filter>Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ECS\ECSSystem.h">
+      <Filter>Include\ECS</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\LogData.h">
       <Filter>Include\Log</Filter>
@@ -177,5 +231,33 @@
     <FxCompile Include="..\Shaders\VS_Sprite.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Include\Transform">
+      <UniqueIdentifier>{75e0a098-e072-4826-91ab-9d48865b407c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Game">
+      <UniqueIdentifier>{d8d63ad3-8e26-48a3-9eb5-4c75b5c10ef0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Transform">
+      <UniqueIdentifier>{1fba6bd2-452e-4d5e-9035-97965d0a1671}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Include\Transform\TransformData.h">
+      <Filter>Include\Transform</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Transform\TransformProcess.h">
+      <Filter>Include\Transform</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Game\Transform.h">
+      <Filter>Include\Game</Filter>
+    </ClInclude>
+    <ClCompile Include="Source\Transform\TransformProcess.cpp">
+      <Filter>Source\Transform</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Transform\TransformFacade.cpp">
+      <Filter>Source\Transform</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

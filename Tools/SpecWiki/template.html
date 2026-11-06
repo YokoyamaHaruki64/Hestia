@@ -1,0 +1,316 @@
+﻿<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; font-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Hestia 仕様書</title>
+<style>
+:root{--ink:#202526;--muted:#626b6e;--line:#dfe4e3;--paper:#fff;--side:#fafafa;--accent:#245e58;--soft:#edf4f2;--nav-width:260px;--header:64px;font-family:"Yu Gothic UI","Meiryo",system-ui,sans-serif;color:var(--ink);font-size:15px;line-height:1.8}
+*{box-sizing:border-box}body{margin:0;background:var(--paper)}a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:3px}a:hover{text-decoration:underline}button,input{font:inherit}button{cursor:pointer;color:inherit}button:disabled{cursor:default}button,a,input,summary,[tabindex]{-webkit-tap-highlight-color:transparent}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}button{background:#fff;border:1px solid var(--line);border-radius:4px;padding:5px 12px}button:hover{background:var(--soft)}[hidden]{display:none!important}
+.skip-link{position:fixed;top:-80px;left:16px;padding:10px;background:white;z-index:50}.skip-link:focus{top:8px}
+.topbar{height:var(--header);position:fixed;inset:0 0 auto;z-index:20;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 26px}.brand{font-size:19px;font-weight:700;letter-spacing:.025em;text-decoration:none;color:var(--ink);display:flex;align-items:center;gap:12px}.brand-icon{width:26px;height:26px;display:grid;place-items:center;border:1.5px solid var(--accent);color:var(--accent);font-size:17px;line-height:1}.topbar-note{font-size:12px;color:var(--muted);margin-left:auto}.menu-button{display:none}.topbar a:hover{text-decoration:none}
+.sidebar{position:fixed;inset:var(--header) auto 0 0;width:var(--nav-width);overflow:auto;background:var(--side);border-right:1px solid var(--line);padding:12px 12px 18px;color:#222}
+.search-label{display:block;font-size:12px;font-weight:600;margin-bottom:3px}.search-box{position:relative}
+.search-box input{width:100%;border:1px solid #cbd3d1;border-radius:2px;background:#fff;padding:4px 28px 4px 8px;font-size:13px;line-height:1.5}
+.search-clear{position:absolute;right:3px;top:3px;border:0;padding:0;width:24px;height:24px;color:var(--muted);background:transparent}
+.search-help{font-size:10px;color:var(--muted);margin:3px 0 10px}
+.all-pages{display:block;text-decoration:underline;text-decoration-color:#c5c5c5;color:inherit;padding:1px 2px;margin-bottom:10px;font-size:13px;line-height:20px}
+.tree,.tree ul{list-style:none;margin:0;padding:0}.tree>li+li{margin-top:14px}
+.tree summary{list-style:none;display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;min-height:28px;line-height:1.5;padding:2px 6px;background:#d5d5d5;border:1px solid #737373}
+.tree summary::-webkit-details-marker{display:none}.tree summary:before{content:'›';font-size:15px;width:10px;flex-shrink:0;text-align:center;color:#555}
+.tree details[open]>summary:before{transform:rotate(90deg)}.tree summary .count{font-size:10px;min-width:16px;text-align:right;color:#555}
+.tree .root-label{flex:1;font-weight:700;text-align:center}
+.tree .block-heading{display:flex;align-items:center;gap:4px;min-height:28px;margin:0;padding:2px 6px;background:#d5d5d5;border:1px solid #737373;font-size:13px;line-height:1.5}
+.tree .block-heading .count{font-size:10px;min-width:16px;text-align:right;color:#555}
+.tree .nav-list{list-style:disc;margin:2px 0 0 21px;padding:0;border:0}
+.tree .nav-list .nav-list{list-style:circle;margin:0 0 0 16px}.tree .nav-list li::marker{color:#333;font-size:9px}
+.tree .category-item{margin:0;list-style:none}
+.tree .system-menu>summary{position:relative;gap:0;min-height:20px;padding:0 2px;border:0;background:transparent;line-height:20px;font-weight:600;text-align:left}
+.tree .system-menu>summary:before{position:absolute;left:-14px;top:0;font-size:12px;width:9px}
+.tree .system-menu>summary:hover{background:#ecefec}
+.tree .system-menu>.nav-list{margin-left:16px}
+.tree .category-link,.tree .page-link{display:block;padding:0 2px;margin:0;color:inherit;font-size:13px;font-weight:400;line-height:20px;text-decoration:underline;text-decoration-color:#c5c5c5;text-underline-offset:2px;border:0;border-radius:0}
+.tree a:hover,.all-pages:hover{background:#ecefec}.tree a[aria-current],.all-pages[aria-current]{background:#dce8e2}
+.nav-footer{font-size:10px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin-top:14px;line-height:1.7}.nav-close{display:none}
+.document-section{scroll-margin-top:calc(var(--header) + 20px)}
+.article .document-source{font-size:11px;color:var(--muted);margin-top:-6px;margin-bottom:20px}
+main{margin-left:var(--nav-width);padding:calc(var(--header) + 28px) 52px 64px;min-height:100vh}main>.content{max-width:1030px;margin:0 auto}.breadcrumbs{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;margin:0 0 20px;color:var(--muted)}.breadcrumbs a{color:var(--muted);text-decoration:none}.breadcrumbs span[aria-hidden]{color:#a2aaa6}.eyebrow{color:var(--muted);font-size:12px;letter-spacing:.03em;margin:0 0 5px}.page-header{border-bottom:1px solid var(--line);padding-bottom:22px;margin-bottom:25px}h1{font-size:27px;line-height:1.55;letter-spacing:.01em;margin:0 0 12px;font-weight:700;overflow-wrap:anywhere}.lede{font-size:14px;color:#4d5954;max-width:760px;margin:0}.page-meta{font-size:11px;color:var(--muted);display:flex;flex-wrap:wrap;gap:7px 18px;margin-top:15px}.page-meta a{color:var(--muted)}.kind-tag{display:inline-block;font-size:11px;line-height:1.5;padding:2px 7px;border:1px solid var(--line);border-radius:3px;color:var(--muted)}
+.category-section{margin:30px 0 35px}.category-heading{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}.category-heading h2{font-size:18px;margin:0}.category-heading h2 a{color:var(--ink);text-decoration:none}.count{font-size:12px;font-weight:400;color:var(--muted)}.category-description{font-size:13px;color:var(--muted);margin:0 0 13px}.page-list{list-style:none;margin:0;padding:0}.page-list>li{border-top:1px solid var(--line)}.page-list>li:last-child{border-bottom:1px solid var(--line)}.page-row{display:block;padding:15px 3px;text-decoration:none;color:var(--ink)}.page-row:hover{background:#fafbf9;text-decoration:none}.row-top{display:flex;align-items:baseline;gap:12px}.row-title{font-size:15px;font-weight:600}.row-arrow{margin-left:auto;color:var(--accent)}.row-description{display:block;font-size:12px;color:var(--muted);margin-top:4px;max-width:830px}.row-path{display:block;font-size:11px;color:var(--muted);margin-top:4px}.page-list mark{color:inherit;background:#f2e6b7;padding:0 1px}.intro-note{font-size:12px;color:var(--muted);border-left:2px solid #b8c9c3;padding-left:13px;margin:20px 0}.related-categories{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.related-categories a{font-size:12px;border:1px solid var(--line);padding:4px 10px;text-decoration:none;border-radius:3px}
+.toc{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0;margin:24px 0 28px;font-size:12px}.toc summary{cursor:pointer;font-weight:600}.toc ol{list-style:none;padding:0;margin:8px 0 2px;display:flex;gap:5px 20px;flex-wrap:wrap}.toc li{margin:0}.toc a{text-decoration:none;color:#47615a}.toc .toc-sub{padding-left:12px}.article{font-size:14px;line-height:1.95;overflow-wrap:anywhere}.article h2{font-size:20px;line-height:1.6;margin:36px 0 15px;padding-bottom:8px;border-bottom:1px solid var(--line)}.article h3{font-size:16px;margin:26px 0 12px}.article h4,.article h5,.article h6{font-size:14px;margin:22px 0 10px}.article h1{font-size:23px}.article h1,.article h2,.article h3,.article h4,.article h5,.article h6{scroll-margin-top:calc(var(--header) + 20px)}.heading-link{font-size:13px;margin-left:10px;opacity:0;text-decoration:none;font-weight:400}.article :is(h1,h2,h3,h4,h5,h6):hover .heading-link,.heading-link:focus{opacity:1}.article p{margin:13px 0 19px}.article ul,.article ol{padding-left:25px;margin:14px 0 22px}.article li+li{margin-top:5px}.article code{font-family:Consolas,"Cascadia Code",monospace;font-size:.92em;background:#f1f3f1;border-radius:3px;padding:2px 4px}.article pre{background:#f5f6f4;border:1px solid var(--line);border-radius:4px;padding:18px;overflow:auto;line-height:1.65;font-size:12px;margin:20px 0 25px;overflow-wrap:normal}.article pre code{background:none;padding:0}.article blockquote{margin:18px 0;border-left:3px solid #a9beb5;padding:1px 17px;color:#53645d;background:#fafbf9}.article hr{border:0;border-top:1px solid var(--line);margin:28px 0}.table-scroll{overflow:auto;margin:20px 0 26px}.article table{border-collapse:collapse;width:100%;font-size:12px;line-height:1.8;min-width:570px;text-align:left}.article th{background:#f4f6f4;font-weight:600}.article th,.article td{border:1px solid var(--line);padding:10px 12px;vertical-align:top}.article td:first-child{min-width:135px}.article td code{white-space:normal}.local-link:after{content:' ↗';font-size:10px;color:#7b8f86}.external-link:after{content:' ↗';font-size:10px}.reading-note{border-left:3px solid #b29451;background:#faf8f1;padding:12px 16px;margin:18px 0;font-size:12px;line-height:1.8}.reading-note strong{font-size:12px}.note-sources{display:block;margin-top:7px;font-size:11px}.note-sources a{margin-right:12px}.empty{padding:30px 0;color:var(--muted);font-size:14px}.page-end{margin-top:36px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;display:flex;justify-content:space-between;gap:20px}.page-end a{text-decoration:none}
+.diagrams{margin-top:45px;border-top:1px solid var(--line);padding-top:23px;scroll-margin-top:calc(var(--header) + 20px)}.diagrams>h2{font-size:18px;margin:0 0 8px}.diagrams>p{font-size:12px;color:var(--muted)}.diagram{margin:28px 0 35px}.diagram-title{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:12px}.diagram-title h3{font-size:15px;margin:0}.diagram-title button{font-size:12px;padding:3px 10px}.diagram-canvas{overflow:auto;border:1px solid var(--line);border-radius:3px;background:#fbfcfa;padding:18px}.diagram-canvas svg{display:block;width:100%;height:auto;min-width:630px}.diagram figcaption{font-size:12px;color:var(--muted);margin-top:10px}.diagram-sources{font-size:11px;margin-top:6px}.diagram-sources a{margin-right:14px}.zoom-dialog{width:min(1450px,96vw);max-width:96vw;border:1px solid #c8d0cb;border-radius:6px;padding:20px;max-height:94vh}.zoom-dialog::backdrop{background:#17251d99}.dialog-bar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:14px}.dialog-bar h2{font-size:17px;margin:0}.zoom-scroll{overflow:auto;max-height:75vh;background:#fbfcfa}.zoom-scroll img{display:block;min-width:850px;width:100%;height:auto}.sidebar-overlay{display:none}
+@media(min-width:1600px){main{padding-left:80px;padding-right:80px}}@media(max-width:1000px){:root{--nav-width:260px}main{padding-left:30px;padding-right:30px}h1{font-size:24px}}@media(max-width:760px){:root{--header:58px}.topbar{padding:0 16px;gap:12px}.brand{font-size:17px;gap:9px}.brand-icon{width:23px;height:23px;font-size:14px}.topbar-note{display:none}.menu-button{display:block;font-size:17px;border:0;padding:4px 7px}.sidebar{width:min(320px,86vw);z-index:35;inset:0 auto 0 0;transform:translateX(-100%);padding-top:14px}.sidebar.is-open{transform:translateX(0)}.nav-close{display:block;margin:0 0 18px auto;font-size:12px}.sidebar-overlay.is-open{display:block;position:fixed;inset:0;background:#17251d77;z-index:30;border:0;border-radius:0}.sidebar-overlay.is-open:hover{background:#17251d77}body.nav-open{overflow:hidden}main{margin-left:0;padding:calc(var(--header) + 21px) 20px 40px}.breadcrumbs{font-size:11px;margin-bottom:17px}h1{font-size:23px}.article{font-size:14px}.page-header{padding-bottom:18px;margin-bottom:20px}.page-row{padding:14px 1px}.row-top{gap:8px}.row-title{font-size:14px}.category-heading h2{font-size:17px}.diagram-canvas{padding:12px}.zoom-dialog{padding:13px}.page-end{font-size:11px}}@media print{.topbar,.sidebar,.toc,.page-end,.diagram-title button,.heading-link,.sidebar-overlay{display:none!important}main{margin:0;padding:0}.article{font-size:10pt}.diagram-canvas svg{min-width:0}.table-scroll,.diagram-canvas{overflow:visible}.article table{min-width:0}.page-header{margin-top:0}.page-meta{font-size:8pt}a{color:inherit}pre{white-space:pre-wrap}.reading-note{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へ移動</a>
+<header class="topbar">
+  <button type="button" class="menu-button" id="menu-open" aria-label="ナビゲーションを開く" aria-controls="sidebar" aria-expanded="false">☰</button>
+  <a class="brand" href="#home"><span class="brand-icon" aria-hidden="true">H</span>Hestia <span style="font-weight:400">仕様書</span></a>
+  <span class="topbar-note">実装仕様・開発ガイド・設計参考資料</span>
+</header>
+<button type="button" class="sidebar-overlay" id="sidebar-overlay" aria-label="ナビゲーションを閉じる" tabindex="-1"></button>
+<aside class="sidebar" id="sidebar" aria-label="仕様書ナビゲーション">
+  <button type="button" class="nav-close" id="menu-close">メニューを閉じる ×</button>
+  <label class="search-label" for="search">仕様書を検索</label>
+  <div class="search-box"><input type="search" id="search" placeholder="型名・見出し・本文" autocomplete="off" spellcheck="false"><button type="button" class="search-clear" id="search-clear" aria-label="検索を解除" hidden>×</button></div>
+  <p class="search-help">日本語・英字の部分一致で全文検索</p>
+  <a class="all-pages" href="#home">仕様書一覧 <span class="count" id="total-count"></span></a>
+  <nav aria-label="カテゴリと仕様書"><ul class="tree" id="tree"></ul></nav>
+  <div class="nav-footer">Markdownを正本とした閲覧用Wiki。<br>本文・検索・図解はオフラインで利用できます。<br><a href="#guide=update">更新方法・参照先について</a></div>
+</aside>
+<main id="main" tabindex="-1"><div class="content" id="content"></div></main>
+<noscript><p style="margin:90px 30px">このWikiのページ切り替えにはJavaScriptを有効にしてください。正本MarkdownはDocs内にあります。</p></noscript>
+<dialog class="zoom-dialog" id="zoom-dialog" aria-labelledby="zoom-title"><div class="dialog-bar"><h2 id="zoom-title"></h2><button type="button" id="zoom-close">閉じる ×</button></div><div class="zoom-scroll"><img id="zoom-image" alt=""></div></dialog>
+<!-- WIKI_DATA -->
+<script>
+/* 正本は生成時に埋め込む。閲覧時のファイル取得・通信は行わない */
+const data = JSON.parse(document.getElementById('wiki-data').textContent);
+const categories = new Map(data.categories.map(category => [category.id, category]));
+const pages = new Map(data.pages.map(page => [page.source, page]));
+const content = document.getElementById('content');
+const main = document.getElementById('main');
+const search = document.getElementById('search');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebar-overlay');
+const menuOpen = document.getElementById('menu-open');
+const mobile = matchMedia('(max-width:760px)');
+const escapeHtml = text => String(text).replace(/[&<>"']/g, value => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[value]);
+const route = values => '#' + new URLSearchParams(values);
+const normalize = value => value.normalize('NFKC').toLocaleLowerCase('ja');
+const categoryChildren = id => data.categories.filter(category => category.parent === id);
+const directPages = id => data.pages.filter(page => page.category === id).sort((a,b) => a.order - b.order || a.title.localeCompare(b.title,'ja'));
+const rootOf = id => { while(categories.get(id)?.parent) id = categories.get(id).parent; return id; };
+const descendants = id => [id, ...categoryChildren(id).flatMap(category => descendants(category.id))];
+const allPages = id => descendants(id).flatMap(directPages);
+const searchDocuments = data.pages.map(page => {
+    const element = document.createElement('div');
+    element.innerHTML = page.html;
+    const body = element.textContent.replace(/\s+/g, ' ').trim();
+    return { page, body, text:normalize(body), title:normalize(page.title), headings:normalize(page.headings.map(heading => heading.text).join(' ')), types:normalize(Array.from(element.querySelectorAll('code')).map(code => code.textContent).join(' ')), sections:Array.from(element.querySelectorAll('.document-section')).map(section => ({id:section.id.slice('section-'.length),text:normalize(section.textContent)})) };
+});
+
+function CategoryTree(category)
+{
+    const documents = directPages(category.id).flatMap(page => page.sections.length ? page.sections.map(section => ({source:page.source,label:section.label,section:section.id})) : [page]).map(page => `<li><a class="page-link" href="${route({page:page.source,...(page.section ? {section:page.section} : {})})}" data-page="${escapeHtml(page.source)}">${escapeHtml(page.label)}</a></li>`).join('');
+    const children = categoryChildren(category.id).map(CategoryTree).join('');
+    const list = `<ul class="nav-list">${documents}${children}</ul>`;
+    if (category.parent)
+        return `<li class="category-item"><details class="system-menu" data-category="${category.id}"><summary><span>${escapeHtml(category.title)}</span></summary>${list}</details></li>`;
+
+    return `<li class="category-block"><details class="block-menu" data-category="${category.id}" open><summary class="block-heading" id="nav-${category.id}"><span class="root-label">${escapeHtml(category.title)}</span><span class="count">${allPages(category.id).length}</span></summary>${list}</details></li>`;
+}
+
+function Breadcrumbs(categoryId, current)
+{
+    const chain = [];
+    for (let category = categories.get(categoryId); category; category = categories.get(category.parent)) chain.unshift(category);
+    return `<nav class="breadcrumbs" aria-label="現在位置"><a href="#home">仕様書一覧</a>${chain.map(category => `<span aria-hidden="true">/</span><a href="${route({category:category.id})}">${escapeHtml(category.title)}</a>`).join('')}${current ? `<span aria-hidden="true">/</span><span aria-current="page">${escapeHtml(current)}</span>` : ''}</nav>`;
+}
+
+function Header(title, description, eyebrow, metadata = '')
+{
+    return `<header class="page-header">${eyebrow ? `<p class="eyebrow">${escapeHtml(eyebrow)}</p>` : ''}<h1>${escapeHtml(title)}</h1>${description ? `<p class="lede">${escapeHtml(description)}</p>` : ''}${metadata ? `<div class="page-meta">${metadata}</div>` : ''}</header>`;
+}
+
+function PageList(documents)
+{
+    return `<ul class="page-list">${documents.map(page => `<li><a class="page-row" href="${route({page:page.source})}"><span class="row-top"><span class="row-title">${escapeHtml(page.title)}</span><span class="row-arrow" aria-hidden="true">→</span></span><span class="row-description">${escapeHtml(page.summary)}</span></a></li>`).join('')}</ul>`;
+}
+
+function CategorySections(category)
+{
+    const own = directPages(category.id);
+    return `${own.length ? PageList(own) : ''}${categoryChildren(category.id).map(child => `<section class="category-section"><div class="category-heading"><h2><a href="${route({category:child.id})}">${escapeHtml(child.title)}</a></h2><span class="count">${allPages(child.id).length}ページ</span></div><p class="category-description">${escapeHtml(child.description)}</p>${CategorySections(child)}</section>`).join('')}`;
+}
+
+function SourceLinks(sources)
+{
+    return sources.map(source => {
+        const document = source.startsWith('Docs/') ? data.sourceRoutes[source.slice(5)] : null;
+        const href = document ? route(document) : '../' + source.split('/').map(encodeURIComponent).join('/');
+        return `<a href="${href}"${document ? '' : ' class="local-link"'}>${escapeHtml(source.split('/').pop())}</a>`;
+    }).join(' ');
+}
+
+function RenderPage(page)
+{
+    const root = categories.get(rootOf(page.category));
+    const notes = page.notes.map(note => `<aside class="reading-note"><strong>閲覧上の注記（本文とは別）</strong><div>${escapeHtml(note.text)}</div><span class="note-sources">確認先：${SourceLinks(note.sources)}</span></aside>`).join('');
+    const toc = page.headings.length ? `<details class="toc" open><summary>このページの目次</summary><ol>${page.headings.map(heading => `<li${heading.depth > 2 ? ' class="toc-sub"' : ''}><a href="${route({page:page.source,section:heading.id})}">${escapeHtml(heading.text)}</a></li>`).join('')}${page.diagrams.length ? `<li><a href="${route({page:page.source,section:'wiki-diagrams'})}">補助図解</a></li>${page.diagrams.map(id => `<li class="toc-sub"><a href="${route({page:page.source,section:'diagram-'+id})}">${escapeHtml(data.diagrams[id].title)}</a></li>`).join('')}` : ''}</ol></details>` : '';
+    const diagrams = page.diagrams.length ? `<section class="diagrams" id="section-wiki-diagrams"><h2>補助図解</h2><p>正本Markdownと実装を確認するための補足です。仕様の定義は本文を参照してください。</p>${page.diagrams.map(id => {
+        const diagram = data.diagrams[id];
+        return `<figure class="diagram" id="section-diagram-${id}" style="scroll-margin-top:calc(var(--header) + 20px)"><div class="diagram-title"><h3>${escapeHtml(diagram.title)}</h3><button type="button" data-zoom="${id}">拡大表示</button></div><div class="diagram-canvas" tabindex="0" role="region" aria-label="${escapeHtml(diagram.title)}（横スクロール可能）">${diagram.svg}</div><figcaption>${escapeHtml(diagram.caption)}<div class="diagram-sources">根拠：${SourceLinks(diagram.sources)}</div></figcaption></figure>`;
+    }).join('')}</section>` : '';
+    const metadata = page.sections.length ? `<span>正本${page.sources.length}文書をSystem単位で収録</span>` : `<a class="local-link" href="${page.source.split('/').map(encodeURIComponent).join('/')}">正本Markdownを開く</a><span>${escapeHtml(page.source)}</span>`;
+    content.innerHTML = Breadcrumbs(page.category,page.sections.length ? '' : page.label) + Header(page.title,'',root.title,metadata) + notes + toc + `<article class="article" aria-label="正本Markdown本文">${page.html}</article>` + diagrams + `<footer class="page-end"><a href="${route({category:page.category})}">← ${escapeHtml(categories.get(page.category).title)}の一覧</a><a href="${route({page:page.source})}">ページ先頭へ ↑</a></footer>`;
+}
+
+function Highlight(text, terms)
+{
+    const positions = [];
+    const lower = normalize(text);
+    for (const term of terms)
+    {
+        let position = lower.indexOf(term);
+        while (position !== -1)
+        {
+            positions.push([position, position + term.length]);
+            position = lower.indexOf(term, position + term.length);
+        }
+    }
+    positions.sort((a,b) => a[0] - b[0]);
+    const ranges = [];
+    for (const range of positions)
+    {
+        const previous = ranges.at(-1);
+        if (previous && range[0] <= previous[1]) previous[1] = Math.max(previous[1], range[1]);
+        else ranges.push(range);
+    }
+    let result = '', cursor = 0;
+    for (const [start,end] of ranges)
+    {
+        result += escapeHtml(text.slice(cursor,start)) + '<mark>' + escapeHtml(text.slice(start,end)) + '</mark>';
+        cursor = end;
+    }
+    return result + escapeHtml(text.slice(cursor));
+}
+
+function RenderSearch(query)
+{
+    const terms = normalize(query).trim().split(/\s+/).filter(Boolean);
+    const matches = terms.length ? searchDocuments.filter(document => terms.every(term => document.text.includes(term) || document.title.includes(term))).map(document => ({...document,score:terms.reduce((score,term) => score + (document.title.includes(term) ? 12 : 0) + (document.headings.includes(term) ? 6 : 0) + (document.types.includes(term) ? 5 : 0),0)})).sort((a,b) => b.score-a.score || a.page.title.localeCompare(b.page.title,'ja')) : [];
+    content.innerHTML = Breadcrumbs(null,'検索') + Header('検索結果',query ? `「${query}」の検索結果：${matches.length}ページ` : '型名、見出し、本文から検索できます。','全文検索') + (matches.length ? `<ul class="page-list">${matches.map(document => {
+        const first = Math.min(...terms.map(term => document.text.indexOf(term)).filter(index => index >= 0));
+        const start = Number.isFinite(first) ? Math.max(0,first-42) : 0;
+        const excerpt = document.body.slice(start,start+180);
+        const section = document.sections.find(section => terms.every(term => section.text.includes(term)));
+        return `<li><a class="page-row" href="${route({page:document.page.source,...(section ? {section:section.id} : {})})}"><span class="row-top"><span class="row-title">${Highlight(document.page.title,terms)}</span><span class="row-arrow" aria-hidden="true">→</span></span><span class="row-path">${escapeHtml(categories.get(rootOf(document.page.category)).title)} / ${escapeHtml(categories.get(document.page.category).title)}</span><span class="row-description">${start ? '…' : ''}${Highlight(excerpt,terms)}${start+180<document.body.length ? '…' : ''}</span></a></li>`;
+    }).join('')}</ul>` : '<p class="empty">該当する仕様書はありません。短い型名や別の語句で検索してください。</p>');
+}
+
+function SetMenu(open)
+{
+    sidebar.classList.toggle('is-open',open);
+    overlay.classList.toggle('is-open',open);
+    document.body.classList.toggle('nav-open',open);
+    menuOpen.setAttribute('aria-expanded',String(open));
+    if (mobile.matches) sidebar.inert = !open;
+    if (open) search.focus();
+}
+
+function Render()
+{
+    const params = new URLSearchParams(location.hash.slice(1));
+    const requestedSource = params.get('page');
+    const legacyRoute = !pages.has(requestedSource) ? data.sourceRoutes[requestedSource] : null;
+    const page = pages.get(legacyRoute?.page ?? requestedSource);
+    const requestedSection = params.get('section');
+    const section = legacyRoute?.section ? legacyRoute.section + (requestedSection ? '-'+requestedSection : '') : requestedSection;
+    const category = categories.get(params.get('category'));
+    const query = params.get('search');
+    const isSearch = query !== null;
+    search.value = isSearch ? query : '';
+    document.getElementById('search-clear').hidden = !isSearch;
+    let title = '仕様書一覧';
+    if (page) { RenderPage(page); title = page.title; }
+    else if (category)
+    {
+        title = category.title;
+        content.innerHTML = Breadcrumbs(category.parent,category.title) + Header(title,category.description,`${allPages(category.id).length}ページ`) + CategorySections(category);
+    }
+    else if (isSearch) { RenderSearch(query); title = '検索結果'; }
+    else if (params.has('guide'))
+    {
+        title = '更新方法・参照先について';
+        content.innerHTML = Breadcrumbs(null,title) + Header(title,'Markdownが仕様の正本です。このHTMLは再生成して更新します。','閲覧ガイド') + `<div class="article"><h2>読む</h2><p>このHTMLを直接開くと、収録された${data.pages.length}ページ、全文検索、補助図解を通信なしで閲覧できます。ソースや正本への ↗ リンクはリポジトリ内のファイルを参照するため、HTMLを単体コピーした場合は利用できません。</p><h2>更新する</h2><ol><li>正本Markdownを編集します。</li><li>Node.jsが使える環境で <code>Tools\\SpecWiki\\Generate.cmd</code> を実行します。</li><li>生成された <code>Docs\\ImplementationWiki.html</code> を再読み込みします。</li></ol><p>文書を追加するときは、既存のSystemフォルダなら自動検出されます。新しい分類は <code>Tools/SpecWiki/catalog.json</code> に追加します。未分類の文書があれば生成を止めて対象を表示します。図解の元データは <code>Tools/SpecWiki/diagrams/</code> のSVGです。</p><h2>本文と補足</h2><p>本文はMarkdownから生成しています。「閲覧上の注記」と「補助図解」は本文と区別して表示します。設計参考資料や性能観測記録には過去の状態や未確定の案が含まれます。</p><h2>生成時に見つかった参照先不在</h2>${data.warnings.length ? '<p>以下は正本Markdown内の既存リンクです。本文はそのまま収録しています。</p><ul>'+data.warnings.map(warning=>'<li><code>'+escapeHtml(warning)+'</code></li>').join('')+'</ul>' : '<p>参照先ファイルの不在はありません。</p>'}<h2>変換器</h2><p>${escapeHtml(data.renderer)}。生成時だけ使用し、閲覧時には変換器もNode.jsも不要です。ライセンスは <a class="local-link" href="../Tools/SpecWiki/vendor/LICENSE">同梱LICENSE</a> を参照してください。</p></div>`;
+    }
+    else if (params.has('page') || params.has('category'))
+    {
+        title = 'ページが見つかりません';
+        content.innerHTML = Header(title,'URLのページ名またはカテゴリが現在の収録内容にありません。','') + '<p><a href="#home">仕様書一覧へ戻る</a></p>';
+    }
+    else
+    {
+        content.innerHTML = Header('仕様書一覧','実装の仕組みをたどり、型とデータの関係を確認するためのWikiです。','Hestia Engine',`<span>${data.pages.length}ページ</span><span>${Object.keys(data.diagrams).length}点の補助図解</span><span>オフライン閲覧</span>`) + '<p class="intro-note">実装仕様を中心に、開発ガイドと設計参考資料を分けて収録しています。左のツリーから分野を選ぶか、型名や本文を検索してください。</p>' + data.categories.filter(category => !category.parent).map(root => `<section class="category-section"><div class="category-heading"><h2><a href="${route({category:root.id})}">${escapeHtml(root.title)}</a></h2><span class="count">${allPages(root.id).length}ページ</span></div><p class="category-description">${escapeHtml(root.description)}</p>${CategorySections(root)}</section>`).join('');
+    }
+    document.title = title + ' | Hestia 仕様書';
+    document.querySelectorAll('[aria-current]').forEach(element => { if(sidebar.contains(element)) element.removeAttribute('aria-current'); });
+    const currentCategory = page?.category ?? category?.id;
+    const selectedSection = page?.sections.find(part => section === part.id || section?.startsWith(part.id+'-'))?.id ?? page?.sections[0]?.id;
+    for (const link of sidebar.querySelectorAll('a'))
+    {
+        const target = new URLSearchParams(link.hash.slice(1));
+        if ((page && target.get('page') === page.source && (!page.sections.length || target.get('section') === selectedSection)) || (!page && category && target.get('category') === category.id) || (!page && !category && !isSearch && !params.has('guide') && link.hash==='#home')) link.setAttribute('aria-current','page');
+    }
+    for(let selected = categories.get(currentCategory);selected;selected=categories.get(selected.parent)) sidebar.querySelector(`details[data-category="${selected.id}"]`).open = true;
+    requestAnimationFrame(() => {
+        if (section && document.getElementById('section-'+section)) document.getElementById('section-'+section).scrollIntoView();
+        else window.scrollTo(0,0);
+    });
+}
+
+document.getElementById('tree').innerHTML = data.categories.filter(category => !category.parent).map(CategoryTree).join('');
+document.getElementById('total-count').textContent = data.pages.length;
+document.getElementById('menu-close').addEventListener('click',()=>{SetMenu(false);menuOpen.focus();});
+menuOpen.addEventListener('click',()=>SetMenu(true));
+overlay.addEventListener('click',()=>{SetMenu(false);menuOpen.focus();});
+mobile.addEventListener('change',()=>{SetMenu(false);sidebar.inert=mobile.matches;});
+sidebar.inert=mobile.matches;
+document.addEventListener('keydown',event=>{
+    if(event.key==='Escape' && sidebar.classList.contains('is-open')) {SetMenu(false);menuOpen.focus();}
+    if(event.key==='Tab' && mobile.matches && sidebar.classList.contains('is-open'))
+    {
+        const controls=Array.from(sidebar.querySelectorAll('a,input,button,summary')).filter(element=>element.getClientRects().length && !element.hidden);
+        if(event.shiftKey && document.activeElement===controls[0]) {event.preventDefault();controls.at(-1).focus();}
+        else if(!event.shiftKey && document.activeElement===controls.at(-1)) {event.preventDefault();controls[0].focus();}
+    }
+});
+let searchTimer;
+function UpdateSearch()
+{
+    const query=search.value.trim();
+    const wasSearch=new URLSearchParams(location.hash.slice(1)).has('search');
+    history[wasSearch?'replaceState':'pushState'](null,'',route({search:query}));
+    Render();
+}
+search.addEventListener('input',()=>{
+    clearTimeout(searchTimer);
+    searchTimer=setTimeout(UpdateSearch,120);
+});
+search.addEventListener('keydown',event=>{
+    if(event.key==='Enter')
+    {
+        clearTimeout(searchTimer);
+        UpdateSearch();
+        if(mobile.matches){SetMenu(false);main.focus({preventScroll:true});}
+    }
+});
+document.getElementById('search-clear').addEventListener('click',()=>{clearTimeout(searchTimer);location.hash='home';search.value='';search.focus();});
+document.addEventListener('click',event=>{
+    const link=event.target.closest('a');
+    if(link?.classList.contains('skip-link')) {event.preventDefault();main.focus();return;}
+    if(link && link.getAttribute('href')?.startsWith('#'))
+    {
+        clearTimeout(searchTimer);
+        if(mobile.matches && sidebar.contains(link)){SetMenu(false);main.focus({preventScroll:true});}
+        if(link.hash===location.hash) Render();
+    }
+    const zoom=event.target.closest('[data-zoom]');
+    if(zoom)
+    {
+        const diagram=data.diagrams[zoom.dataset.zoom];
+        document.getElementById('zoom-title').textContent=diagram.title;
+        const image=document.getElementById('zoom-image');
+        image.alt=diagram.title;
+        image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(diagram.svg);
+        document.getElementById('zoom-dialog').showModal();
+    }
+});
+document.getElementById('zoom-close').addEventListener('click',()=>document.getElementById('zoom-dialog').close());
+addEventListener('hashchange',Render);
+Render();
+</script>
+</body>
+</html>

@@ -49,6 +49,8 @@
     <ClCompile Include="Source\AssetGraphicsTests.cpp" />
     <ClCompile Include="Source\TimeTests.cpp" />
     <ClCompile Include="Source\LogTests.cpp" />
+    <ClCompile Include="Source\ECSTests.cpp" />
+    <ClCompile Include="Source\TransformTests.cpp" />
     <ClCompile Include="Source\MathTests.cpp">
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\Common\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>

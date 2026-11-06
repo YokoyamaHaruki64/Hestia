@@ -18,7 +18,7 @@ Use Japanese for user-facing responses, questions, and Q&A. Keep the design docu
 
 - Place Engine-internal types and types shared across the DLL boundary in `Hestia`; place Game Script-facing facades in `HestiaGame`.
 - Make responsibilities, ownership, non-owning references, and destruction order clear. Expose only the operations callers need through public APIs and DLL boundaries.
-- Separate functions and distinct groups of work with blank lines. Add concise Japanese comments only where assumptions or rationale are difficult to understand from the code.
+- Separate functions and distinct groups of work with blank lines. Within a function, place a short Japanese comment before each meaningful stage to state its purpose. Explain the intent behind important ordering constraints, state changes, and failure handling where they occur.
 - Follow the repository-root `.editorconfig` for line endings, indentation, and encoding.
 
 ## Implementation Workflow
@@ -27,6 +27,7 @@ Use Japanese for user-facing responses, questions, and Q&A. Keep the design docu
 - Use the repository skill [hestia-implementation-flow](.agents/skills/hestia-implementation-flow/SKILL.md) when contract definition or delegated research/editing would help. If substantial work is expected, present the scope, proposed split, and model approach, then ask once before using the skill.
 - The skill and Task/Report files are optional for small direct changes.
 - Define the public API and the contract callers need first. Choose verification and TDD based on the change and its risk; do not require extra tests for every simple getter.
+- Before finishing an implementation change, reread the affected function bodies and check whether a reader can follow the stages and understand the reasons for key decisions. Judge the comments by what they explain. Do not count comment lines, enforce a comment-to-code ratio, or add filler to meet a quota.
 - For work selected for TDD, use RED → implementation → GREEN against public behavior and contract. For C++ tests, use `cpp-automated-testing` and the relevant `cpp-test-*` skills.
 - When reviewing `Test/RunTests.ps1` results, first read the run folder's `Summary.md`. If there are zero failures, stop there. Otherwise, read `Failures.md` in the same folder and investigate the cited files and lines. Read XML or individual logs only if `Failures.md` is missing or insufficient.
 
@@ -36,6 +37,7 @@ Use Japanese for user-facing responses, questions, and Q&A. Keep the design docu
 - Do not inspect or modify trailing whitespace; leave it to editor settings.
 - For documentation changes, use [VerifyDocs](Tools/Verify/VerifyDocs.cmd) to check links and conflict markers in the target scope. See the [usage guide](Tools/Verify/README.md) for arguments and scope.
 - For ordinary implementation checks, use [VerifyProject](Tools/Verify/VerifyProject.cmd) to build the target project's `Debug_Editor|x64` configuration; MSBuild builds its declared project dependencies. Use [BuildSolution](Tools/Verify/BuildSolution.cmd) for all four x64 configurations when the task explicitly covers them or configuration-specific behavior needs verification.
+- Run build and test commands (`VerifyProject`, `BuildSolution`, `RunTests`, and direct MSBuild invocations) outside the sandbox using command-scoped escalation and approval. See [BuildTroubleshooting](Docs/BuildTroubleshooting.md) for suspected environment-related causes and remedies.
 - At completion, distinguish behavior that was verified from behavior and scope that remain unverified.
 
 ## Commit Messages

@@ -25,3 +25,15 @@ DevelopNotes の基になった外部 `chaba0426/Develop_Notes` は [SourceNotes
 空ファイルの [Graphics.md](../Reference/HestiaDesign/Graphics/Graphics.md) には判断根拠がない。独立した `Runtime/` と `Editor/` ディレクトリはこのコピーに存在しない。Runtime は DevelopNotes の Application／Engine／GameRuntime、[ECS Plan2](../Reference/HestiaDesign/ECS/ECSArchitecture_Plan2.md) と描画資料、Editor は [Class/Editor](../Reference/HestiaDesign/DevelopNotes/Class/Editor.md) と Plan2 内の記述を参照する。コピーが参照する `SimpleArchitecture` などの未収録資料は判断根拠にしない。
 
 **実装リポジトリ向けの提案**：判断を確定する際は、該当資料の先頭にある更新注記と OpenQuestions の回答を読み、採用した範囲を [OpenDecisions](./OpenDecisions.md) に記録する。**未確定事項**：分野別資料の元コミットと未収録資料の正本は確認できていない。
+
+## ECS資料の追加と実装との差分
+
+[Class/ECS](../Reference/HestiaDesign/DevelopNotes/Class/ECS/ECSWorld.md)の9ファイルは上記31ファイルとは別の追加資料。2026-11-05に、HestiaDesignの正本 `DevelopNotesDesign/Class/ECS/` とコピーの内容一致を確認した。正本側のコミットIDは未記録であり、この照合を元コミットの特定として扱わない。
+
+コピーは概念設計のスケッチとして保持し、現在の型・API・失敗時の動作は[実装仕様書のECS](Implementation/ECS/README.md)を参照する。主な具体化・差分は以下。
+
+- ID方式をUTF-8登録名のFNV-1a 64bit、Chunkの既定値を16KiBとして実装した。
+- Registryの検索・登録はoptionalやポインタで不在・失敗を表し、草案にあるComponentのCopy構築操作は実装していない。
+- 構造変更では不足Componentを先に構築し、成功後に共通Componentをnoexcept Moveする。失敗時の逆Moveは行わない。
+- Process関数の例外は受付済み要求の反映後に現在のRunを中断する。Engineのphase接続とEndFrameの位置も実装仕様書に記載する。
+- OnAttach／OnStart、Script、Game向けAPI、初期構成指定の生成APIとPrefabは未実装。
