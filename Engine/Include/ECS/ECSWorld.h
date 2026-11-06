@@ -103,7 +103,7 @@ namespace Hestia
 
         /// @brief Entityを生成取消、または破棄予約する。
         /// @param handle 対象EntityのHandle
-        /// @note 生成待ちは取消し、生存中のEntityはEndFrameまで実体を保持する
+        /// @note 生成待ちは取消し、生存中のEntityと子孫は破棄予約してEndFrameまで実体を保持する
         void DestroyEntity(EntityHandle handle);
 
         /// @brief Handleの現在位置からEntityを取得する。
@@ -168,8 +168,8 @@ namespace Hestia
         bool ReserveSlot(EntityHandle& handle);     // 新しいHandleを予約してSlotを確保する
         void ReleaseSlot(uint32_t index) noexcept;  // Slotを解放してHandleを無効化する
 
-        EntitySlot* FindAliveSlot(EntityHandle handle) noexcept;                // 生存中のEntityに対応するSlotを返す。無効Handle・生成待ち・破棄予約済みはnullptr
-        const EntitySlot* FindAliveSlot(EntityHandle handle) const noexcept;    // 生存中のEntityに対応するSlotを返す。無効Handle・生成待ち・破棄予約済みはnullptr
+        EntitySlot* FindAliveSlot(EntityHandle handle) noexcept;                // AliveのSlotを返す。破棄予約済みも実体解放までは取得可能
+        const EntitySlot* FindAliveSlot(EntityHandle handle) const noexcept;    // 無効Handle・生成待ちはnullptr
 
         EntitySlot* FindSlot(EntityHandle handle) noexcept;                // 指定Handleに対応するSlotを返す。無効Handleはnullptr
         const EntitySlot* FindSlot(EntityHandle handle) const noexcept;    // 指定Handleに対応するSlotを返す。無効Handleはnullptr
@@ -197,8 +197,7 @@ namespace Hestia
         const ComponentRegistry* m_registry = nullptr;
         size_t m_chunkByteSize = 16 * 1024;
         std::optional<ComponentTypeId> m_nameType;
-        std::optional<ComponentTypeId> m_tagType;
-        std::optional<ComponentTypeId> m_layerType;
+        std::vector<ComponentTypeId> m_requiredTypes;
 
         std::vector<EntitySlot> m_entitySlots;  // EntitySlot
         std::vector<uint32_t> m_freeIndices;    // 空きSlotのindex

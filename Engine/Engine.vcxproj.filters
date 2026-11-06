@@ -232,4 +232,32 @@
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Include\Transform">
+      <UniqueIdentifier>{75e0a098-e072-4826-91ab-9d48865b407c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Game">
+      <UniqueIdentifier>{d8d63ad3-8e26-48a3-9eb5-4c75b5c10ef0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Transform">
+      <UniqueIdentifier>{1fba6bd2-452e-4d5e-9035-97965d0a1671}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Include\Transform\TransformData.h">
+      <Filter>Include\Transform</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Transform\TransformProcess.h">
+      <Filter>Include\Transform</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Game\Transform.h">
+      <Filter>Include\Game</Filter>
+    </ClInclude>
+    <ClCompile Include="Source\Transform\TransformProcess.cpp">
+      <Filter>Source\Transform</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Transform\TransformFacade.cpp">
+      <Filter>Source\Transform</Filter>
+    </ClCompile>
+  </ItemGroup>
 </Project>

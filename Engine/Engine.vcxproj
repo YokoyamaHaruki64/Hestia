@@ -33,6 +33,8 @@
     <ClCompile Include="Source\ECS\ECSProcess.cpp" />
     <ClCompile Include="Source\ECS\ECSWorld.cpp" />
     <ClCompile Include="Source\ECS\ECSSystem.cpp" />
+    <ClCompile Include="Source\Transform\TransformProcess.cpp" />
+    <ClCompile Include="Source\Transform\TransformFacade.cpp" />
     <ClCompile Include="Source\Asset\AssetType.cpp" />
     <ClCompile Include="Source\Asset\AssetDB.cpp" />
     <ClCompile Include="Source\Asset\AssetLoader.cpp" />
@@ -67,6 +69,9 @@
     <ClInclude Include="Include\ECS\ECSProcessExecution.h" />
     <ClInclude Include="Include\ECS\ECSWorld.h" />
     <ClInclude Include="Include\ECS\ECSSystem.h" />
+    <ClInclude Include="Include\Transform\TransformData.h" />
+    <ClInclude Include="Include\Transform\TransformProcess.h" />
+    <ClInclude Include="Include\Game\Transform.h" />
     <ClInclude Include="Include\Asset\AssetHandle.h" />
     <ClInclude Include="Include\Asset\AssetType.h" />
     <ClInclude Include="Include\Asset\AssetDB.h" />

@@ -22,6 +22,7 @@
 #include "ECS/Component.h"
 #include "ECS/Entity.h"
 #include "Log/Logger.h"
+#include "Transform/TransformData.h"
 
 namespace Hestia
 {
@@ -96,14 +97,32 @@ namespace Hestia
         if (m_isInitialized || m_chunkByteSize == 0)
             return false;
 
-        // 必須ComponentのIDを取得
+        // Entity生成とComponent取り外し保護で共用する必須IDを集める
         m_nameType = m_registry->GetId<Name>();
-        m_tagType = m_registry->GetId<Tag>();
-        m_layerType = m_registry->GetId<Layer>();
+        const std::optional<ComponentTypeId> required[] =
+        {
+            m_nameType,
+            m_registry->GetId<Tag>(),
+            m_registry->GetId<Layer>(),
+            m_registry->GetId<Transform>(),
+            m_registry->GetId<TransformCache>(),
+            m_registry->GetId<TransformHierarchy>()
+        };
 
-        if (!m_nameType || !m_tagType || !m_layerType)
-            return false;
+        m_requiredTypes.clear();
 
+        for (const auto id : required)
+        {
+            if (!id)
+                return false;
+
+            m_requiredTypes.push_back(*id);
+        }
+
+        // 取り外し時に必須かどうかを二分探索できるよう、ID順に揃える
+        std::sort(m_requiredTypes.begin(), m_requiredTypes.end());
+
+        // 必須型が揃ってからWorldの使用を許可する
         m_isInitialized = true;
         m_acceptsProcessRegistration = true;
         return true;
@@ -130,8 +149,7 @@ namespace Hestia
         m_entitySlots.clear();
         m_freeIndices.clear();
         m_nameType.reset();
-        m_tagType.reset();
-        m_layerType.reset();
+        m_requiredTypes.clear();
         m_isInitialized = false;
         m_acceptsProcessRegistration = false;
     }
@@ -331,7 +349,7 @@ namespace Hestia
 
         // 必須Componentだけで構成するArchetypeを取得する
         ArchetypeSignature signature;
-        signature.m_types = { *m_nameType, *m_tagType, *m_layerType };
+        signature.m_types = m_requiredTypes;
 
         Archetype* archetype = GetOrCreateArchetype(std::move(signature));
         if (archetype == nullptr)
@@ -425,10 +443,32 @@ namespace Hestia
         if (entity->IsDestroy())
             return;
 
-        // 破棄要求の保存が成功してからEntityに予約bitを立てる
-        m_pendingDestroy.reserve(m_pendingDestroy.size() + 1);
-        m_pendingDestroy.push_back(handle);
-        entity->MarkDestroy();
+        // 実体を辿れる間に、まだ破棄予約していない子孫を集める
+        std::vector<EntityHandle> subtree{ handle };
+        for (size_t index = 0; index < subtree.size(); ++index)
+        {
+            const auto* hierarchy = GetComponent<TransformHierarchy>(subtree[index]);
+            for (EntityHandle child : hierarchy->m_children)
+            {
+                const Entity* childEntity = GetEntity(child);
+                if (childEntity != nullptr && !childEntity->IsDestroy())
+                    subtree.push_back(child);
+            }
+        }
+
+        // 一部だけ予約される事態を避けるため、全件分のqueue容量を先に確保する
+        const size_t requiredCapacity = m_pendingDestroy.size() + subtree.size();
+        const size_t pendingCapacity = m_pendingDestroy.capacity();
+        if (requiredCapacity > pendingCapacity)
+            m_pendingDestroy.reserve(std::max(requiredCapacity, pendingCapacity + pendingCapacity / 2));
+
+        // 集めたEntityを一括で予約し、実体の解放はEndFrameまで遅らせる
+        for (EntityHandle descendant : subtree)
+        {
+            m_pendingDestroy.push_back(descendant);
+            EntitySlot* descendantSlot = FindAliveSlot(descendant);
+            descendantSlot->m_chunk->GetEntity(descendantSlot->m_row)->MarkDestroy();
+        }
     }
 
     void ECSWorld::AddProcess(EntityHandle handle, ECSProcessInvoke process)
@@ -617,7 +657,7 @@ namespace Hestia
                 for( const ECSProcessComponent& component : other->GetComponents())
                 {
                     const ComponentTypeId type = component.m_type;
-                    if (type == *m_nameType || type == *m_tagType || type == *m_layerType)
+                    if (std::binary_search(m_requiredTypes.begin(), m_requiredTypes.end(), type))
                         continue;
 
                     protectedTypes.insert(type);
@@ -629,7 +669,7 @@ namespace Hestia
             for(auto& component : requirements)
             {
                 const ComponentTypeId type = component.m_type;
-                if (type == *m_nameType || type == *m_tagType || type == *m_layerType)
+                if (std::binary_search(m_requiredTypes.begin(), m_requiredTypes.end(), type))
                     continue;
 
                 if (protectedTypes.contains(type))
@@ -779,6 +819,28 @@ namespace Hestia
     void ECSWorld::FlushDestroy()
     {
         ScopedFlag applyingChanges(m_isApplyingChanges);
+
+        // 破棄順やSwap Removeに依存しないよう、rowの解放前に親の子一覧から外す
+        const ComponentTypeId hierarchyType = *m_registry->GetId<TransformHierarchy>();
+        for (EntityHandle handle : m_pendingDestroy)
+        {
+            EntitySlot* slot = FindAliveSlot(handle);
+            if (slot == nullptr)
+                continue;
+
+            const auto* hierarchy = static_cast<TransformHierarchy*>(slot->m_chunk->GetElement(
+                slot->m_archetype->FindColumn(hierarchyType), slot->m_row));
+            EntitySlot* parent = FindAliveSlot(hierarchy->m_parent);
+            if (parent == nullptr)
+                continue;
+
+            auto* parentHierarchy = static_cast<TransformHierarchy*>(parent->m_chunk->GetElement(
+                parent->m_archetype->FindColumn(hierarchyType), parent->m_row));
+            auto& children = parentHierarchy->m_children;
+            children.erase(std::remove(children.begin(), children.end(), handle), children.end());
+        }
+
+        // 下のfor文は軽量化対象
 
         // EndFrameで破棄予約を確定し、Component、row、Slotの順に解放する
         for (EntityHandle handle : m_pendingDestroy)

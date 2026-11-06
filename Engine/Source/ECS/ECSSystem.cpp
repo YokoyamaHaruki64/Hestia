@@ -15,6 +15,7 @@
 
 #include "ECS/Component.h"
 #include "Log/Logger.h"
+#include "Transform/TransformProcess.h"
 
 namespace Hestia
 {
@@ -65,6 +66,7 @@ namespace Hestia
             return false;
         }
 
+
         m_isInitializing = false;
         m_isInitialized = true;
         return true;
@@ -72,23 +74,35 @@ namespace Hestia
 
     bool ECSSystem::RegisterECS()
     {
-        // 全Archetypeで必要になる標準Componentを先にRegistryへ登録する
-        std::vector<std::optional<ComponentTypeId>> ids;
+        // 簡略化用マクロとusing宣言
+        using enum ECSProcessPhase;
 
-        ids.push_back(RegisterComponent<Name>("Hestia::Name"));
-        ids.push_back(RegisterComponent<Tag>("Hestia::Tag"));
-        ids.push_back(RegisterComponent<Layer>("Hestia::Layer"));
+#define REGISTER_COMPONENT(Type, TypeName) \
+    if (!RegisterComponent<Type>(TypeName).has_value()) { \
+        Logger::Error("ECS: Failed to Component Register: " #Type); \
+        return false; \
+    }
 
+#define REGISTER_PROCESS(Func, Phase) \
+    if (!m_world.RegisterProcess<Func>(Phase)) { \
+        Logger::Error("ECS: Failed to Process Register: " #Func); \
+        return false; \
+    }
 
-        // IDの登録結果照合
-        for (const auto& id : ids)
-        {
-            if (!id.has_value())
-            {
-                Logger::Error("ECSSystem::RegisterECS failed to register a standard Component");
-                return false;
-            }
-        }
+        // Component登録
+        REGISTER_COMPONENT(Name, "Hestia::Name");
+        REGISTER_COMPONENT(Tag, "Hestia::Tag");
+        REGISTER_COMPONENT(Layer, "Hestia::Layer");
+        REGISTER_COMPONENT(Transform, "Hestia::Transform");
+        REGISTER_COMPONENT(TransformCache, "Hestia::TransformCache");
+        REGISTER_COMPONENT(TransformHierarchy, "Hestia::TransformHierarchy");
+
+        // Process登録
+        REGISTER_PROCESS(&TransformProcess::Run, PreRender);
+
+        // マクロ解除
+#undef REGISTER_COMPONENT
+#undef REGISTER_PROCESS
 
         return true;
     }

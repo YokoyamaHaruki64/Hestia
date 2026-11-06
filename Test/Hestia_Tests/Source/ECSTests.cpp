@@ -23,6 +23,7 @@
 #include "ECS/ComponentRegistry.h"
 #include "ECS/ECSSystem.h"
 #include "ECS/ECSWorld.h"
+#include "Transform/TransformData.h"
 
 namespace
 {
@@ -190,7 +191,7 @@ namespace
     class ECSFixture : public testing::Test
     {
     protected:
-        ECSFixture() : m_world(m_registry, 256)
+        ECSFixture() : m_world(m_registry, 1024)
         {
         }
 
@@ -199,6 +200,9 @@ namespace
             ASSERT_TRUE(m_registry.Register<Hestia::Name>("Hestia::Name"));
             ASSERT_TRUE(m_registry.Register<Hestia::Tag>("Hestia::Tag"));
             ASSERT_TRUE(m_registry.Register<Hestia::Layer>("Hestia::Layer"));
+            ASSERT_TRUE(m_registry.Register<Hestia::Transform>("Hestia::Transform"));
+            ASSERT_TRUE(m_registry.Register<Hestia::TransformCache>("Hestia::TransformCache"));
+            ASSERT_TRUE(m_registry.Register<Hestia::TransformHierarchy>("Hestia::TransformHierarchy"));
             ASSERT_TRUE(m_registry.Register<Position>("Test::Position"));
             ASSERT_TRUE(m_registry.Register<Velocity>("Test::Velocity"));
             ASSERT_TRUE(m_registry.Register<OverAligned>("Test::OverAligned"));
@@ -403,6 +407,36 @@ namespace
         EXPECT_EQ(m_world.GetComponent<Velocity>(handle), nullptr);
     }
 
+    TEST_F(ECSFixture, MandatoryTransformAndHierarchySurviveArchetypeMigration)
+    {
+        RecordProperty("target", "ECSWorld::MoveEntity / mandatory Transform lifetime");
+        ASSERT_TRUE(m_world.RegisterProcess<&VisitPosition>(Hestia::ECSProcessPhase::Update));
+        const auto parent = m_world.CreateEntity();
+        const auto child = m_world.CreateEntity();
+
+        // World単体fixtureの既知の初期状態として整合した親子関係を作る
+        m_world.GetComponent<Hestia::TransformHierarchy>(parent)->m_children.push_back(child);
+        m_world.GetComponent<Hestia::TransformHierarchy>(child)->m_parent = parent;
+        m_world.GetComponent<Hestia::Transform>(child)->m_localPosition = { 1, 2, 3 };
+        m_world.GetComponent<Hestia::Transform>(child)->m_localMatrix.Translate(1, 2, 3);
+        m_world.GetComponent<Hestia::TransformCache>(child)->m_worldMatrix.Translate(1, 2, 3);
+        m_world.AddProcess(child, Hestia::ProcessKey<&VisitPosition>);
+        m_world.AddProcess(parent, Hestia::ProcessKey<&VisitPosition>);
+
+        EXPECT_EQ(m_world.GetComponent<Hestia::Transform>(child)->m_localPosition, Vector3(1, 2, 3));
+        EXPECT_FLOAT_EQ(m_world.GetComponent<Hestia::TransformCache>(child)->m_worldMatrix[3][1], 2);
+        EXPECT_EQ(m_world.GetComponent<Hestia::TransformHierarchy>(child)->m_parent, parent);
+        ASSERT_EQ(m_world.GetComponent<Hestia::TransformHierarchy>(parent)->m_children.size(), 1u);
+        EXPECT_EQ(m_world.GetComponent<Hestia::TransformHierarchy>(parent)->m_children.front(), child);
+        m_world.RemoveProcess(child, Hestia::ProcessKey<&VisitPosition>);
+        EXPECT_EQ(m_world.GetComponent<Hestia::TransformHierarchy>(child)->m_parent, parent);
+
+        m_world.DestroyEntity(parent);
+        EXPECT_TRUE(m_world.GetEntity(child)->IsDestroy());
+        m_world.EndFrame();
+        EXPECT_EQ(m_world.GetEntity(child), nullptr);
+    }
+
     TEST_F(ECSFixture, ConstructionFailureLeavesSourceEntityUnchanged)
     {
         ASSERT_TRUE(m_world.RegisterProcess<&VisitPosition>(Hestia::ECSProcessPhase::Update));
@@ -431,8 +465,11 @@ namespace
             *m_registry.GetId<Hestia::Name>(),
             *m_registry.GetId<Hestia::Tag>(),
             *m_registry.GetId<Hestia::Layer>(),
+            *m_registry.GetId<Hestia::Transform>(),
+            *m_registry.GetId<Hestia::TransformCache>(),
+            *m_registry.GetId<Hestia::TransformHierarchy>(),
             *m_registry.GetId<Position>() };
-        const Hestia::Archetype layout(m_registry, signature, 256);
+        const Hestia::Archetype layout(m_registry, signature, 1024);
         const size_t expectedChunks = (12 + layout.GetLayout().m_capacity - 1) /
             layout.GetLayout().m_capacity;
         for (int index = 0; index < 12; ++index)

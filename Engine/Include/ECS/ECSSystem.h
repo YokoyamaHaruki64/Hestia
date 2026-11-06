@@ -30,6 +30,8 @@ namespace Hestia
     /// @brief Engineが所有するComponentRegistryと単一ECSWorldの入口。
     class ECSSystem
     {
+        friend class TransformProcess;
+
     public:
         ECSSystem();
         ~ECSSystem();
@@ -63,6 +65,7 @@ namespace Hestia
 
         /// @brief Entityを生成取消または破棄予約する。
         /// @param handle 対象EntityのHandle
+        /// @note Transformの子孫も同時に破棄予約する。実体の解放はEndFrame
         static void DestroyEntity(EntityHandle handle);
 
         /// @brief Handleに対応するEntityを借用する。
