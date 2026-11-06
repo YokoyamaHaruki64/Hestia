@@ -8,12 +8,12 @@
 | --- | --- | --- |
 | `GraphicsSystem` | Backendの所有、描画提出、View/Projection設定、Asset Uploadの入口 | [GraphicsSystem.h](../../../Engine/Include/Graphics/GraphicsSystem.h) |
 | `DX12Backend` | DX12資源・コマンド記録・同期・Presentを管理 | [DX12Backend.h](../../../Engine/Include/Graphics/DX12Backend.h) |
-| `FrameContext` | フレームごとのallocator、command list、Frame定数Buffer、shader-visible SRV heapとFence値 | 同上、Backend内部 |
+| `FrameContext` | フレームごとのallocator、command list、Frame定数Buffer、Material定数のUploadページ、shader-visible SRV heapとFence値 | 同上、Backend内部 |
 | `WaitingResource` | 転送用ResourceのComPtrと解放可能になるFence値 | 同上 |
 | `UploadContextPool` | Upload用allocator/listを管理し、空きがなければ追加。初期数16 | 同上 |
 | `UploadContext` | allocator、command list、使用中Fence値、空き状態 | 同上、Pool内部 |
 | `RootParameterIndex` | Frame/Object/Material CBV、System/Material SRVのRoot引数番号 | 同上 |
-| `PerMaterialCB` | map済み定数Buffer、Material名のcache、登録index。要素strideは256byte境界 | 同上 |
+| `PerMaterialCB` | 従来描画用のmap済み定数Buffer、LegacyMaterial名のcache、登録index。要素strideは256byte境界 | 同上 |
 | `PerObjectCB` | Object定数Bufferとmap先。要素strideは256byte境界 | 同上 |
 | `GPUResourceStorage<TAsset,TGpuResource>` | HandleとGPU Resourceの対応を所有。Registerで重複indexを拒否、Getで世代も照合、Clearで全解放 | [GPUResourceStorage.h](../../../Engine/Include/Graphics/GPUResourceStorage.h) |
 | `GPUResourceStorage::Slot` | Resourceとgenerationを保持する内部slot | 同上 |
@@ -28,15 +28,15 @@
 | `DXDepthStencil` | Resource、DSV、depth/stencilそれぞれのSRV index |
 | `DXTexture` | Texture Resourceとmaster SRV index。CPU Textureに対応 |
 | `DXVertexBuffer` | ResourceとD3D12_VERTEX_BUFFER_VIEW |
-| `DXMesh` | Stream別Vertex Buffer、index Resource/view、頂点・index数 |
+| `DXMesh` | Stream別Vertex Buffer、index Resource/view、頂点・index数、SubMeshの描画範囲 |
 | `PerFrameConstants` | View、Projection、cameraPosition、経過時間 |
 | `PerObjectConstants` | worldMatrix |
-| `Material` | 名前、diffuse/specular/emission色、roughness、metallic、Texture Handle配列。Defaultは白diffuse/specular、黒emission、roughness 0.5、metallic 0 |
-| `MaterialConstants` | Materialの数値・色部分。Texture Handleや名前を含まないGPU定数 |
-| `RenderData` | worldMatrix、Material値、Mesh Handle、VS/PS pathのwstring_view。MeshやShader文字列の所有者ではない |
+| `LegacyMaterial` | 従来CSO用の名前、diffuse/specular/emission色、roughness、metallic、Texture Handle配列。Defaultは白diffuse/specular、黒emission、roughness 0.5、metallic 0 |
+| `MaterialConstants` | LegacyMaterialの数値・色部分。Texture Handleや名前を含まないGPU定数 |
+| `RenderData` | worldMatrix、Mesh Handle、MaterialSlot順のMaterial Handle列。列が空ならLegacyMaterial値とVS/PS pathのwstring_viewを使う |
 
 ## HLSLの型
 
-[Common.hlsl](../../../Shaders/Common.hlsl) の `VSInput` は位置・UV・法線・接線・色、`PSInput_Default` はclip位置・world位置・UV・法線・接線・色、`PSInput_Sprite` はclip位置・UV・色を持つ。現在のSprite shaderが使う受け渡しはPSInput_Sprite。
+`Common.hlsl` の `VSInput` は位置・UV・法線・接線・色、`PSInput_Default` はclip位置・world位置・UV・法線・接線・色、`PSInput_Sprite` はclip位置・UV・色を持つ。現在のSprite shaderが使う受け渡しはPSInput_Sprite。
 
-`PerFrameBuffer`、`PerObjectBuffer`、`PerMaterialBuffer` はそれぞれC++側のFrame/Object/Material定数に対応するcbuffer。CPU側のメモリ配置とShaderの行列格納規約の整合が必要であり、C++型を変更する際はShader側も確認する。
+`PerFrameBuffer`、`PerObjectBuffer`、`PerMaterialBuffer` はそれぞれC++側のFrame/Object/従来Material定数に対応するcbuffer。MaterialShader経路では `PerMaterial` がPropertyの共通CBufferとなる。 [MaterialShaderの実装仕様](MaterialShader.md)

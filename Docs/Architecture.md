@@ -39,6 +39,8 @@ Engine内部のArchetype ECSはECSSystemと単一ECSWorldとして実装した�
 
 Asset の候補設計では `AssetHandle<T>` は非所有の識別子、CPU Asset は Cache が所有し、DX12 Resource／Descriptor は Graphics 側が所有する。Material の正本は型付き値、GPU Layout の正本は Reflection とする。これらは **分野別の設計草案** であり、DevelopNotes の `AssetAPI` 公開操作としては未採用である。[AssetType](../Reference/HestiaDesign/Asset/AssetType.md)、[Material](../Reference/HestiaDesign/Asset/Material.md)、[Class/AssetSystem](../Reference/HestiaDesign/DevelopNotes/Class/AssetSystem.md)
 
+Engine 内部で採用した Material と Forward 描画の契約は [MaterialShader の設計](Design/MaterialShader.md)、現在の接続は [実装仕様](Implementation/Graphics/MaterialShader.md) を参照する。
+
 ## 初期化、更新、終了
 
 1. **資料に明記された内容**：Application が Window を作り、Engine.dll をロードして `GetEngineAPI` を取得する。`ApplicationAPI` を作成し、`EngineAPI::Create` から初期化済み EngineHandle を受け取る。[Application](../Reference/HestiaDesign/DevelopNotes/Class/Application.md)
