@@ -15,11 +15,15 @@
 #include "Graphics/DX12Backend.h"
 #include "D3DX12/d3dx12.h"
 
+#include "Asset/AssetSystem.h"
+#include "Asset/Material.h"
+#include "Asset/MaterialShader.h"
 #include "Time/TimeSystem.h"
 #include "Log/LogSystem.h"
 
 #include <dxgidebug.h>
 #include <cstddef>
+#include <cstring>
 #include <limits>
 
 using namespace Hestia;
@@ -514,7 +518,7 @@ bool DX12Backend::Initialize(HWND hWnd, int width, int height)
 			D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
 			MAX_MATERIAL_TEXTURE,
 			0,
-			1,
+			MATERIAL_TEXTURE_REGISTER_SPACE,
 			D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND
 		}
 	};
@@ -722,6 +726,10 @@ void DX12Backend::Finalize()
         frame.srvVisibleHeap.Reset();
         frame.fenceValue = 0;
         frame.visibleSRVCount = 0;
+        for (auto& page : frame.materialConstantPages)
+            page.resource->Unmap(0, nullptr);
+        frame.materialConstantPages.clear();
+        frame.materialConstantOffset = 0;
     }
 
     for (auto& sceneColor : m_sceneColors)
@@ -735,6 +743,7 @@ void DX12Backend::Finalize()
     m_PerMaterialCB.maxIndex = 0;
     m_CurrentPipelineState.Reset();
     m_PipelineCache.clear();
+    m_materialPipelines.clear();
     m_RootSignature.Reset();
     m_RTVHeap.Reset();
     m_DSVHeap.Reset();
@@ -859,12 +868,16 @@ bool DX12Backend::BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4
 	cmd->SetGraphicsRootConstantBufferView(0, frame.perFrameCB->GetGPUVirtualAddress());
 
 	frame.visibleSRVCount = 0;
+    frame.materialConstantOffset = 0;
     m_currentFrameData.swap(renderData);
     return true;
 }
 
 void Hestia::DX12Backend::Draw()
 {
+    constexpr VertexStream legacyStreams[] = {
+        VertexStream::Position, VertexStream::NormalTangent, VertexStream::PrimaryTexCoord, VertexStream::Color
+    };
     long long bindObjectTime = 0;
     long long bindMaterialTime = 0;
     long long setupPipelineTime = 0;
@@ -873,6 +886,8 @@ void Hestia::DX12Backend::Draw()
     for (size_t i = 0; i < m_currentFrameData.size(); ++i)
     {
         RenderData& data = m_currentFrameData[i];
+        if (!data.materials.empty())
+            continue;
         const DXMesh* mesh = m_gpuMeshes.Get(data.mesh);
         if (!mesh)
             continue;
@@ -903,7 +918,7 @@ void Hestia::DX12Backend::Draw()
             continue;
 
         start = std::chrono::high_resolution_clock::now();
-        DrawMesh(*mesh);
+        DrawMesh(*mesh, { 0, mesh->m_indexCount, 0 }, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, legacyStreams);
         end = std::chrono::high_resolution_clock::now();
         duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         drawMeshTime += duration.count();
@@ -913,7 +928,62 @@ void Hestia::DX12Backend::Draw()
     Logger::Log("BindMaterial Time: " + std::to_string(bindMaterialTime) + " microseconds");
     Logger::Log("SetupPipeline Time: " + std::to_string(setupPipelineTime) + " microseconds");
     Logger::Log("DrawMesh Time: " + std::to_string(drawMeshTime) + " microseconds");
+
+    // Forward Pass を描画 Phase 順に実行し、同じ Phase 内では提出順を維持
+    for (const RenderPhase phase : { RenderPhase::Opaque, RenderPhase::Masked, RenderPhase::Transparent })
+    {
+        for (std::size_t index = 0; index < m_currentFrameData.size(); ++index)
+        {
+            const auto& data = m_currentFrameData[index];
+            if (data.materials.empty())
+                continue;
+            if (const auto* mesh = m_gpuMeshes.Get(data.mesh))
+                DrawMaterialMesh(data, *mesh, index, phase);
+        }
+    }
 }
+
+void DX12Backend::DrawMaterialMesh(const RenderData& data, const DXMesh& mesh, std::size_t objectIndex,
+    RenderPhase phase)
+{
+    auto& frame = m_FrameContexts[m_frameIndex];
+    for (const auto& subMesh : mesh.m_subMeshes)
+    {
+        // SubMesh の Slot を登録済み Material に解決
+        if (subMesh.m_materialSlot >= data.materials.size())
+            continue;
+        const auto* material = AssetSystem::Get(data.materials[subMesh.m_materialSlot]);
+        const auto* shader = material ? material->GetShader() : nullptr;
+        if (!shader)
+            continue;
+
+        // 現在の Phase に属する Pass だけを描画し、各 Draw に独立した Material 領域を使う
+        const auto passes = shader->GetPasses();
+        for (std::size_t index = 0; index < passes.size(); ++index)
+        {
+            const auto& pass = passes[index];
+            if (pass.m_info.m_renderType != RenderType::Forward || pass.m_info.m_renderPhase != phase)
+                continue;
+            if (frame.visibleSRVCount >= MAX_DRAW_COUNT)
+                return;
+
+            auto* pipeline = GetMaterialPipeline(*shader, index);
+            if (!pipeline || !BindMaterial(*material, *shader))
+                continue;
+
+            BindObject(data.worldMatrix, objectIndex);
+            frame.commandList->SetPipelineState(pipeline);
+            auto topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+            if (pass.m_pipeline.m_topology == PrimitiveTopologyType::Line)
+                topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+            else if (pass.m_pipeline.m_topology == PrimitiveTopologyType::Point)
+                topology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
+
+            DrawMesh(mesh, subMesh, topology, pass.m_pipeline.m_requiredVertexStreams);
+        }
+    }
+}
+
 void DX12Backend::EndDraw()
 {
 	ID3D12GraphicsCommandList* commandList = m_FrameContexts[m_frameIndex].commandList.Get();
@@ -1145,12 +1215,7 @@ bool DX12Backend::EnsureDefaultStreamBuffers(size_t vertexCount)
     if (m_defaultStreamCapacities[normalIndex] < vertexCount ||
         !m_defaultStreamBuffers[normalIndex].m_resource)
     {
-        std::vector<NormalTangentVertex> vertices(vertexCount);
-        for (auto& vertex : vertices)
-        {
-            vertex.m_normal = { 0.0f, 0.0f, -1.0f };
-            vertex.m_tangent = { 1.0f, 0.0f, 0.0f, 1.0f };
-        }
+        const std::vector<NormalTangentVertex> vertices(vertexCount);
 
         DXVertexBuffer buffer;
         if (!CreateVertexStreamBuffer(VertexStream::NormalTangent, vertices.data(), vertexCount, buffer))
@@ -1532,6 +1597,73 @@ void DX12Backend::BindMaterial(const LegacyMaterial& material)
     CommitMaterialTexture();
 }
 
+D3D12_GPU_VIRTUAL_ADDRESS DX12Backend::UploadMaterialConstants(std::span<const std::byte> bytes)
+{
+    // Root CBV のアドレスを 256 バイトに揃え、ページ内の連続領域を確保
+    constexpr std::size_t pageSize = 1u << 20;
+    if (bytes.size() > D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16u)
+    {
+        Logger::Error("Material constant buffer exceeds the DX12 limit");
+        return 0;
+    }
+
+    const auto size = Align256(static_cast<UINT>(std::max<std::size_t>(bytes.size(), 1)));
+    auto& frame = m_FrameContexts[m_frameIndex];
+    auto offset = frame.materialConstantOffset;
+    if (offset % pageSize + size > pageSize)
+        offset += pageSize - offset % pageSize;
+
+    // 記録済みの Draw が参照するページを保持し、足りないときだけ次のページを追加
+    if (offset / pageSize == frame.materialConstantPages.size())
+    {
+        FrameContext::MaterialConstantPage page;
+        const CD3DX12_HEAP_PROPERTIES heap(D3D12_HEAP_TYPE_UPLOAD);
+        const auto desc = CD3DX12_RESOURCE_DESC::Buffer(pageSize);
+        const D3D12_RANGE readRange{ 0, 0 };
+        void* mappedData = nullptr;
+        if (FAILED(m_Device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc,
+                D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(page.resource.GetAddressOf()))) ||
+            FAILED(page.resource->Map(0, &readRange, &mappedData)))
+        {
+            Logger::Error("Could not allocate the Material constant buffer");
+            return 0;
+        }
+        page.mappedData = static_cast<std::byte*>(mappedData);
+        frame.materialConstantPages.push_back(std::move(page));
+    }
+
+    // CPU 側のパック済みデータを転送し、次の Draw が上書きしないように進める
+    const auto& page = frame.materialConstantPages[offset / pageSize];
+    auto* destination = page.mappedData + offset % pageSize;
+    if (!bytes.empty())
+        std::memcpy(destination, bytes.data(), bytes.size());
+    std::memset(destination + bytes.size(), 0, size - bytes.size());
+    frame.materialConstantOffset = offset + size;
+    return page.resource->GetGPUVirtualAddress() + offset % pageSize;
+}
+
+bool DX12Backend::BindMaterial(const Material& material, const MaterialShader& shader)
+{
+    // 共通 CBuffer と Reflection が割り当てた Texture Slot をルートシグネチャに設定
+    const auto address = UploadMaterialConstants(material.GetConstantBuffer());
+    if (address == 0)
+        return false;
+    m_FrameContexts[m_frameIndex].commandList->SetGraphicsRootConstantBufferView(
+        static_cast<UINT>(RootParameterIndex::PerMaterialCBV), address);
+
+    m_BoundMaterialSRVs.fill(static_cast<int>(m_whiteTexture.m_masterSRVIndex));
+    for (const auto& property : shader.GetProperties())
+    {
+        if (property.m_resourceSlot >= MAX_MATERIAL_TEXTURE)
+            continue;
+        if (const auto* texture = m_gpuTextures.Get(material.GetTexture(property.m_name)))
+            m_BoundMaterialSRVs[property.m_resourceSlot] = static_cast<int>(texture->m_masterSRVIndex);
+    }
+
+    CommitMaterialTexture();
+    return true;
+}
+
 // 4 microseconds の固定負荷
 void DX12Backend::CommitMaterialTexture()
 {
@@ -1621,15 +1753,22 @@ bool DX12Backend::CreateMesh(const Mesh& mesh, DXMesh& result)
 
     result.m_vertexCount = static_cast<uint32_t>(vertexCount);
     result.m_indexCount = static_cast<uint32_t>(mesh.m_indices.size());
+    // CPU Mesh と同じ描画範囲を GPU Mesh に保持。SubMesh 未指定時は Slot 0 にまとめる
+    result.m_subMeshes.resize(mesh.GetSubMeshCount());
+    for (std::size_t index = 0; index < result.m_subMeshes.size(); ++index)
+        mesh.GetSubMesh(index, result.m_subMeshes[index]);
     return true;
 }
 
-void DX12Backend::DrawMesh(const DXMesh& mesh)
+void DX12Backend::DrawMesh(const DXMesh& mesh, const SubMesh& range, D3D_PRIMITIVE_TOPOLOGY topology,
+    std::span<const VertexStream> streams)
 {
     std::array<D3D12_VERTEX_BUFFER_VIEW, static_cast<size_t>(VertexStream::Count)> views{};
 
-    for (size_t i = 0; i < views.size(); ++i)
+    // 要求された Stream のスロットだけを埋め、Mesh にないものは共通バッファで補う
+    for (const VertexStream vertexStream : streams)
     {
+        const auto i = static_cast<std::size_t>(vertexStream);
         const DXVertexBuffer* stream = &mesh.m_streams[i];
         if (!stream->m_resource)
         {
@@ -1640,10 +1779,10 @@ void DX12Backend::DrawMesh(const DXMesh& mesh)
     }
 
     auto* commandList = m_FrameContexts[m_frameIndex].commandList.Get();
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->IASetPrimitiveTopology(topology);
     commandList->IASetVertexBuffers(0, static_cast<UINT>(views.size()), views.data());
     commandList->IASetIndexBuffer(&mesh.m_indexView);
-    commandList->DrawIndexedInstanced(mesh.m_indexCount, 1, 0, 0, 0);
+    commandList->DrawIndexedInstanced(range.m_indexCount, 1, range.m_firstIndex, 0, 0);
 }
 
 bool DX12Backend::WaitForGPU()

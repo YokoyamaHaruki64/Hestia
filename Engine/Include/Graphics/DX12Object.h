@@ -112,6 +112,7 @@ namespace Hestia
         D3D12_INDEX_BUFFER_VIEW m_indexView{};
         uint32_t m_vertexCount = 0;
         uint32_t m_indexCount = 0;
+        std::vector<SubMesh> m_subMeshes;
     };
 
     struct MaterialConstants
@@ -131,6 +132,10 @@ namespace Hestia
 
         std::wstring_view vsShaderPath;
         std::wstring_view psShaderPath;
+
+        /// @brief SubMesh の MaterialSlot 順。空なら従来の Material と CSO を使う
+        /// @note 無効な Slot または描画時に解決できない Material の SubMesh は描画しない
+        std::vector<AssetHandle<Material>> materials;
     };
 }
 

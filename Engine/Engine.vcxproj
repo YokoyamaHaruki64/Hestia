@@ -45,6 +45,7 @@
     <ClCompile Include="Source\Asset\AssetSystem.cpp" />
     <ClCompile Include="Source\Asset\AssetAPI.cpp" />
     <ClCompile Include="Source\Graphics\DX12Backend.cpp" />
+    <ClCompile Include="Source\Graphics\DX12MaterialPipeline.cpp" />
     <ClCompile Include="Source\Graphics\DXMaterialShaderCompiler.cpp" />
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp" />
     <ClCompile Include="Source\Time\TimeSystem.cpp" />

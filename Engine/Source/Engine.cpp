@@ -13,6 +13,8 @@
 #include "pch.h"
 #include "Engine.h"
 
+#include "Asset/Material.h"
+
 namespace Hestia
 {
     Engine::~Engine()
@@ -87,15 +89,25 @@ namespace Hestia
             return false;
         }
 
-        // Texture は Engine 初期化時に一度だけ解決
-        m_debugMaterial = LegacyMaterial::Default();
+        // デバッグ描画に使う MaterialShader と Texture を初期化時に解決
+        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Unlit"));
         const auto textureHandle = m_assetAPI.Load<Texture>("TextureTest");
-        if (!textureHandle.IsValid())
+        if (!shader || !textureHandle.IsValid())
         {
             Finalize();
             return false;
         }
-        m_debugMaterial.textures.push_back(textureHandle);
+
+        // Slot 0 の Material を登録し、フレーム提出では Handle を渡す
+        auto material = std::make_unique<Material>();
+        material->SetShader(shader);
+        if (material->SetTexture("_BaseMap", textureHandle))
+            m_debugMaterial = AssetSystem::Register<Material>("DebugPlaneMaterial", material.release());
+        if (!m_debugMaterial.IsValid())
+        {
+            Finalize();
+            return false;
+        }
         return true;
     }
 
@@ -137,7 +149,7 @@ namespace Hestia
             m_timeInitialized = false;
         }
 
-        m_debugMaterial = LegacyMaterial{};
+        m_debugMaterial = {};
         m_debugMesh = {};
         m_applicationAPI = ApplicationAPI{};
 
@@ -189,11 +201,9 @@ namespace Hestia
         for (int i = 0; i < 10000; ++i)
         {
             GraphicsSystem::Submit(RenderData{
-                worldMatrix,
-                m_debugMaterial,
-                m_debugMesh,
-                L"../Build/Shader/VS_Sprite.cso",
-                L"../Build/Shader/PS_Sprite.cso"
+                .worldMatrix = worldMatrix,
+                .mesh = m_debugMesh,
+                .materials = { m_debugMaterial }
             });
         }
 

@@ -35,6 +35,7 @@ using Microsoft::WRL::ComPtr;
 #include <array>
 #include <queue>
 #include <cstdint>
+#include <span>
 
 #include "HMath.h"
 #include "Graphics/DX12Object.h"
@@ -42,17 +43,27 @@ using Microsoft::WRL::ComPtr;
 
 namespace Hestia
 {
+    class MaterialShader;
+    enum class RenderPhase;
 
     class DX12Backend
     {
         struct FrameContext
         {
+            struct MaterialConstantPage
+            {
+                ComPtr<ID3D12Resource> resource;
+                std::byte* mappedData = nullptr;
+            };
+
             ComPtr<ID3D12CommandAllocator> commandAllocator;
             ComPtr<ID3D12GraphicsCommandList> commandList;
             ComPtr<ID3D12Resource> perFrameCB;
             ComPtr<ID3D12DescriptorHeap> srvVisibleHeap; // フレームごとのSRVヒープ
 
             int visibleSRVCount = 0;	// SRVをコミットした数
+            std::vector<MaterialConstantPage> materialConstantPages;
+            std::size_t materialConstantOffset = 0;
 
             UINT64 fenceValue = 0; // フレームのフェンス値
         };
@@ -201,7 +212,7 @@ namespace Hestia
 
         DXDepthStencil m_DepthStencil;
 
-        DXTexture m_whiteTexture; // Material の既定 Texture
+        DXTexture m_whiteTexture; // LegacyMaterial の既定 Texture
         GPUResourceStorage<Mesh, DXMesh> m_gpuMeshes;
         GPUResourceStorage<Texture, DXTexture> m_gpuTextures;
         std::array<DXVertexBuffer, static_cast<size_t>(VertexStream::Count)> m_defaultStreamBuffers;
@@ -219,6 +230,7 @@ namespace Hestia
         // Pipeline State
         ComPtr<ID3D12RootSignature> m_RootSignature;
         std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> m_PipelineCache;
+        std::unordered_map<uint64_t, std::vector<ComPtr<ID3D12PipelineState>>> m_materialPipelines;
         ComPtr<ID3D12PipelineState> m_CurrentPipelineState;
         D3D12_INPUT_LAYOUT_DESC m_InputLayoutDesc{};
 
@@ -314,7 +326,12 @@ namespace Hestia
         }
 
         bool WaitForGPU();
-        void DrawMesh(const DXMesh& mesh);
+        void DrawMesh(const DXMesh& mesh, const SubMesh& range, D3D_PRIMITIVE_TOPOLOGY topology,
+            std::span<const VertexStream> streams);
+        void DrawMaterialMesh(const RenderData& data, const DXMesh& mesh, std::size_t objectIndex, RenderPhase phase);
+        ID3D12PipelineState* GetMaterialPipeline(const MaterialShader& shader, std::size_t passIndex);
+        D3D12_GPU_VIRTUAL_ADDRESS UploadMaterialConstants(std::span<const std::byte> bytes);
+        bool BindMaterial(const Material& material, const MaterialShader& shader);
         bool CreateMesh(const Mesh& mesh, DXMesh& result);
         bool EnsureDefaultStreamBuffers(size_t vertexCount);
         bool CreateVertexStreamBuffer(

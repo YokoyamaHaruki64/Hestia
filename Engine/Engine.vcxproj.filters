@@ -98,6 +98,9 @@
     <ClCompile Include="Source\Graphics\DX12Backend.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\DX12MaterialPipeline.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Graphics\DXMaterialShaderCompiler.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>

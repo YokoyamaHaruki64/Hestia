@@ -71,7 +71,7 @@ namespace Hestia
         AssetAPI m_assetAPI;
         ECSSystem m_ecs;
 
-        LegacyMaterial m_debugMaterial;
+        AssetHandle<Material> m_debugMaterial;
         AssetHandle<Mesh> m_debugMesh;
 
         bool m_logInitialized = false;
