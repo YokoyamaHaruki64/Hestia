@@ -177,7 +177,6 @@ namespace Hestia
         static constexpr int MAX_MASTER_SRV_COUNT = 2048; // 最大SRV数
 
         static constexpr int MAX_SYSTEM_TEXTURE = 16; // システムで使用するテクスチャの数
-        static constexpr int MAX_MATERIAL_TEXTURE = 16; // シェーダーにバインドするテクスチャの数
 
         static constexpr int MAX_MATERIAL_COUNT = 1 << 15; // 最大マテリアル数(32768)
         static constexpr int MAX_OBJECT_COUNT = 1 << 16; // 最大オブジェクト数(65536)
@@ -397,7 +396,7 @@ namespace Hestia
             std::filesystem::path psPath);
 
         void BindObject(const Matrix4x4_SIMD& worldMatrix, size_t objectIndex);
-        void BindMaterial(const Material& material);
+        void BindMaterial(const LegacyMaterial& material);
         void CommitMaterialTexture();
         ID3D12GraphicsCommandList* GetCommandList()
         {

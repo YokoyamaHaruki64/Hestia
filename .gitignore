@@ -14,6 +14,10 @@ Build/
 
 # GameAssets
 /Assets/**
+!/Assets/Shaders/
+!/Assets/Shaders/**/
+!/Assets/Shaders/**/*.hlsl
+!/Assets/Shaders/**/*.matsh
 
 # Ignore Reference
 Reference/DX12/

@@ -38,6 +38,7 @@ cbuffer PerObjectBuffer : register(b1)
     float4x4 world;
 };
 
+#ifndef HESTIA_MATERIAL_PROPERTIES_DEFINED
 cbuffer PerMaterialBuffer : register(b2)
 {
     float4 color;
@@ -46,6 +47,7 @@ cbuffer PerMaterialBuffer : register(b2)
     float roughness;
     float metallic;
 };
+#endif
 
 SamplerState WrapLinearSampler : register(s0);
 SamplerState ClampLinearSampler : register(s1);

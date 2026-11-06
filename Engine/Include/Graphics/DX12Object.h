@@ -35,6 +35,12 @@ using Microsoft::WRL::ComPtr;
 
 namespace Hestia
 {
+    class Material;
+
+    static constexpr uint32_t MATERIAL_CONSTANT_BUFFER_REGISTER = 2;
+    static constexpr uint32_t MATERIAL_TEXTURE_REGISTER_SPACE = 1;
+    static constexpr int MAX_MATERIAL_TEXTURE = 16;
+
     struct DXRenderTexture
     {
         ComPtr<ID3D12Resource> resource;
@@ -69,7 +75,7 @@ namespace Hestia
         Matrix4x4_SIMD worldMatrix;
     };
 
-    struct Material
+    struct LegacyMaterial
     {
         std::string name;
 
@@ -80,9 +86,9 @@ namespace Hestia
         float metallic = 0.0f;
         std::vector<AssetHandle<Texture>> textures;
 
-        static Material Default()
+        static LegacyMaterial Default()
         {
-            Material mat;
+            LegacyMaterial mat;
             mat.name = "Default";
             mat.diffuseColor = Color::White();
             mat.specularColor = Color::White();
@@ -120,7 +126,7 @@ namespace Hestia
     struct RenderData
     {
         Matrix4x4_SIMD worldMatrix = Matrix4x4_SIMD::Identity();
-        Material material;
+        LegacyMaterial material;
         AssetHandle<Mesh> mesh;
 
         std::wstring_view vsShaderPath;

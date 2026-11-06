@@ -1,0 +1,44 @@
+MaterialShader "Hestia/Unlit"
+{
+    RenderType = Forward;
+
+    Properties
+    {
+        _Tint ("Tint", Color) = (1, 1, 1, 1)
+        _Scale ("Scale", Float) = 1
+        _Unused ("Reserved", Float) = 2
+        _BaseMap ("Base Map", Texture2D) = "white"
+    }
+
+    SHARED_HLSL_BEGIN
+    #include "../Common.hlsl"
+
+    struct UnlitInput
+    {
+        float3 position : POSITION;
+        float2 uv : TEXCOORD0;
+    };
+
+    PSInput_Sprite VSMain(UnlitInput input)
+    {
+        PSInput_Sprite output;
+        output.position = mul(mul(mul(float4(input.position * _Scale, 1.0f), world), view), proj);
+        output.uv = input.uv;
+        output.color = 1;
+        return output;
+    }
+    SHARED_HLSL_END
+
+    Pass "Unlit"
+    {
+        HLSL_BEGIN
+        #pragma vertex VSMain
+        #pragma pixel PSMain
+
+        float4 PSMain(PSInput_Sprite input) : SV_Target0
+        {
+            return _BaseMap.Sample(WrapLinearSampler, input.uv) * _Tint;
+        }
+        HLSL_END
+    }
+}

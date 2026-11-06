@@ -36,11 +36,16 @@
     <ClCompile Include="Source\Transform\TransformProcess.cpp" />
     <ClCompile Include="Source\Transform\TransformFacade.cpp" />
     <ClCompile Include="Source\Asset\AssetType.cpp" />
+    <ClCompile Include="Source\Asset\Material.cpp" />
+    <ClCompile Include="Source\Asset\MaterialShader.cpp" />
+    <ClCompile Include="Source\Asset\MaterialShaderLoader.cpp" />
+    <ClCompile Include="Source\Asset\MaterialShaderParser.cpp" />
     <ClCompile Include="Source\Asset\AssetDB.cpp" />
     <ClCompile Include="Source\Asset\AssetLoader.cpp" />
     <ClCompile Include="Source\Asset\AssetSystem.cpp" />
     <ClCompile Include="Source\Asset\AssetAPI.cpp" />
     <ClCompile Include="Source\Graphics\DX12Backend.cpp" />
+    <ClCompile Include="Source\Graphics\DXMaterialShaderCompiler.cpp" />
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp" />
     <ClCompile Include="Source\Time\TimeSystem.cpp" />
     <ClCompile Include="Source\Time\TimeAPI.cpp" />
@@ -74,6 +79,10 @@
     <ClInclude Include="Include\Game\Transform.h" />
     <ClInclude Include="Include\Asset\AssetHandle.h" />
     <ClInclude Include="Include\Asset\AssetType.h" />
+    <ClInclude Include="Include\Asset\Material.h" />
+    <ClInclude Include="Include\Asset\MaterialProperty.h" />
+    <ClInclude Include="Include\Asset\MaterialShader.h" />
+    <ClInclude Include="Include\Asset\MaterialShaderParser.h" />
     <ClInclude Include="Include\Asset\AssetDB.h" />
     <ClInclude Include="Include\Asset\AssetStorage.h" />
     <ClInclude Include="Include\Asset\AssetLoader.h" />
@@ -81,6 +90,7 @@
     <ClInclude Include="Include\Asset\AssetAPI.h" />
     <ClInclude Include="Include\Graphics\DX12Backend.h" />
     <ClInclude Include="Include\Graphics\DX12Object.h" />
+    <ClInclude Include="Include\Graphics\DXMaterialShaderCompiler.h" />
     <ClInclude Include="Include\Graphics\GraphicsSystem.h" />
     <ClInclude Include="Include\Graphics\GPUResourceStorage.h" />
     <ClInclude Include="Include\Time\TimeData.h" />
@@ -95,66 +105,50 @@
     <ClInclude Include="Include\pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\Shaders\Common.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\PS_Sprite.hlsl">
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">PSMain</EntryPointName>
+    <None Include="..\Assets\Shaders\Common.hlsl" />
+    <FxCompile Include="..\Assets\Shaders\PS_Sprite.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">false</ExcludedFromBuild>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">6.0</ShaderModel>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Test|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Test|x64'">6.0</ShaderModel>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">6.0</ShaderModel>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">6.0</ShaderModel>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">PSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">Pixel</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">6.0</ShaderModel>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">$(SolutionDir)Shaders\Build\%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Test|x64'">$(SolutionDir)Shaders\Build\%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">$(SolutionDir)Shaders\Build\%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">$(SolutionDir)Shaders\Build\%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">$(SolutionDir)Shaders\Build\%(Filename).cso</ObjectFileOutput>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">-Zpr %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Test|x64'">-Zpr %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">-Zpr %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">-Zpr %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">-Zpr %(AdditionalOptions)</AdditionalOptions>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">PSMain</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Test|x64'">PSMain</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">PSMain</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">PSMain</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">PSMain</EntryPointName>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">$(SolutionDir)Build\Shader\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Test|x64'">$(SolutionDir)Build\Shader\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">$(SolutionDir)Build\Shader\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">$(SolutionDir)Build\Shader\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">$(SolutionDir)Build\Shader\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
-    <FxCompile Include="..\Shaders\VS_Sprite.hlsl">
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">$(SolutionDir)Shaders\Build\%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Test|x64'">$(SolutionDir)Shaders\Build\%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">$(SolutionDir)Shaders\Build\%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">$(SolutionDir)Shaders\Build\%(Filename).cso</ObjectFileOutput>
-      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">$(SolutionDir)Shaders\Build\%(Filename).cso</ObjectFileOutput>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">VSMain</EntryPointName>
+    <FxCompile Include="..\Assets\Shaders\VS_Sprite.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">false</ExcludedFromBuild>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">Vertex</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">6.0</ShaderModel>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Test|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Vertex</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Test|x64'">6.0</ShaderModel>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">Vertex</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">6.0</ShaderModel>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">Vertex</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">6.0</ShaderModel>
-      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">VSMain</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">Vertex</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">6.0</ShaderModel>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">-Zpr %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Test|x64'">-Zpr %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">-Zpr %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">-Zpr %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">-Zpr %(AdditionalOptions)</AdditionalOptions>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">VSMain</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Test|x64'">VSMain</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">VSMain</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">VSMain</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">VSMain</EntryPointName>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">$(SolutionDir)Build\Shader\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Test|x64'">$(SolutionDir)Build\Shader\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">$(SolutionDir)Build\Shader\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">$(SolutionDir)Build\Shader\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">$(SolutionDir)Build\Shader\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -335,6 +329,18 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="CopyDxcRuntime" AfterTargets="Build">
+    <PropertyGroup>
+      <DxcRuntimeDir>$(OutDir)</DxcRuntimeDir>
+      <DxcRuntimeDir Condition="'$(Configuration)'=='Test'">$(HestiaTestBinDir)</DxcRuntimeDir>
+      <DxcSdkBinDir>$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\</DxcSdkBinDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <DxcRuntime Include="$(DxcSdkBinDir)dxcompiler.dll" />
+      <DxcRuntime Include="$(DxcSdkBinDir)dxil.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DxcRuntime)" DestinationFolder="$(DxcRuntimeDir)" SkipUnchangedFiles="true" />
+  </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>

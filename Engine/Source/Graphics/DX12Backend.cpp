@@ -1477,7 +1477,7 @@ void DX12Backend::BindObject(const Matrix4x4_SIMD& worldMatrix, size_t objectInd
 			m_PerObjectCB.constantBuffer->GetGPUVirtualAddress() + offset);
 }
 
-void DX12Backend::BindMaterial(const Material& material)
+void DX12Backend::BindMaterial(const LegacyMaterial& material)
 {
     auto it = m_PerMaterialCB.materialCache.find(material.name);
     int materialIndex = 0;

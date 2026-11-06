@@ -88,7 +88,7 @@ namespace Hestia
         }
 
         // Texture は Engine 初期化時に一度だけ解決
-        m_debugMaterial = Material::Default();
+        m_debugMaterial = LegacyMaterial::Default();
         const auto textureHandle = m_assetAPI.Load<Texture>("TextureTest");
         if (!textureHandle.IsValid())
         {
@@ -137,7 +137,7 @@ namespace Hestia
             m_timeInitialized = false;
         }
 
-        m_debugMaterial = Material{};
+        m_debugMaterial = LegacyMaterial{};
         m_debugMesh = {};
         m_applicationAPI = ApplicationAPI{};
 
@@ -192,8 +192,8 @@ namespace Hestia
                 worldMatrix,
                 m_debugMaterial,
                 m_debugMesh,
-                L"../Shaders/Build/VS_Sprite.cso",
-                L"../Shaders/Build/PS_Sprite.cso"
+                L"../Build/Shader/VS_Sprite.cso",
+                L"../Build/Shader/PS_Sprite.cso"
             });
         }
 
