@@ -14,9 +14,7 @@
 #define _ASSET_TYPE_H_
 
 #include <array>
-#include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <vector>
 
 #include "Asset/AssetHandle.h"
@@ -28,7 +26,8 @@ namespace Hestia
     enum class AssetType
     {
         Mesh,
-        Texture
+        Texture,
+        MaterialShader
     };
 
     /// @brief Mesh の頂点位置。
@@ -37,11 +36,11 @@ namespace Hestia
         std::array<float, 3> m_position{};
     };
 
-    /// @brief Mesh の法線と接線。
+    /// @brief Mesh の法線と接線。片方だけ設定する場合も、もう片方は既定値で埋まる。
     struct NormalTangentVertex
     {
-        std::array<float, 3> m_normal{};
-        std::array<float, 4> m_tangent{};
+        std::array<float, 3> m_normal{ 0.0f, 0.0f, -1.0f };
+        std::array<float, 4> m_tangent{ 1.0f, 0.0f, 0.0f, 1.0f };
     };
 
     /// @brief Mesh の第一 UV 座標。
@@ -86,7 +85,15 @@ namespace Hestia
         bool HESTIA_ENGINE_API IsValid() const;
     };
 
-    /// @brief 静的 Mesh の CPU 頂点 Stream と Index を保持する。
+    /// @brief Mesh 全体で共有する Index 配列内の描画範囲と MaterialSlot
+    struct SubMesh
+    {
+        uint32_t m_firstIndex = 0;
+        uint32_t m_indexCount = 0;
+        uint32_t m_materialSlot = 0;
+    };
+
+    /// @brief 静的 Mesh の CPU 頂点 Stream、Index と SubMesh を保持する
     struct Mesh
     {
         AssetHandle<Mesh> m_handle;
@@ -95,10 +102,22 @@ namespace Hestia
         std::vector<PrimaryTexCoordVertex> m_primaryTexCoords;
         std::vector<ColorVertex> m_colors;
         std::vector<uint32_t> m_indices;
+        std::vector<SubMesh> m_subMeshes;
 
-        /// @brief 必須 Stream、属性長、Index、GPU Buffer サイズの妥当性を確認する。
+        /// @brief 必須 Stream、属性長、Index、GPU Buffer サイズ、SubMesh の範囲を検証する
         /// @return 全ての Mesh 契約を満たす場合: true。
         bool HESTIA_ENGINE_API IsValid() const;
+
+        /// @brief 描画範囲の数を返す。SubMesh 未指定の場合は全 Index を一つの範囲とする
+        /// @pre IsValid() が true
+        std::size_t HESTIA_ENGINE_API GetSubMeshCount() const;
+
+        /// @brief 描画範囲を取得する。SubMesh 未指定の場合は全 Index を MaterialSlot 0 に対応付ける
+        /// @param index 取得する SubMesh の添字
+        /// @param out 成功時に描画範囲を格納する
+        /// @return 取得成功: true / 添字が範囲外: false
+        /// @pre IsValid() が true
+        bool HESTIA_ENGINE_API GetSubMesh(std::size_t index, SubMesh& out) const;
     };
 
     /// @brief GPU Texture の参照情報だけを持つ CPU Asset。

@@ -29,6 +29,7 @@ namespace Hestia
             {
             case AssetType::Mesh:
             case AssetType::Texture:
+            case AssetType::MaterialShader:
                 break;
             default:
                 return false;
