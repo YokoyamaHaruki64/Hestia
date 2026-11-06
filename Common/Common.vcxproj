@@ -30,6 +30,7 @@
     <ClInclude Include="Include\Math\Vector4.h" />
     <ClInclude Include="Include\Math\Vector4_SIMD.h" />
     <ClInclude Include="Include\Random.h" />
+    <ClInclude Include="Include\StringUtils.h" />
     <ClInclude Include="Include\WindowsHeaders.h" />
   </ItemGroup>
   <ItemGroup>

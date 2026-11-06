@@ -64,6 +64,9 @@
     <ClInclude Include="Include\Random.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="Include\StringUtils.h">
+      <Filter>Include</Filter>
+    </ClInclude>
     <ClInclude Include="Include\WindowsHeaders.h">
       <Filter>Include</Filter>
     </ClInclude>
