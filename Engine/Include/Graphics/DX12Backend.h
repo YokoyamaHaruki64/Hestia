@@ -354,6 +354,12 @@ namespace Hestia
         bool Initialize(HWND hWnd, int width, int height);
         void Finalize();
         void Update();
+
+        /// @brief SIMD版のViewとProjectionを使ってフレームの描画記録を開始する
+        bool BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4_SIMD& view,
+            const Matrix4x4_SIMD& projection);
+
+        /// @brief 通常版の行列を受け取り、SIMD版の描画開始処理へ渡す
         bool BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4& view, const Matrix4x4& projection);
         void Draw();
         void EndDraw();

@@ -36,9 +36,10 @@ namespace Hestia
         if (!backend->Initialize(hWnd, width, height))
             return false;
 
-        m_view = Matrix4x4::Identity();
-        m_projection = Matrix4x4::OrthographicLH(
-            static_cast<float>(width), static_cast<float>(height), 0.1f, 100.0f);
+        // 既存の正射影生成を使い、初期値を作るときだけSIMD版へ変換する
+        m_view = Matrix4x4_SIMD::Identity();
+        m_projection = Matrix4x4_SIMD::Load(Matrix4x4::OrthographicLH(
+            static_cast<float>(width), static_cast<float>(height), 0.1f, 100.0f));
 
         m_renderQueue.reserve(DX12Backend::MAX_DRAW_COUNT);
         m_DX12Backend = std::move(backend);
@@ -70,16 +71,26 @@ namespace Hestia
         return true;
     }
 
-    void GraphicsSystem::SetView(const Matrix4x4& view)
+    void GraphicsSystem::SetView(const Matrix4x4_SIMD& view)
     {
         if (s_instance)
             s_instance->m_view = view;
     }
 
-    void GraphicsSystem::SetProj(const Matrix4x4& projection)
+    void GraphicsSystem::SetProj(const Matrix4x4_SIMD& projection)
     {
         if (s_instance)
             s_instance->m_projection = projection;
+    }
+
+    Matrix4x4_SIMD GraphicsSystem::GetView()
+    {
+        return s_instance ? s_instance->m_view : Matrix4x4_SIMD::Identity();
+    }
+
+    Matrix4x4_SIMD GraphicsSystem::GetProjection()
+    {
+        return s_instance ? s_instance->m_projection : Matrix4x4_SIMD::Identity();
     }
 
     bool GraphicsSystem::UploadMesh(AssetHandle<Mesh> handle, const Mesh& mesh)

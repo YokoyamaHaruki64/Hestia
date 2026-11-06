@@ -783,6 +783,12 @@ void DX12Backend::Update()
 
 bool DX12Backend::BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4& view, const Matrix4x4& projection)
 {
+    return BeginDraw(renderData, Matrix4x4_SIMD::Load(view), Matrix4x4_SIMD::Load(projection));
+}
+
+bool DX12Backend::BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4_SIMD& view,
+    const Matrix4x4_SIMD& projection)
+{
     if (!m_IsInitialized || renderData.size() > MAX_DRAW_COUNT)
         return false;
 
@@ -844,8 +850,8 @@ bool DX12Backend::BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4
     }
 
 	PerFrameConstants* perFrameConstants = static_cast<PerFrameConstants*>(pData);
-    perFrameConstants->viewMatrix = Matrix4x4_SIMD::Load(view);
-    perFrameConstants->projectionMatrix = Matrix4x4_SIMD::Load(projection);
+    perFrameConstants->viewMatrix = view;
+    perFrameConstants->projectionMatrix = projection;
 	perFrameConstants->cameraPosition = Vector3(0.0f, 0.0f, 0.0f);
 	perFrameConstants->time = TimeSystem::TotalTime();
 	frame.perFrameCB->Unmap(0, nullptr);

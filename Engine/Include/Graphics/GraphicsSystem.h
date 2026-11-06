@@ -32,10 +32,20 @@ namespace Hestia
         static bool Submit(RenderData renderData);
 
         /// @brief 次の Render が使用する行ベクトル用 View を設定する
-        static void SetView(const Matrix4x4& view);
+        static void SetView(const Matrix4x4_SIMD& view);
 
         /// @brief 次の Render が使用する行ベクトル用 Projection を設定する
-        static void SetProj(const Matrix4x4& projection);
+        static void SetProj(const Matrix4x4_SIMD& projection);
+
+        /// @brief 次の Render が使用する行ベクトル用 View を値で取得する
+        /// @note Camera導入までの暫定取得口（スタブ）
+        /// @return 初期化済み: 保持中のView / 未初期化: 単位行列
+        static Matrix4x4_SIMD GetView();
+
+        /// @brief 次の Render が使用する行ベクトル用 Projection を値で取得する
+        /// @note Camera導入までの暫定取得口（スタブ）
+        /// @return 初期化済み: 保持中のProjection / 未初期化: 単位行列
+        static Matrix4x4_SIMD GetProjection();
 
         /// @brief Mesh の頂点 Stream と Index を GPU へ登録
         /// @param handle CPU Mesh と共有する Handle
@@ -78,8 +88,8 @@ namespace Hestia
         inline static GraphicsSystem* s_instance = nullptr;
 
         std::vector<RenderData> m_renderQueue;
-        Matrix4x4 m_view = Matrix4x4::Identity();
-        Matrix4x4 m_projection = Matrix4x4::Identity();
+        Matrix4x4_SIMD m_view = Matrix4x4_SIMD::Identity();
+        Matrix4x4_SIMD m_projection = Matrix4x4_SIMD::Identity();
 
         std::unique_ptr<DX12Backend> m_DX12Backend;
     };
