@@ -604,6 +604,52 @@ namespace
         EXPECT_FALSE(invalidArchetype.IsValid());
     }
 
+    TEST_F(ECSFixture, CreationFillsActiveChunkBeforeReusingFreedRows)
+    {
+        Hestia::ArchetypeSignature signature;
+        signature.m_types = {
+            *m_registry.GetId<Hestia::Name>(),
+            *m_registry.GetId<Hestia::Tag>(),
+            *m_registry.GetId<Hestia::Layer>(),
+            *m_registry.GetId<Hestia::Transform>(),
+            *m_registry.GetId<Hestia::TransformCache>(),
+            *m_registry.GetId<Hestia::TransformHierarchy>() };
+        const Hestia::Archetype layout(m_registry, signature, 1024);
+        const size_t capacity = layout.GetLayout().m_capacity;
+        ASSERT_GE(capacity, 3u);
+
+        std::vector<Hestia::EntityHandle> firstChunk;
+        for (size_t row = 0; row < capacity; ++row)
+        {
+            firstChunk.push_back(m_world.CreateEntity());
+            ASSERT_TRUE(firstChunk.back().IsValid());
+        }
+        const auto activeFirst = m_world.CreateEntity();
+        ASSERT_TRUE(activeFirst.IsValid());
+
+        m_world.DestroyEntity(firstChunk[capacity - 1]);
+        m_world.DestroyEntity(firstChunk[capacity - 2]);
+        m_world.EndFrame();
+
+        const auto* activeStart = m_world.GetEntity(activeFirst);
+        ASSERT_NE(activeStart, nullptr);
+        for (size_t row = 1; row < capacity; ++row)
+        {
+            const auto created = m_world.CreateEntity();
+            ASSERT_EQ(m_world.GetEntity(created), activeStart + row);
+        }
+
+        const auto* firstStart = m_world.GetEntity(firstChunk.front());
+        ASSERT_NE(firstStart, nullptr);
+        for (size_t row = capacity - 2; row < capacity; ++row)
+        {
+            const auto created = m_world.CreateEntity();
+            ASSERT_EQ(m_world.GetEntity(created), firstStart + row);
+        }
+        const auto nextChunkFirst = m_world.CreateEntity();
+        EXPECT_NE(m_world.GetEntity(nextChunkFirst), nullptr);
+    }
+
     TEST_F(ECSFixture, SwapRemoveKeepsMovedEntityResolvable)
     {
         ASSERT_TRUE(m_world.RegisterProcess<&VisitPosition>(Hestia::ECSProcessPhase::Update));

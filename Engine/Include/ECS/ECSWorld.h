@@ -189,7 +189,7 @@ namespace Hestia
             bool add);
 
         bool MoveEntity(EntitySlot& slot, Archetype& destination);
-        void RemoveRow(Chunk& chunk, size_t row) noexcept;
+        void RemoveRow(Archetype& archetype, Chunk& chunk, size_t row) noexcept;
         void FlushChanges();
         void FlushDestroy();
         void AppendChange(ChangeRequest request);

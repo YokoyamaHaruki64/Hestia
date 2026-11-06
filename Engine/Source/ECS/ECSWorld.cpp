@@ -226,8 +226,12 @@ namespace Hestia
         if (m_entitySlots.size() > MAX_ENTITY_INDEX)
             return false;
 
-        // 予約Slotを後でnoexceptに返却できるよう、返却先の容量を先に確保する
-        m_freeIndices.reserve(m_entitySlots.size() + 1);
+        // Slot返却時に確保せず済むよう、必要な容量をSlot追加より先にまとめて確保する
+        const size_t requiredCapacity = m_entitySlots.size() + 1;
+        const size_t freeCapacity = m_freeIndices.capacity();
+        if (freeCapacity < requiredCapacity)
+            m_freeIndices.reserve(std::max(requiredCapacity, freeCapacity + freeCapacity / 2));
+
         const uint32_t index = static_cast<uint32_t>(m_entitySlots.size());
         m_entitySlots.emplace_back();
         EntitySlot& slot = m_entitySlots.back();
@@ -760,11 +764,11 @@ namespace Hestia
         slot.m_row = destinationRow;
 
         sourceChunk->DestroyEntity(sourceRow);
-        RemoveRow(*sourceChunk, sourceRow);
+        RemoveRow(*sourceArchetype, *sourceChunk, sourceRow);
         return true;
     }
 
-    void ECSWorld::RemoveRow(Chunk& chunk, size_t row) noexcept
+    void ECSWorld::RemoveRow(Archetype& archetype, Chunk& chunk, size_t row) noexcept
     {
         const size_t lastRow = chunk.GetEntityCount() - 1;
         if (row != lastRow)
@@ -787,7 +791,7 @@ namespace Hestia
             movedSlot->m_row = row;
         }
 
-        chunk.RemoveLastRow();
+        archetype.RemoveLastRow(chunk);
     }
 
     void ECSWorld::FlushChanges()
@@ -862,9 +866,9 @@ namespace Hestia
 
             // Entityの削除
             chunk->DestroyEntity(row);
-
+            auto start = std::chrono::high_resolution_clock::now();
             // rowをSwap Removeして、削除したEntityのSlotを解放する
-            RemoveRow(*chunk, row);
+            RemoveRow(*slot->m_archetype, *chunk, row);
             ReleaseSlot(handle.m_index);
         }
 

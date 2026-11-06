@@ -86,11 +86,18 @@ namespace Hestia
         size_t FindColumn(ComponentTypeId id) const noexcept;
 
     private:
+        friend class ECSWorld;
+
+        void RemoveLastRow(Chunk& chunk) noexcept;
+
         const ComponentRegistry* m_registry = nullptr;
         ArchetypeSignature m_signature;
         ChunkLayout m_layout;
         std::vector<std::unique_ptr<Chunk>> m_chunks;
         bool m_isValid = false;
+
+        Chunk* m_activeChunk = nullptr;         // 現在の書き込み先
+        std::vector<Chunk*> m_writableChunks;   // 書き込み先以外で空き行を持つChunk
     };
 }
 

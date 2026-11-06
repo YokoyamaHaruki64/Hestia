@@ -148,17 +148,40 @@ namespace Hestia
     {
         assert(m_isValid);
 
-        // 既存Chunkを先に再利用し、満杯の場合だけ保存領域を追加する
-        for (const auto& chunk : m_chunks)
+        // ActiveChunkが存在し、空き行がある場合はそれを返す
+        if (m_activeChunk != nullptr &&
+            m_activeChunk->GetEntityCount() < m_activeChunk->GetCapacity())
+            return *m_activeChunk;
+
+        // ActiveChunkが満杯になった場合は、空き行を持つChunkを探す
+        if (!m_writableChunks.empty())
         {
-            if (chunk->GetEntityCount() < chunk->GetCapacity())
-                return *chunk;
+            // ActiveChunkを更新して返す
+            m_activeChunk = m_writableChunks.back();
+            m_writableChunks.pop_back();
+            return *m_activeChunk;
         }
 
-        auto chunk = std::make_unique<Chunk>(m_layout);
-        Chunk& result = *chunk;
-        m_chunks.push_back(std::move(chunk));
-        return result;
+        // 行解放時に空き候補を確保なしで追加できるよう、所有Chunk数に合わせて容量を確保
+        if (m_writableChunks.capacity() == m_chunks.size())
+            m_writableChunks.reserve(m_chunks.size() * 2 + 1);
+
+        m_chunks.push_back(std::make_unique<Chunk>(m_layout));
+        m_activeChunk = m_chunks.back().get();
+        return *m_activeChunk;
+    }
+
+    void Archetype::RemoveLastRow(Chunk& chunk) noexcept
+    {
+        const bool wasFull = chunk.GetEntityCount() == chunk.GetCapacity();
+        chunk.RemoveLastRow();
+
+        // 満杯から空きができたときだけ追加し、同じChunkを重複登録しない
+        if (wasFull && &chunk != m_activeChunk)
+        {
+            assert(m_writableChunks.size() < m_writableChunks.capacity());
+            m_writableChunks.push_back(&chunk);
+        }
     }
 
     size_t Archetype::FindColumn(ComponentTypeId id) const noexcept
