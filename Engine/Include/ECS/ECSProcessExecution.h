@@ -26,6 +26,7 @@
 
 namespace Hestia
 {
+
     /// @brief Engineから指定されるProcess実行phase
     enum class ECSProcessPhase
     {
