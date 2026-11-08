@@ -63,6 +63,9 @@ namespace Hestia
         entries.emplace("Unlit", AssetInfo{
             AssetType::MaterialShader,
             "../Assets/Shaders/MatShaders/Unlit.matsh" });
+        entries.emplace("Sprite", AssetInfo{
+            AssetType::MaterialShader,
+            "../Assets/Shaders/MatShaders/Sprite.matsh" });
 
         AssetDB assetDB;
         if (!assetDB.Initialize(std::move(entries)))
