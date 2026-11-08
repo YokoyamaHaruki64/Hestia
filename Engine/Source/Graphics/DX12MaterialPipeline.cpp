@@ -11,7 +11,7 @@
 =============================================================================*/
 
 #include "pch.h"
-#include "Graphics/DX12Backend.h"
+#include "Graphics/DX12Pipelines.h"
 
 #include "Asset/MaterialShader.h"
 #include "D3DX12/d3dx12.h"
@@ -19,12 +19,12 @@
 
 namespace Hestia
 {
-    ID3D12PipelineState* DX12Backend::GetMaterialPipeline(const MaterialShader& shader, std::size_t passIndex)
+    ID3D12PipelineState* DX12Pipelines::GetMaterialPipeline(ID3D12Device* device, const MaterialShader& shader, std::size_t passIndex)
     {
         // 登録済み Shader の Forward Pass に対応するキャッシュを検索
         const auto handle = shader.GetHandle();
         const auto passes = shader.GetPasses();
-        if (!m_Device || !m_RootSignature || !handle.IsValid() || passIndex >= passes.size())
+        if (!device || !m_RootSignature || !handle.IsValid() || passIndex >= passes.size())
             return nullptr;
 
         const auto& pass = passes[passIndex];
@@ -125,7 +125,7 @@ namespace Hestia
 
         // 生成が成功した PSO を Shader の Pass 番号に対応付ける
         ComPtr<ID3D12PipelineState> state;
-        const HRESULT result = m_Device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(state.GetAddressOf()));
+        const HRESULT result = device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(state.GetAddressOf()));
         if (FAILED(result))
         {
             Logger::Error("Failed to create MaterialShader pipeline state for " + std::string(shader.GetName()) +

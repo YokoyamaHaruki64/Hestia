@@ -16,12 +16,9 @@
 #include "Common/Include/WindowsHeaders.h"
 
 #include <d3d12.h>
-#include <d3dcompiler.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 
-#include <string>
-#include <string_view>
 #include <vector>
 #include <array>
 #include <cstdint>
@@ -29,7 +26,6 @@
 
 #include "Asset/AssetType.h"
 #include "HMath.h"
-#include "Color.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -75,30 +71,6 @@ namespace Hestia
         Matrix4x4_SIMD worldMatrix;
     };
 
-    struct LegacyMaterial
-    {
-        std::string name;
-
-        Color diffuseColor = Color::White();
-        Color specularColor = Color::White();
-        Color emissionColor = Color::Black();
-        float roughness = 0.5f;
-        float metallic = 0.0f;
-        std::vector<AssetHandle<Texture>> textures;
-
-        static LegacyMaterial Default()
-        {
-            LegacyMaterial mat;
-            mat.name = "Default";
-            mat.diffuseColor = Color::White();
-            mat.specularColor = Color::White();
-            mat.emissionColor = Color::Black();
-            mat.roughness = 0.5f;
-            mat.metallic = 0.0f;
-            return mat;
-        }
-    };
-
     struct DXVertexBuffer
     {
         ComPtr<ID3D12Resource> m_resource;
@@ -111,29 +83,15 @@ namespace Hestia
         ComPtr<ID3D12Resource> m_indexBuffer;
         D3D12_INDEX_BUFFER_VIEW m_indexView{};
         uint32_t m_vertexCount = 0;
-        uint32_t m_indexCount = 0;
         std::vector<SubMesh> m_subMeshes;
-    };
-
-    struct MaterialConstants
-    {
-        Color diffuseColor = Color::White();
-        Color specularColor = Color::White();
-        Color emissionColor = Color::Black();
-        float roughness = 0.5f;
-        float metallic = 0.0f;
     };
 
     struct RenderData
     {
         Matrix4x4_SIMD worldMatrix = Matrix4x4_SIMD::Identity();
-        LegacyMaterial material;
         AssetHandle<Mesh> mesh;
 
-        std::wstring_view vsShaderPath;
-        std::wstring_view psShaderPath;
-
-        /// @brief SubMesh の MaterialSlot 順。空なら従来の Material と CSO を使う
+        /// @brief SubMesh の MaterialSlot 順に並べた Material のハンドル
         /// @note 無効な Slot または描画時に解決できない Material の SubMesh は描画しない
         std::vector<AssetHandle<Material>> materials;
     };
