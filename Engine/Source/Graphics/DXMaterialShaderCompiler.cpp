@@ -190,7 +190,6 @@ namespace Hestia
             std::string& declarations)
         {
             // 全 Stage へ同一の宣言を挿入し、空の CBuffer は生成しない
-            declarations += "#define HESTIA_MATERIAL_PROPERTIES_DEFINED 1\n";
             std::string constants;
             uint32_t textureSlot = 0;
 

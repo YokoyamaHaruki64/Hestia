@@ -331,11 +331,8 @@
     <None Include="..\Assets\Shaders\Common.hlsl">
       <Filter>Shader</Filter>
     </None>
-    <FxCompile Include="..\Assets\Shaders\PS_Sprite.hlsl">
+    <None Include="..\Assets\Shaders\MatShaders\Sprite.matsh">
       <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Assets\Shaders\VS_Sprite.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
+    </None>
   </ItemGroup>
 </Project>

@@ -1,13 +1,4 @@
 
-struct VSInput
-{
-    float3 position : POSITION;
-    float2 uv       : TEXCOORD0;
-    float3 normal   : NORMAL;
-    float4 tangent : TANGENT;
-    float4 color    : COLOR;
-};
-
 struct PSInput_Default
 {
     float4 position : SV_POSITION;
@@ -37,17 +28,6 @@ cbuffer PerObjectBuffer : register(b1)
 {
     float4x4 world;
 };
-
-#ifndef HESTIA_MATERIAL_PROPERTIES_DEFINED
-cbuffer PerMaterialBuffer : register(b2)
-{
-    float4 color;
-    float4 specular;
-    float4 emission;
-    float roughness;
-    float metallic;
-};
-#endif
 
 SamplerState WrapLinearSampler : register(s0);
 SamplerState ClampLinearSampler : register(s1);
