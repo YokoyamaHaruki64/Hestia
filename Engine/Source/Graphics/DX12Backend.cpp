@@ -68,11 +68,6 @@ void DX12Backend::Update()
         m_resources.Update(m_device);
 }
 
-bool DX12Backend::BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4& view, const Matrix4x4& projection)
-{
-    return BeginDraw(renderData, Matrix4x4_SIMD::Load(view), Matrix4x4_SIMD::Load(projection));
-}
-
 bool DX12Backend::BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4_SIMD& view,
     const Matrix4x4_SIMD& projection)
 {
@@ -92,12 +87,10 @@ void DX12Backend::Draw()
 
 void DX12Backend::EndDraw()
 {
-    if (!m_frames.EndDraw(m_device, m_presentation))
-    {
-        m_IsInitialized = false;
-        return;
-    }
+    // CPU側の記録が終わったので、フレームの送信結果にかかわらず借用参照を解除する
     m_draw.ClearSubmissions();
+    if (!m_frames.EndDraw(m_device, m_presentation))
+        m_IsInitialized = false;
 }
 
 bool DX12Backend::UploadMesh(AssetHandle<Mesh> handle, const Mesh& mesh)
@@ -111,7 +104,3 @@ bool DX12Backend::UploadTexture(AssetHandle<Texture> handle, const TextureDesc& 
     return m_IsInitialized && m_resources.UploadTexture(m_device, m_descriptors, handle, desc, pixels, rowPitch, slicePitch);
 }
 
-bool DX12Backend::HasMesh(AssetHandle<Mesh> handle) const
-{
-    return m_resources.HasMesh(handle);
-}

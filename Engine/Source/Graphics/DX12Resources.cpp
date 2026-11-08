@@ -463,10 +463,6 @@ bool DX12Resources::UploadTexture(
     return m_gpuTextures.Register(handle, std::move(gpuTexture));
 }
 
-bool DX12Resources::HasMesh(AssetHandle<Mesh> handle) const
-{
-    return m_gpuMeshes.Get(handle) != nullptr;
-}
 bool DX12Resources::CreateMesh(DX12Device& device, const Mesh& mesh, DXMesh& result)
 {
     // 必須 Position と存在する Optional Stream を作成

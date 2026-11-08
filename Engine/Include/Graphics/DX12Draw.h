@@ -15,6 +15,7 @@
 
 #include "Graphics/DX12Object.h"
 #include "Graphics/DX12Support.h"
+#include <array>
 #include <span>
 #include <vector>
 
@@ -25,7 +26,6 @@ namespace Hestia
     class DX12Descriptors;
     class DX12Pipelines;
     class MaterialShader;
-    enum class RenderPhase;
 
     /// @brief 描画提出を Pass に展開し、現在のフレームのコマンドリストに記録する。
     class DX12Draw
@@ -33,16 +33,24 @@ namespace Hestia
     public:
         bool CreateConstants(ID3D12Device* device);
         void TakeSubmissions(std::vector<RenderData>& renderData) { m_currentFrameData.swap(renderData); }
-        void ClearSubmissions() { m_currentFrameData.clear(); }
+        void ClearSubmissions();
         void Finalize();
 
         void Draw(ID3D12Device* device, DX12Frames& frames, const DX12Resources& resources,
             const DX12Descriptors& descriptors, DX12Pipelines& pipelines);
 
     private:
-        void DrawMaterialMesh(ID3D12Device* device, DX12Frames& frames, const DX12Resources& resources,
-            const DX12Descriptors& descriptors, DX12Pipelines& pipelines, const RenderData& data,
-            const DXMesh& mesh, std::size_t objectIndex, RenderPhase phase);
+        struct ForwardDraw
+        {
+            const DXMesh* m_mesh;
+            const SubMesh* m_subMesh;
+            const Material* m_material;
+            const MaterialShader* m_shader;
+            std::size_t m_objectIndex;
+            std::size_t m_passIndex;
+        };
+
+        void ExpandSubmissions(const DX12Resources& resources);
         void BindObject(DX12Frames& frames, const Matrix4x4_SIMD& worldMatrix, size_t objectIndex);
         bool BindMaterial(ID3D12Device* device, DX12Frames& frames, const DX12Resources& resources,
             const DX12Descriptors& descriptors, const Material& material, const MaterialShader& shader);
@@ -57,6 +65,7 @@ namespace Hestia
         } m_PerObjectCB;
 
         std::vector<RenderData> m_currentFrameData;
+        std::array<std::vector<ForwardDraw>, 3> m_forwardDraws; // Opaque、Masked、Transparent の順
     };
 }
 

@@ -71,8 +71,8 @@ namespace Hestia
         AssetAPI m_assetAPI;
         ECSSystem m_ecs;
 
-        AssetHandle<Material> m_debugMaterial;
-        AssetHandle<Mesh> m_debugMesh;
+        const Material* m_debugMaterial = nullptr;
+        const Mesh* m_debugMesh = nullptr;
 
         bool m_logInitialized = false;
         bool m_timeInitialized = false;

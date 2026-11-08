@@ -57,8 +57,6 @@ namespace Hestia
         bool BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4_SIMD& view,
             const Matrix4x4_SIMD& projection);
 
-        /// @brief 通常版の行列を受け取り、SIMD版の描画開始処理へ渡す
-        bool BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4& view, const Matrix4x4& projection);
         void Draw();
         void EndDraw();
 
@@ -83,12 +81,6 @@ namespace Hestia
             const void* pixels,
             size_t rowPitch,
             size_t slicePitch);
-
-        /// @brief Index と Generation が一致する GPU Mesh の有無を確認
-        /// @param handle 確認する Mesh Handle
-        /// @note Handle と登録済み GPU Resource の存在を実行時に確認する
-        /// @return 有効な GPU Mesh が登録済み: true / 無効・未登録・不一致: false
-        bool HasMesh(AssetHandle<Mesh> handle) const;
 
         ID3D12GraphicsCommandList* GetCommandList()
         {

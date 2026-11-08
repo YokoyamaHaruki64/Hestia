@@ -86,14 +86,16 @@ namespace Hestia
         std::vector<SubMesh> m_subMeshes;
     };
 
+    /// @brief 1オブジェクト分の描画提出
+    /// @note Mesh と Material は非所有参照。提出の消費まで参照先を維持する
     struct RenderData
     {
         Matrix4x4_SIMD worldMatrix = Matrix4x4_SIMD::Identity();
-        AssetHandle<Mesh> mesh;
+        const Mesh* mesh = nullptr;
 
-        /// @brief SubMesh の MaterialSlot 順に並べた Material のハンドル
-        /// @note 無効な Slot または描画時に解決できない Material の SubMesh は描画しない
-        std::vector<AssetHandle<Material>> materials;
+        /// @brief SubMesh の MaterialSlot に対応する Material の配列
+        /// @note 範囲外または空の Slot に対応する SubMesh は描画しない
+        std::vector<const Material*> materials;
     };
 }
 

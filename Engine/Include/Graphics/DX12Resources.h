@@ -35,7 +35,6 @@ namespace Hestia
         bool UploadMesh(DX12Device& device, AssetHandle<Mesh> handle, const Mesh& mesh);
         bool UploadTexture(DX12Device& device, DX12Descriptors& descriptors, AssetHandle<Texture> handle,
             const TextureDesc& desc, const void* pixels, size_t rowPitch, size_t slicePitch);
-        bool HasMesh(AssetHandle<Mesh> handle) const;
         const DXMesh* GetMesh(AssetHandle<Mesh> handle) const { return m_gpuMeshes.Get(handle); }
         const DXTexture* GetTexture(AssetHandle<Texture> handle) const { return m_gpuTextures.Get(handle); }
         const DXTexture& WhiteTexture() const { return m_whiteTexture; }

@@ -64,7 +64,7 @@ namespace Hestia
     {
         if (!s_instance || !s_instance->m_DX12Backend ||
             s_instance->m_renderQueue.size() >= DX12Backend::MAX_DRAW_COUNT ||
-            !s_instance->m_DX12Backend->HasMesh(renderData.mesh))
+            renderData.mesh == nullptr)
             return false;
 
         s_instance->m_renderQueue.push_back(std::move(renderData));

@@ -82,8 +82,8 @@ namespace Hestia
         };
         mesh->m_indices = { 0, 1, 2, 2, 1, 3 };
 
-        m_debugMesh = m_assetAPI.Register<Mesh>("DebugPlane", mesh.release());
-        if (!m_debugMesh.IsValid())
+        m_debugMesh = m_assetAPI.Get(m_assetAPI.Register<Mesh>("DebugPlane", mesh.release()));
+        if (!m_debugMesh)
         {
             Finalize();
             return false;
@@ -98,12 +98,12 @@ namespace Hestia
             return false;
         }
 
-        // Slot 0 の Material を登録し、フレーム提出では Handle を渡す
+        // Slot 0 の Material を登録し、フレーム提出で使う参照を取得
         auto material = std::make_unique<Material>();
         material->SetShader(shader);
         if (material->SetTexture("_BaseMap", textureHandle))
-            m_debugMaterial = AssetSystem::Register<Material>("DebugPlaneMaterial", material.release());
-        if (!m_debugMaterial.IsValid())
+            m_debugMaterial = AssetSystem::Get(AssetSystem::Register<Material>("DebugPlaneMaterial", material.release()));
+        if (!m_debugMaterial)
         {
             Finalize();
             return false;
@@ -125,16 +125,19 @@ namespace Hestia
             m_assetAPIInitialized = false;
         }
 
-        if (m_assetsInitialized)
-        {
-            m_assets.Finalize();
-            m_assetsInitialized = false;
-        }
-
+        // Graphicsが保持する描画提出とデバッグ描画の借用参照をAssetの解放前に解除
         if (m_graphicsInitialized)
         {
             m_graphics.Finalize();
             m_graphicsInitialized = false;
+        }
+        m_debugMesh = nullptr;
+        m_debugMaterial = nullptr;
+
+        if (m_assetsInitialized)
+        {
+            m_assets.Finalize();
+            m_assetsInitialized = false;
         }
 
         if (m_timeAPIInitialized)
@@ -149,8 +152,6 @@ namespace Hestia
             m_timeInitialized = false;
         }
 
-        m_debugMaterial = {};
-        m_debugMesh = {};
         m_applicationAPI = ApplicationAPI{};
 
         if (m_logInitialized)
@@ -178,7 +179,7 @@ namespace Hestia
 
     void Engine::FrameExecute(float deltaTime)
     {
-        if (!m_graphicsInitialized || !m_timeInitialized || !m_debugMesh.IsValid())
+        if (!m_graphicsInitialized || !m_timeInitialized || !m_debugMesh)
             return;
 
         m_time.Update(deltaTime);
