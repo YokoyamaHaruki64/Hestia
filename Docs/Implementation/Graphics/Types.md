@@ -13,8 +13,7 @@
 | `UploadContextPool` | Upload用allocator/listを管理し、空きがなければ追加。初期数16 | 同上 |
 | `UploadContext` | allocator、command list、使用中Fence値、空き状態 | 同上、Pool内部 |
 | `RootParameterIndex` | Frame/Object/Material CBV、System/Material SRVのRoot引数番号 | 同上 |
-| `PerMaterialCB` | 従来描画用のmap済み定数Buffer、LegacyMaterial名のcache、登録index。要素strideは256byte境界 | 同上 |
-| `PerObjectCB` | Object定数Bufferとmap先。要素strideは256byte境界 | 同上 |
+| `PerObjectCB` | Object定数Bufferとmap先。要素strideは256byte境界 | [DX12Draw.h](../../../Engine/Include/Graphics/DX12Draw.h) |
 | `GPUResourceStorage<TAsset,TGpuResource>` | HandleとGPU Resourceの対応を所有。Registerで重複indexを拒否、Getで世代も照合、Clearで全解放 | [GPUResourceStorage.h](../../../Engine/Include/Graphics/GPUResourceStorage.h) |
 | `GPUResourceStorage::Slot` | Resourceとgenerationを保持する内部slot | 同上 |
 
@@ -28,15 +27,13 @@
 | `DXDepthStencil` | Resource、DSV、depth/stencilそれぞれのSRV index |
 | `DXTexture` | Texture Resourceとmaster SRV index。CPU Textureに対応 |
 | `DXVertexBuffer` | ResourceとD3D12_VERTEX_BUFFER_VIEW |
-| `DXMesh` | Stream別Vertex Buffer、index Resource/view、頂点・index数、SubMeshの描画範囲 |
+| `DXMesh` | Stream別Vertex Buffer、index Resource/view、頂点数、SubMeshの描画範囲 |
 | `PerFrameConstants` | View、Projection、cameraPosition、経過時間 |
 | `PerObjectConstants` | worldMatrix |
-| `LegacyMaterial` | 従来CSO用の名前、diffuse/specular/emission色、roughness、metallic、Texture Handle配列。Defaultは白diffuse/specular、黒emission、roughness 0.5、metallic 0 |
-| `MaterialConstants` | LegacyMaterialの数値・色部分。Texture Handleや名前を含まないGPU定数 |
-| `RenderData` | worldMatrix、Mesh Handle、MaterialSlot順のMaterial Handle列。列が空ならLegacyMaterial値とVS/PS pathのwstring_viewを使う |
+| `RenderData` | worldMatrix、Mesh Handle、MaterialSlot順のMaterial Handle列 |
 
 ## HLSLの型
 
-`Common.hlsl` の `VSInput` は位置・UV・法線・接線・色、`PSInput_Default` はclip位置・world位置・UV・法線・接線・色、`PSInput_Sprite` はclip位置・UV・色を持つ。現在のSprite shaderが使う受け渡しはPSInput_Sprite。
+`Common.hlsl` の `PSInput_Default` はclip位置・world位置・UV・法線・接線・色、`PSInput_Sprite` はclip位置・UV・色を持つ。`Sprite.matsh` は位置・UV・色を持つ `SpriteInput` を定義し、VSからPSへ `PSInput_Sprite` を渡す。
 
-`PerFrameBuffer`、`PerObjectBuffer`、`PerMaterialBuffer` はそれぞれC++側のFrame/Object/従来Material定数に対応するcbuffer。MaterialShader経路では `PerMaterial` がPropertyの共通CBufferとなる。 [MaterialShaderの実装仕様](MaterialShader.md)
+`Common.hlsl` の `PerFrameBuffer` と `PerObjectBuffer` はC++側のFrame定数とObject定数に対応する。Materialの数値PropertyにはCompilerが生成する `PerMaterial` CBufferを使う。 [MaterialShaderの実装仕様](MaterialShader.md)

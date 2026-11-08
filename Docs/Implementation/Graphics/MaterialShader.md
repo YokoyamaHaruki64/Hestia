@@ -2,7 +2,7 @@
 
 [設計書](../../Design/MaterialShader.md) / [Graphics](README.md) / [Asset](../Asset/README.md) / [全体索引](../README.md)
 
-2026-11-07 時点のソースを根拠とする。従来の CSO 描画と、MaterialShader を用いる Forward 描画が共存している。
+DX12 の Forward 描画は MaterialShader の Pass を使う。
 
 ## Asset と Property
 
@@ -29,14 +29,14 @@ Parser は DSL の空白とコメントを読み飛ばす。HLSL 本文は境界
 
 Property は Bool、Int、Float、Vector2/3/4、Color、Matrix3x3/4x4、Texture2D を扱う。 `Range` は端点の順序を検証し、値型は Float として保持する。固定描画設定は `RenderType`、`RenderPhase`、`ShadingModel`、`Fill`、`Cull`、`Blend`、`Topology`、`ZWrite`、`ZTest` を受け付ける。Forward では vertex と pixel の指定が必要で、ShadingModel は `None`。GBuffer では Parser が vertex と surface の指定を確認し、Compiler が未実装エラーを返す。
 
-生成する数値宣言は `PerMaterial` CBuffer にまとめる。Texture は宣言順に `t0` から割り当て、16 枠を超える宣言を拒否する。Reflection は使われた定数の Offset・サイズ・行列方向、使われた Texture の Slot を確定し、Stage／Pass 間の不一致を拒否する。Compiler が生成する `HESTIA_MATERIAL_PROPERTIES_DEFINED` は共通 HLSL の従来 Material 宣言と重複するのを防ぐ。
+生成する数値宣言は `PerMaterial` CBuffer にまとめる。Texture は宣言順に `t0` から割り当て、16 枠を超える宣言を拒否する。Reflection は使われた定数の Offset・サイズ・行列方向、使われた Texture の Slot を確定し、Stage／Pass 間の不一致を拒否する。
 
 ## 提出から描画まで
 
-1. [RenderData](../../../Engine/Include/Graphics/DX12Object.h) に Mesh Handle、World 行列、MaterialSlot 順の `materials` を渡して `GraphicsSystem::Submit` する。 `materials` が空の場合は従来の `LegacyMaterial` と CSO の経路を使う。
+1. [RenderData](../../../Engine/Include/Graphics/DX12Object.h) に Mesh Handle、World 行列、MaterialSlot 順の `materials` を渡して `GraphicsSystem::Submit` する。 `materials` が空の場合は描画を行わない。
 2. Backend はアップロード時に GPU Mesh へ SubMesh の範囲をコピーする。SubMesh 未指定時は Index 全体を Slot 0 にする。描画時に Slot の Handle を解決し、Slot が範囲外または Material／Shader を解決できない場合はその SubMesh を飛ばす。
 3. [DX12MaterialPipeline.cpp](../../../Engine/Source/Graphics/DX12MaterialPipeline.cpp) が、登録済み Shader Handle の index／generation と Pass 番号で PSO を検索する。未作成なら `m_requiredVertexStreams` に対応する要素を固定表から取り出し、Blend、Rasterizer、Depth、Topology と共に PSO を生成する。
-4. [DX12Backend.cpp](../../../Engine/Source/Graphics/DX12Backend.cpp) が Opaque → Masked → Transparent の順に Forward Pass を実行する。Material 定数と Texture をバインドし、要求されたスロットの頂点バッファを設定して、SubMesh の `firstIndex` と `indexCount` で `DrawIndexedInstanced` を記録する。
+4. [DX12Draw.cpp](../../../Engine/Source/Graphics/DX12Draw.cpp) が Opaque → Masked → Transparent の順に Forward Pass を実行する。Material 定数と Texture をバインドし、要求されたスロットの頂点バッファを設定して、SubMesh の `firstIndex` と `indexCount` で `DrawIndexedInstanced` を記録する。
 
 Compiler は VS Reflection のシステム値を除外し、頂点入力のセマンティクス、インデックス 0、float32 型、成分マスクを確認する。対応する `VertexStream` は Pass 内に1件だけ登録する。Engine からの提出例は [デバッグ平面の初期化とフレーム更新](../../../Engine/Source/Engine.cpp) を参照。
 
@@ -53,8 +53,8 @@ FrameContext は Material 定数用の 1 MiB の Upload ページを必要に応
 
 ## ビルドと現在の制約
 
-- 従来の Sprite VS／PS は [Engine プロジェクト](../../../Engine/Engine.vcxproj) の `FxCompile` で SM 6.0 にコンパイルする。
 - .matsh は実行時に DXC を使うため、実行ファイルと同じ出力フォルダに `dxcompiler.dll` と `dxil.dll` を配置する。
+- [Sprite.matsh](../../../Assets/Shaders/MatShaders/Sprite.matsh) は `Sprite` の名前でロードする。Position、UV、頂点色を要求し、頂点色と `_Tint` を `_BaseMap` のサンプルに乗算する。Transparent フェーズでアルファ合成し、両面描画、深度比較 `Less`、深度書き込み有効で描画する。
 - GBuffer 描画、LightingShader、透明物の距離ソート、個別アンロード時の PSO 回収は未実装。現状の PSO Cache は Backend 終了時に解放する。
 
 ## 検証記録

@@ -23,9 +23,11 @@
 
 この三つは負荷候補として優先的に調べる価値がある。ただし、フレーム全体の占有率や GPU 時間との比較は未確認で、Graphics 全体のボトルネックと断定しない。
 
-## 現在のコードとの対応
+## 計測時のコードとの対応
 
 確認対象は `bdc768a` の後の作業ツリー。計測用の未コミット変更を含むため、その commit だけでは今回確認したコードを再現できない。
+
+以降は計測当時の CSO 描画経路を指す。現行経路は [MaterialShader の実装仕様](Implementation/Graphics/MaterialShader.md) を参照。
 
 | 報告上の呼び方 | 確認した関数 | 留保 |
 |---|---|---|
@@ -37,9 +39,9 @@
 
 ### 1. Material Texture の Commit
 
-現在の `BindMaterial` は、Material 定数の配置、Texture の各スロットへの設定、`CommitMaterialTexture` を行う。Commit では最大 16 スロットを走査し、各有効スロットについて `CopyDescriptorsSimple(1, ...)` を呼び、Master Heap から Frame の Visible Heap へコピーする。
+当時の `BindMaterial` は、Material 定数の配置、Texture の各スロットへの設定、`CommitMaterialTexture` を行う。Commit では最大 16 スロットを走査し、各有効スロットについて `CopyDescriptorsSimple(1, ...)` を呼び、Master Heap から Frame の Visible Heap へコピーする。
 
-未使用スロットにも Null SRV の index を設定するため、テクスチャ一枚の Material でも、現在の経路では 16 件の descriptor コピーになり得る。これは画像ピクセルや Texture 本体の転送ではなく、SRV descriptor のコピーである。
+未使用スロットにも Null SRV の index を設定するため、テクスチャ一枚の Material でも、当時の経路では 16 件の descriptor コピーになり得る。これは画像ピクセルや Texture 本体の転送ではなく、SRV descriptor のコピーである。
 
 **原因候補**：一件ずつの descriptor コピー呼び出し、handle の計算、Root Descriptor Table の設定。約 4 µs の内訳は未確認。`BindMaterial` 全体の時間を Commit 単体の時間として扱わない。
 
@@ -49,7 +51,7 @@
 
 ### 2. 文字列連結によるキー作成と map 検索
 
-現在の `SetupPipeline` は VS／PS の `filesystem::path` を値で受け取り、`vsPath.string() + "|" + psPath.string()` で文字列キーを作ってから `m_PipelineCache.find` を行う。cache hit 後にも `ComPtr` の代入がある。
+当時の `SetupPipeline` は VS／PS の `filesystem::path` を値で受け取り、`vsPath.string() + "|" + psPath.string()` で文字列キーを作ってから `m_PipelineCache.find` を行う。cache hit 後にも `ComPtr` の代入がある。
 
 **追加の観測結果**：ユーザーの切り分け計測では、文字列連結によるキー作成が時間の大半を占め、map 検索単体は約 300〜400 ns（0.3〜0.4 µs）だった。当初の 5〜10 µs を `unordered_map::find` 単体の負荷として扱う解釈を訂正する。キー作成単体の正確な時間は未報告であり、差し引きで確定値を作らない。
 
@@ -59,13 +61,13 @@
 
 **次回の切り分け**：キー作成側を優先し、パスの文字列化、連結、割り当てを分けて確認する。有効な Shader パスを使って cache を warm-up し、hit／miss 件数、キー文字列の長さ、cache 件数を記録する。
 
-**改善候補**：キーを毎 Draw で生成せず登録時に保持する方式を優先候補とする。同じ Pipeline が続く場合の検索省略、将来の Shader／Material ID への移行も候補だが、map の種類を変える根拠にはしない。どれを採用するかは未決定。現在暫定採用している Material の名前キャッシュを、この観測だけで置き換えない。
+**改善候補**：キーを毎 Draw で生成せず登録時に保持する方式を優先候補とする。同じ Pipeline が続く場合の検索省略、将来の Shader／Material ID への移行も候補だが、map の種類を変える根拠にはしない。どれを採用するかは未決定。暫定採用していた Material の名前キャッシュを、この観測だけで置き換えない。
 
 ### 3. Submit と提出データの構築
 
 `Submit(RenderData renderData)` の内部は `m_renderQueue.push_back(std::move(renderData))` であり、queue への追加を明示的なコピーで行っているわけではない。それでも、呼び出し側で提出データを作るコストは残る。
 
-現在の `RenderData` は World、Material、DXMesh、VS／PS パスを持つ。Material は名前文字列と Texture handle の vector、DXMesh は GPU Resource の `ComPtr` を持つ。呼び出し側が既存の Material・DXMesh から `RenderData{...}` を作る場合、Material のコピーや参照カウント操作が発生し得る。これは GPU Mesh／Texture 本体の全データをコピーする処理とは区別する。
+当時の `RenderData` は World、Material、DXMesh、VS／PS パスを持つ。Material は名前文字列と Texture handle の vector、DXMesh は GPU Resource の `ComPtr` を持つ。呼び出し側が既存の Material・DXMesh から `RenderData{...}` を作る場合、Material のコピーや参照カウント操作が発生し得る。これは GPU Mesh／Texture 本体の全データをコピーする処理とは区別する。
 
 確認時の `Engine::FrameExecute` は、10,000 回のループで `RenderData` を構築して Submit し、その前後を nanoseconds で計測している。そのため、約 3.5 µs の原因を Submit 関数内だけに限定しない。`std::move` を追加すれば全コストが消える、とも考えない。
 
