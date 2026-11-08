@@ -128,6 +128,9 @@
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\MeshRenderer.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Source\DllMain.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
@@ -287,6 +290,9 @@
       <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\GraphicsSystem.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\MeshRenderer.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Object.h">

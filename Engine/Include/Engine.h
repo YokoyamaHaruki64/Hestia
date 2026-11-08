@@ -59,6 +59,8 @@ namespace Hestia
         void FrameExecute(float deltaTime);
 
     private:
+        bool CreateDebugScene();
+
         ApplicationAPI m_applicationAPI;
 
         LogSystem m_log;
@@ -70,9 +72,6 @@ namespace Hestia
         AssetSystem m_assets;
         AssetAPI m_assetAPI;
         ECSSystem m_ecs;
-
-        const Material* m_debugMaterial = nullptr;
-        const Mesh* m_debugMesh = nullptr;
 
         bool m_logInitialized = false;
         bool m_timeInitialized = false;

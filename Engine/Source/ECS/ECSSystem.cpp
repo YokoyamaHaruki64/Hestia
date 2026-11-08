@@ -14,6 +14,7 @@
 #include "ECS/ECSSystem.h"
 
 #include "ECS/Component.h"
+#include "Graphics/MeshRenderer.h"
 #include "Log/Logger.h"
 #include "Transform/TransformProcess.h"
 
@@ -96,9 +97,11 @@ namespace Hestia
         REGISTER_COMPONENT(Transform, "Hestia::Transform");
         REGISTER_COMPONENT(TransformCache, "Hestia::TransformCache");
         REGISTER_COMPONENT(TransformHierarchy, "Hestia::TransformHierarchy");
+        REGISTER_COMPONENT(MeshRenderer, "Hestia::MeshRenderer");
 
-        // Process登録
+        // PreRenderではWorld行列を更新してから描画を収集
         REGISTER_PROCESS(&TransformProcess::Run, PreRender);
+        REGISTER_PROCESS(&MeshRendererProcess::Run, PreRender);
 
         // マクロ解除
 #undef REGISTER_COMPONENT

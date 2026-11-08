@@ -55,6 +55,7 @@
     <ClCompile Include="Source\Graphics\DX12MaterialPipeline.cpp" />
     <ClCompile Include="Source\Graphics\DXMaterialShaderCompiler.cpp" />
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp" />
+    <ClCompile Include="Source\Graphics\MeshRenderer.cpp" />
     <ClCompile Include="Source\Time\TimeSystem.cpp" />
     <ClCompile Include="Source\Time\TimeAPI.cpp" />
     <ClCompile Include="Source\Log\LogStorage.cpp" />
@@ -108,6 +109,7 @@
     <ClInclude Include="Include\Graphics\DX12Object.h" />
     <ClInclude Include="Include\Graphics\DXMaterialShaderCompiler.h" />
     <ClInclude Include="Include\Graphics\GraphicsSystem.h" />
+    <ClInclude Include="Include\Graphics\MeshRenderer.h" />
     <ClInclude Include="Include\Graphics\GPUResourceStorage.h" />
     <ClInclude Include="Include\Time\TimeData.h" />
     <ClInclude Include="Include\Time\TimeSystem.h" />

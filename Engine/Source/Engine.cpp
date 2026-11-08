@@ -14,6 +14,8 @@
 #include "Engine.h"
 
 #include "Asset/Material.h"
+#include "Game/Transform.h"
+#include "Graphics/MeshRenderer.h"
 
 namespace Hestia
 {
@@ -60,6 +62,17 @@ namespace Hestia
         }
         m_ecsInitialized = true;
 
+        // 通常のECS描画経路を使うデバッグシーンを作成
+        if (!CreateDebugScene())
+        {
+            Finalize();
+            return false;
+        }
+        return true;
+    }
+
+    bool Engine::CreateDebugScene()
+    {
         // デバッグ用平面を位置・UV・色の Stream で登録
         auto mesh = std::make_unique<Mesh>();
         mesh->m_positions = {
@@ -82,31 +95,44 @@ namespace Hestia
         };
         mesh->m_indices = { 0, 1, 2, 2, 1, 3 };
 
-        m_debugMesh = m_assetAPI.Get(m_assetAPI.Register<Mesh>("DebugPlane", mesh.release()));
-        if (!m_debugMesh)
-        {
-            Finalize();
+        const auto* debugMesh = m_assetAPI.Get(m_assetAPI.Register<Mesh>("DebugPlane", mesh.release()));
+        if (!debugMesh)
             return false;
-        }
 
         // デバッグ描画に使う MaterialShader と Texture を初期化時に解決
         auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Unlit"));
         const auto textureHandle = m_assetAPI.Load<Texture>("TextureTest");
         if (!shader || !textureHandle.IsValid())
-        {
-            Finalize();
             return false;
-        }
 
-        // Slot 0 の Material を登録し、フレーム提出で使う参照を取得
+        // 全平面のSlot 0で共有するMaterialを登録
         auto material = std::make_unique<Material>();
         material->SetShader(shader);
-        if (material->SetTexture("_BaseMap", textureHandle))
-            m_debugMaterial = AssetSystem::Get(AssetSystem::Register<Material>("DebugPlaneMaterial", material.release()));
-        if (!m_debugMaterial)
-        {
-            Finalize();
+        if (!material->SetTexture("_BaseMap", textureHandle))
             return false;
+        const auto* debugMaterial = AssetSystem::Get(AssetSystem::Register<Material>("DebugPlaneMaterial", material.release()));
+        if (!debugMaterial)
+            return false;
+
+        // 既存デバッグ描画と同じ件数のEntityにMeshRendererを付ける
+        constexpr int debugPlaneCount = 10000;
+        for (int index = 0; index < debugPlaneCount; ++index)
+        {
+            const auto entity = ECSSystem::CreateEntity();
+            if (!entity.IsValid())
+                return false;
+            ECSSystem::AddProcess<&MeshRendererProcess::Run>(entity);
+            auto* renderer = ECSSystem::GetComponent<MeshRenderer>(entity);
+            if (!renderer)
+                return false;
+
+            // 共有Assetを設定し、従来の配置をTransformに登録
+            renderer->m_mesh = debugMesh;
+            renderer->m_materials = { debugMaterial };
+            HestiaGame::Transform transform(entity);
+            if (!transform.SetLocalScale({ 800.0f, 800.0f, 1.0f }) ||
+                !transform.SetLocalPosition({ 0.0f, 0.0f, 1.0f }))
+                return false;
         }
         return true;
     }
@@ -125,14 +151,12 @@ namespace Hestia
             m_assetAPIInitialized = false;
         }
 
-        // Graphicsが保持する描画提出とデバッグ描画の借用参照をAssetの解放前に解除
+        // Graphicsが保持する描画提出の借用参照をAssetの解放前に解除
         if (m_graphicsInitialized)
         {
             m_graphics.Finalize();
             m_graphicsInitialized = false;
         }
-        m_debugMesh = nullptr;
-        m_debugMaterial = nullptr;
 
         if (m_assetsInitialized)
         {
@@ -179,7 +203,7 @@ namespace Hestia
 
     void Engine::FrameExecute(float deltaTime)
     {
-        if (!m_graphicsInitialized || !m_timeInitialized || !m_debugMesh)
+        if (!m_graphicsInitialized || !m_timeInitialized)
             return;
 
         m_time.Update(deltaTime);
@@ -192,22 +216,9 @@ namespace Hestia
             ECSSystem::Run(ECSProcessPhase::LateUpdate);
             ECSSystem::Run(ECSProcessPhase::PreRender);
         }
-         Logger::Log("FrameExecute: DeltaTime= " + std::to_string(TimeSystem::DeltaTime()));
+        Logger::Log("FrameExecute: DeltaTime= " + std::to_string(TimeSystem::DeltaTime()));
 
-        Matrix4x4_SIMD worldMatrix = Matrix4x4_SIMD::Identity();
-        worldMatrix.Scale(800.0f, 800.0f, 1.0f);
-        worldMatrix.RotateZ(0.0f);
-        worldMatrix.Translate(0.0f, 0.0f, 1.0f);
-
-        for (int i = 0; i < 10000; ++i)
-        {
-            GraphicsSystem::Submit(RenderData{
-                .worldMatrix = worldMatrix,
-                .mesh = m_debugMesh,
-                .materials = { m_debugMaterial }
-            });
-        }
-
+        // PreRenderで収集した描画提出を記録
         m_graphics.Render();
 
         // 描画が終わるまでEntity実体を維持し、破棄予約をFrame末尾で確定する
