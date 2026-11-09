@@ -67,9 +67,9 @@ try {
         throw "vswhere.exe が見つかりません: $vswhere"
     }
 
-    $msbuild = & $vswhere -latest -products '*' -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
+    $msbuild = & $vswhere -latest -products '*' -version '[18.0,19.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'MSBuild\Current\Bin\MSBuild.exe' | Select-Object -First 1
     if (-not $msbuild) {
-        throw 'MSBuild が見つかりません。Visual Studio C++ ビルドツールを確認してください。'
+        throw 'VS 2026 の C++ ビルドツールが見つかりません。Desktop development with C++ を確認してください。'
     }
 
     $buildArguments = @(

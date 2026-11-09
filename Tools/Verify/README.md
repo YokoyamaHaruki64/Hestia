@@ -26,7 +26,7 @@ Tools\Verify\BuildSolution.cmd
 
 ## 仕様
 
-- 任意の作業ディレクトリから実行でき、Windows PowerShell 5.1、Git、ビルド時はVS 2022 C++ビルドツールを使います。プラットフォームはx64です。
+- 任意の作業ディレクトリから実行でき、Windows PowerShell 5.1、Git、ビルド時はVS 2026 C++ビルドツール（v145）を使います。プラットフォームはx64です。
 - Docs用は対象Markdownのローカルファイルリンクと競合マーカーを確認します。外部URL、見出しアンカー、Wikiリンク、複数行リンクは確認しません。
 - プロジェクト用は対象プロジェクト内の競合マーカーを確認してビルドします。依存プロジェクトは `.vcxproj` の `ProjectReference` に従い、MSBuildが必要なものを増分ビルドします。
 - sln用は `Hestia.sln` を指定構成でビルドします。`All` ではEditor／Game × Debug／Releaseの四構成を順番に実行し、失敗後も残りを続けます。

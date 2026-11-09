@@ -166,10 +166,10 @@ function Find-BrokenLinks {
 
 function Get-MSBuild {
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-    if (-not (Test-Path -LiteralPath $vswhere)) { throw 'VS 2022 Installer の vswhere.exe がありません。' }
-    $found = @(& $vswhere -latest -products '*' -version '[17.0,18.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'MSBuild\Current\Bin\MSBuild.exe')
+    if (-not (Test-Path -LiteralPath $vswhere)) { throw 'Visual Studio Installer の vswhere.exe がありません。' }
+    $found = @(& $vswhere -latest -products '*' -version '[18.0,19.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'MSBuild\Current\Bin\MSBuild.exe')
     if ($LASTEXITCODE -ne 0 -or $found.Count -eq 0) {
-        throw 'VS 2022 の C++ ビルドツールが見つかりません。Desktop development with C++ を確認してください。'
+        throw 'VS 2026 の C++ ビルドツールが見つかりません。Desktop development with C++ を確認してください。'
     }
     return $found[0]
 }
