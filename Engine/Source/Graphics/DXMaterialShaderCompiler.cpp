@@ -221,7 +221,7 @@ namespace Hestia
 
 
         bool MergeMaterialReflection(ID3D12ShaderReflection& reflection,
-            std::span<MaterialPropertyDesc> properties, uint32_t& constantBufferSize)
+            std::span<MaterialPropertyDesc> properties, uint32_t& constantBufferSize, bool isInstancing)
         {
 
             // Reflerction情報の取得
@@ -242,6 +242,10 @@ namespace Hestia
                 // PerMaterial CBuffer のレジスタが一致するか確認
                 if (binding.Type == D3D_SIT_CBUFFER)
                 {
+                    // バッチ内で値が異なるため、インスタンス描画はPerObject CBVを使えない
+                    if (isInstancing && binding.Space == 0 && binding.BindPoint == 1)
+                        return FailMessage("Instanced Pass cannot use the PerObject constant buffer");
+
                     const bool isMaterialSlot =
                         binding.Space == 0 && binding.BindPoint == MATERIAL_CONSTANT_BUFFER_REGISTER;
 
@@ -441,6 +445,16 @@ namespace Hestia
         if (!GeneratePropertyDeclarations(parsed.m_properties, declarations))
             return fail("too many material textures for the DX12 root signature");
 
+        // DSLで検証済みのレイアウトを、全PassのHLSLで参照できるよう生成
+        const bool isInstancing = !parsed.m_instanceStructName.empty();
+        if (isInstancing)
+        {
+            const auto& name = parsed.m_instanceStructName;
+            declarations += "struct " + name + " { row_major float4x4 worldMatrix; float4 color; };\n";
+            declarations += "StructuredBuffer<" + name + "> Instances : register(t0, space" +
+                std::to_string(INSTANCE_BUFFER_REGISTER_SPACE) + ");\n";
+        }
+
         const std::string sharedSource = declarations + parsed.m_sharedHlsl + "\n";
         Result compiled;
         compiled.m_properties.reserve(parsed.m_properties.size());
@@ -467,8 +481,18 @@ namespace Hestia
             if (!CollectRequiredVertexStreams(*vertex.m_reflection.Get(), pipeline.m_requiredVertexStreams))
                 return fail("Pass vertex inputs do not match the Mesh streams");
 
-            if (!MergeMaterialReflection(*vertex.m_reflection.Get(), compiled.m_properties, compiled.m_constantBufferSize) ||
-                !MergeMaterialReflection(*pixel.m_reflection.Get(), compiled.m_properties, compiled.m_constantBufferSize))
+            // インスタンス描画では、全PassのVSが生成済みのBufferを読むことを確認
+            if (isInstancing)
+            {
+                D3D12_SHADER_INPUT_BIND_DESC binding{};
+                if (FAILED(vertex.m_reflection->GetResourceBindingDescByName("Instances", &binding)) ||
+                    binding.Type != D3D_SIT_STRUCTURED || binding.BindPoint != 0 ||
+                    binding.Space != INSTANCE_BUFFER_REGISTER_SPACE)
+                    return fail("Instanced Pass must read Instances in its vertex shader");
+            }
+
+            if (!MergeMaterialReflection(*vertex.m_reflection.Get(), compiled.m_properties, compiled.m_constantBufferSize, isInstancing) ||
+                !MergeMaterialReflection(*pixel.m_reflection.Get(), compiled.m_properties, compiled.m_constantBufferSize, isInstancing))
                 return fail("incompatible material bindings or constant buffer layout");
 
             CopyBytecode(*vertex.m_bytecode.Get(), pipeline.m_vertexShader);

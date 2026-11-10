@@ -133,6 +133,7 @@ void ForwardRenderPass::Build(std::span<const RenderData> submissions, const DX1
 
 void ForwardRenderPass::Sort()
 {
+    constexpr std::size_t maxInstancesPerDraw = 1024; // 連続Upload領域に収まる件数で分割
     for (std::size_t phaseIndex = 0; phaseIndex < m_phaseDraws.size(); ++phaseIndex)
     {
         // 透明物はブレンド順を維持し、OpaqueとMaskedだけをまとめる
@@ -146,9 +147,25 @@ void ForwardRenderPass::Sort()
                     std::tie(right.m_sortKey, right.m_submissionIndex);
             });
 
-        // 通常描画では各コマンドが1件のバッチになる
-        for (std::size_t index = 0; index < commands.size(); ++index)
-            phase.m_batches.push_back({ index, 1 });
+        // Sort Keyの表現にかかわらず、実際の描画状態が一致する連続範囲を確定
+        for (std::size_t next = 0; next < commands.size();)
+        {
+            const auto first = next++;
+            const auto& draw = commands[first];
+            if (canReorder && draw.m_shader->IsInstancing())
+            {
+                while (next < commands.size() && next - first < maxInstancesPerDraw)
+                {
+                    const auto& candidate = commands[next];
+                    if (candidate.m_mesh != draw.m_mesh || candidate.m_subMeshIndex != draw.m_subMeshIndex ||
+                        candidate.m_material != draw.m_material || candidate.m_shader != draw.m_shader ||
+                        candidate.m_shaderPassIndex != draw.m_shaderPassIndex)
+                        break;
+                    ++next;
+                }
+            }
+            phase.m_batches.push_back({ first, next - first });
+        }
     }
 }
 
@@ -173,7 +190,25 @@ void ForwardRenderPass::Record(std::span<const RenderData> submissions, const Re
                 context.m_descriptors, *draw.m_material, *draw.m_shader))
                 continue;
 
-            BindObject(frames, submissions[draw.m_submissionIndex].worldMatrix, draw.m_submissionIndex);
+            // 各InstanceのWorld行列と色を、SV_InstanceIDで参照する順に配置
+            if (draw.m_shader->IsInstancing())
+            {
+                m_instances.clear();
+                m_instances.reserve(batch.m_count);
+                const auto commands = std::span(phase.m_commands).subspan(batch.m_first, batch.m_count);
+                for (const auto& command : commands)
+                {
+                    const auto& data = submissions[command.m_submissionIndex];
+                    m_instances.push_back({ data.worldMatrix, data.instanceColor });
+                }
+                const auto address = frames.UploadDrawData(context.m_device, std::as_bytes(std::span(m_instances)));
+                if (address == 0)
+                    continue;
+                frames.GetCommandList()->SetGraphicsRootShaderResourceView(
+                    static_cast<UINT>(DX12RootParameterIndex::InstancesSRV), address);
+            }
+            else
+                BindObject(frames, submissions[draw.m_submissionIndex].worldMatrix, draw.m_submissionIndex);
             frames.GetCommandList()->SetPipelineState(pipeline);
 
             // Pass のトポロジと Stream で SubMesh の範囲を描画

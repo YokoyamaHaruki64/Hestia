@@ -35,6 +35,7 @@ namespace Hestia
 
     static constexpr uint32_t MATERIAL_CONSTANT_BUFFER_REGISTER = 2;
     static constexpr uint32_t MATERIAL_TEXTURE_REGISTER_SPACE = 1;
+    static constexpr uint32_t INSTANCE_BUFFER_REGISTER_SPACE = 2;
     static constexpr int MAX_MATERIAL_TEXTURE = 16;
 
     struct DXRenderTexture
@@ -96,6 +97,7 @@ namespace Hestia
         /// @brief SubMesh の MaterialSlot に対応する Material の配列
         /// @note 範囲外または空の Slot に対応する SubMesh は描画しない
         std::vector<const Material*> materials;
+        Vector4 instanceColor{ 1.0f, 1.0f, 1.0f, 1.0f };
     };
 }
 

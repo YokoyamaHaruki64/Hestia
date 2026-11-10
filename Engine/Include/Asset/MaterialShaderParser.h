@@ -47,6 +47,7 @@ namespace Hestia
     struct ParsedMaterialShader
     {
         std::string m_name;
+        std::string m_instanceStructName; // 空なら通常描画
         std::string m_sharedHlsl;
         std::vector<ParsedMaterialShaderProperty> m_properties;
         std::vector<ParsedMaterialShaderPass> m_passes;

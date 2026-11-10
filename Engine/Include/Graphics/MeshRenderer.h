@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <vector>
+#include "Common/Include/Math/Vector4.h"
 
 namespace Hestia
 {
@@ -36,6 +37,7 @@ namespace Hestia
         RendererSettings m_settings;
         const Mesh* m_mesh = nullptr;
         std::vector<const Material*> m_materials; // SubMeshのMaterialSlotに対応
+        Vector4 m_instanceColor{ 1.0f, 1.0f, 1.0f, 1.0f };
     };
 
     class MeshRendererProcess

@@ -919,6 +919,22 @@ namespace Hestia
                     if (!ReadProperties(shader.m_properties))
                         return false;
                 }
+                else if (Consume("["))
+                {
+                    // 初版のCPU側レイアウトと一致する宣言を一つだけ受け付ける
+                    if (!shader.m_instanceStructName.empty())
+                        return Fail(token, "duplicate InstancedStruct");
+                    if (!Expect("InstancedStruct") || !Expect("]") || !Expect("struct"))
+                        return false;
+                    if (!IsIdentifier(m_token.m_text))
+                        return Fail(m_token, "expected an instance struct name");
+                    shader.m_instanceStructName = m_token.m_text;
+                    Advance();
+                    if (!Expect("{") || !Expect("float4x4") || !Expect("worldMatrix") || !Expect(";") ||
+                        !Expect("float4") || !Expect("color") || !Expect(";") || !Expect("}"))
+                        return false;
+                    Consume(";");
+                }
                 else if (m_token.m_text == "SHARED_HLSL_BEGIN") // 共通HLSLブロック
                 {
                     // 1つだけ許可する

@@ -37,6 +37,7 @@ namespace Hestia
             const DX12Pipelines& pipelines, const Matrix4x4_SIMD& view, const Matrix4x4_SIMD& projection);
         bool EndDraw(DX12Device& device, DX12Presentation& presentation);
         D3D12_GPU_VIRTUAL_ADDRESS UploadMaterialConstants(ID3D12Device* device, std::span<const std::byte> bytes);
+        D3D12_GPU_VIRTUAL_ADDRESS UploadDrawData(ID3D12Device* device, std::span<const std::byte> bytes);
         void Finalize();
 
         /// @brief Frame の残り Descriptor 容量を確認する。
@@ -50,7 +51,7 @@ namespace Hestia
     private:
         struct FrameContext
         {
-            struct MaterialConstantPage
+            struct DrawDataPage
             {
                 ComPtr<ID3D12Resource> resource;
                 std::byte* mappedData = nullptr;
@@ -63,8 +64,8 @@ namespace Hestia
 
             // Material Texture のテーブル数。各テーブルは MAX_MATERIAL_TEXTURE 枠を占める。
             int visibleSRVCount = 0;
-            std::vector<MaterialConstantPage> materialConstantPages;
-            std::size_t materialConstantOffset = 0;
+            std::vector<DrawDataPage> drawDataPages;
+            std::size_t drawDataOffset = 0;
 
             // この番号が完了するまで Allocator、定数、Descriptor を上書きしない。
             UINT64 fenceValue = 0;

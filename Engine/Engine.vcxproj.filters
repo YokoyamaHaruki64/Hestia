@@ -343,5 +343,8 @@
     <None Include="..\Assets\Shaders\MatShaders\Sprite.matsh">
       <Filter>Shader</Filter>
     </None>
+    <None Include="..\Assets\Shaders\MatShaders\Unlit_Inst.matsh">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

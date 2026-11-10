@@ -126,6 +126,7 @@
   <ItemGroup>
     <None Include="..\Assets\Shaders\Common.hlsl" />
     <None Include="..\Assets\Shaders\MatShaders\Sprite.matsh" />
+    <None Include="..\Assets\Shaders\MatShaders\Unlit_Inst.matsh" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

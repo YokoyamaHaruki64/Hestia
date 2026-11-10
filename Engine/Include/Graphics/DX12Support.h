@@ -22,7 +22,7 @@ namespace Hestia
     inline constexpr int DX12_MAX_OBJECT_COUNT = 1 << 16;
 
     // 共通 Root Signature で使用する CBV と Descriptor Table の位置。
-    enum class DX12RootParameterIndex { PerFrameCBV, PerObjectCBV, PerMaterialCBV, PerSystemSRV, PerMaterialSRV };
+    enum class DX12RootParameterIndex { PerFrameCBV, PerObjectCBV, PerMaterialCBV, PerSystemSRV, PerMaterialSRV, InstancesSRV };
 
     inline bool CheckDX12Result(HRESULT hr, const wchar_t* message)
     {

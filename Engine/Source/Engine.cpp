@@ -73,50 +73,43 @@ namespace Hestia
 
     bool Engine::CreateDebugScene()
     {
-        // デバッグ用平面を位置・UV・色の Stream で登録
+        // 全インスタンスが共有する、8頂点と36インデックスの立方体を登録
         auto mesh = std::make_unique<Mesh>();
         mesh->m_positions = {
-            { { -0.5f,  0.5f, 0.0f } },
-            { {  0.5f,  0.5f, 0.0f } },
-            { { -0.5f, -0.5f, 0.0f } },
-            { {  0.5f, -0.5f, 0.0f } },
+            { { -0.5f, -0.5f, -0.5f } }, { {  0.5f, -0.5f, -0.5f } },
+            { {  0.5f,  0.5f, -0.5f } }, { { -0.5f,  0.5f, -0.5f } },
+            { { -0.5f, -0.5f,  0.5f } }, { {  0.5f, -0.5f,  0.5f } },
+            { {  0.5f,  0.5f,  0.5f } }, { { -0.5f,  0.5f,  0.5f } },
         };
-        mesh->m_primaryTexCoords = {
-            { { 0.0f, 0.0f } },
-            { { 1.0f, 0.0f } },
-            { { 0.0f, 1.0f } },
-            { { 1.0f, 1.0f } },
+        mesh->m_indices = {
+            0, 2, 1, 0, 3, 2,   4, 5, 6, 4, 6, 7,
+            0, 4, 7, 0, 7, 3,   1, 2, 6, 1, 6, 5,
+            0, 1, 5, 0, 5, 4,   3, 7, 6, 3, 6, 2,
         };
-        mesh->m_colors = {
-            { { 1.0f, 1.0f, 1.0f, 1.0f } },
-            { { 1.0f, 1.0f, 1.0f, 1.0f } },
-            { { 1.0f, 1.0f, 1.0f, 1.0f } },
-            { { 1.0f, 1.0f, 1.0f, 1.0f } },
-        };
-        mesh->m_indices = { 0, 1, 2, 2, 1, 3 };
 
-        const auto* debugMesh = m_assetAPI.Get(m_assetAPI.Register<Mesh>("DebugPlane", mesh.release()));
+        const auto* debugMesh = m_assetAPI.Get(m_assetAPI.Register<Mesh>("DebugCube", mesh.release()));
         if (!debugMesh)
             return false;
 
-        // デバッグ描画に使う MaterialShader と Texture を初期化時に解決
-        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Unlit"));
-        const auto textureHandle = m_assetAPI.Load<Texture>("TextureTest");
-        if (!shader || !textureHandle.IsValid())
+        // 全立方体で同じインスタンス描画用Materialを共有
+        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Unlit_Inst"));
+        if (!shader || !shader->IsInstancing())
             return false;
 
-        // 全平面のSlot 0で共有するMaterialを登録
         auto material = std::make_unique<Material>();
         material->SetShader(shader);
-        if (!material->SetTexture("_BaseMap", textureHandle))
-            return false;
-        const auto* debugMaterial = AssetSystem::Get(AssetSystem::Register<Material>("DebugPlaneMaterial", material.release()));
+        const auto* debugMaterial = AssetSystem::Get(AssetSystem::Register<Material>("DebugCubeMaterial", material.release()));
         if (!debugMaterial)
             return false;
 
-        // 既存デバッグ描画と同じ件数のEntityにMeshRendererを付ける
-        constexpr int debugPlaneCount = 10000;
-        for (int index = 0; index < debugPlaneCount; ++index)
+        // 位置と色だけを変え、同じDrawから各インスタンスを識別できるようにする
+        const Vector4 colors[] = {
+            { 1.0f, 0.25f, 0.30f, 1.0f }, { 0.25f, 0.85f, 0.40f, 1.0f },
+            { 0.30f, 0.60f, 1.0f, 1.0f }, { 1.0f, 0.75f, 0.25f, 1.0f },
+            { 0.75f, 0.40f, 1.0f, 1.0f }, { 0.20f, 0.85f, 0.85f, 1.0f },
+        };
+        const auto rotation = Quaternion::EulerToQuat({ 0.5f, 0.65f, 0.0f });
+        for (int index = 0; index < static_cast<int>(std::size(colors)); ++index)
         {
             const auto entity = ECSSystem::CreateEntity();
             if (!entity.IsValid())
@@ -126,12 +119,15 @@ namespace Hestia
             if (!renderer)
                 return false;
 
-            // 共有Assetを設定し、従来の配置をTransformに登録
+            // 共有Assetと個体ごとのデータを登録
             renderer->m_mesh = debugMesh;
             renderer->m_materials = { debugMaterial };
+            renderer->m_instanceColor = colors[index];
             HestiaGame::Transform transform(entity);
-            if (!transform.SetLocalScale({ 800.0f, 800.0f, 1.0f }) ||
-                !transform.SetLocalPosition({ 0.0f, 0.0f, 1.0f }))
+            const float x = static_cast<float>(index % 3 - 1) * 120.0f;
+            const float y = index < 3 ? 55.0f : -55.0f;
+            if (!transform.SetLocalScale({ 56.0f, 56.0f, 56.0f }) ||
+                !transform.SetLocalRotation(rotation) || !transform.SetLocalPosition({ x, y, 50.0f }))
                 return false;
         }
         return true;

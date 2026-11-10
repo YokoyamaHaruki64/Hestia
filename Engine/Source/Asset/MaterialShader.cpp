@@ -20,7 +20,7 @@ namespace Hestia
 {
     std::unique_ptr<MaterialShader> MaterialShader::Create(
         std::string name, std::vector<MaterialPropertyDesc> properties,
-        uint32_t constantBufferSize, std::vector<MaterialShaderPass> passes)
+        uint32_t constantBufferSize, std::vector<MaterialShaderPass> passes, bool isInstancing)
     {
         if (name.empty())
         {
@@ -97,6 +97,7 @@ namespace Hestia
         shader->m_properties = std::move(properties);
         shader->m_constantBufferSize = constantBufferSize;
         shader->m_passes = std::move(passes);
+        shader->m_isInstancing = isInstancing;
         return shader;
     }
 

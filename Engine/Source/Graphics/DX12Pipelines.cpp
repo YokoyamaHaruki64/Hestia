@@ -23,7 +23,7 @@ bool DX12Pipelines::Initialize(ID3D12Device* device)
 {
     HRESULT hr;
     // すべての MaterialShader Pass で使う CBV と SRV のスロットを定義する。
-    const int rootParamCount = 5;
+    const int rootParamCount = 6;
     std::array<D3D12_ROOT_PARAMETER, rootParamCount> rootParams{};
     std::array<D3D12_ROOT_PARAMETER_TYPE, rootParamCount> rootParamTypes
     {
@@ -31,7 +31,8 @@ bool DX12Pipelines::Initialize(ID3D12Device* device)
         D3D12_ROOT_PARAMETER_TYPE_CBV,	// PerObject Constant Buffer
         D3D12_ROOT_PARAMETER_TYPE_CBV,	// PerMaterial Constant Buffer
         D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,	// System Texture SRV
-        D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE	// Material Texture SRV
+        D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,	// Material Texture SRV
+        D3D12_ROOT_PARAMETER_TYPE_SRV                 // インスタンスデータ
     };
 
     std::array<D3D12_DESCRIPTOR_RANGE, 2> descriptorRanges
@@ -67,6 +68,10 @@ bool DX12Pipelines::Initialize(ID3D12Device* device)
         case D3D12_ROOT_PARAMETER_TYPE_CBV:
             rootParams[i].Descriptor.ShaderRegister = i;
             rootParams[i].Descriptor.RegisterSpace = 0;
+            break;
+        case D3D12_ROOT_PARAMETER_TYPE_SRV:
+            rootParams[i].Descriptor.ShaderRegister = 0;
+            rootParams[i].Descriptor.RegisterSpace = INSTANCE_BUFFER_REGISTER_SPACE;
             break;
 		
         case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:

@@ -33,6 +33,7 @@ namespace Hestia
                 .worldMatrix = caches[index].m_worldMatrix,
                 .mesh = renderer.m_mesh,
                 .materials = renderer.m_materials,
+                .instanceColor = renderer.m_instanceColor,
             });
         }
     }

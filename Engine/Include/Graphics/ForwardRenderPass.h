@@ -39,6 +39,13 @@ namespace Hestia
             std::vector<DrawBatch> m_batches;
         };
 
+        struct InstanceData
+        {
+            Matrix4x4_SIMD m_worldMatrix;
+            Vector4 m_color;
+        };
+        static_assert(sizeof(InstanceData) == 80 && offsetof(InstanceData, m_color) == 64);
+
         void BindObject(DX12Frames& frames, const Matrix4x4_SIMD& worldMatrix, size_t objectIndex);
         bool BindMaterial(ID3D12Device* device, DX12Frames& frames, const DX12Resources& resources,
             const DX12Descriptors& descriptors, const Material& material, const MaterialShader& shader);
@@ -53,6 +60,7 @@ namespace Hestia
         } m_PerObjectCB;
 
         std::array<PhaseDraws, 3> m_phaseDraws; // Opaque、Masked、Transparent の順
+        std::vector<InstanceData> m_instances; // バッチごとのUpload用作業領域
     };
 }
 

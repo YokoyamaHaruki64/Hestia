@@ -74,7 +74,7 @@ namespace Hestia
 
         auto shader = MaterialShader::Create(
             std::move(parsed.m_name), std::move(compiled.m_properties),
-            compiled.m_constantBufferSize, std::move(compiled.m_passes));
+            compiled.m_constantBufferSize, std::move(compiled.m_passes), !parsed.m_instanceStructName.empty());
 
         if (!shader)
             return fail("invalid MaterialShader definition");

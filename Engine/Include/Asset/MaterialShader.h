@@ -127,12 +127,13 @@ namespace Hestia
         /// @param properties Property と各 Pass の Reflection を統合済みの配置
         /// @param constantBufferSize 共通 CBuffer のバイト数。CBV 用の余白は含めない
         /// @param passes CPU 上の Pass 定義。スキーマだけを使う場合は空
+        /// @param isInstancing 全Passがインスタンスデータのレイアウトを使うか
         /// @return 構築済み Shader。名前、Property ID、配置が不正なら nullptr
         static std::unique_ptr<MaterialShader> Create(
             std::string name,
             std::vector<MaterialPropertyDesc> properties,
             uint32_t constantBufferSize,
-            std::vector<MaterialShaderPass> passes);
+            std::vector<MaterialShaderPass> passes, bool isInstancing = false);
 
         /// @brief 参照中の Material を切り離して Shader を破棄する。
         ~MaterialShader();
@@ -151,6 +152,9 @@ namespace Hestia
 
         /// @brief 宣言順の Pass 定義。Shader の寿命内で有効。
         std::span<const MaterialShaderPass> GetPasses() const { return m_passes; }
+
+        /// @brief Shaderがインスタンス描画用のレイアウトを持つか
+        bool IsInstancing() const noexcept { return m_isInstancing; }
 
         /// @brief 共通 CBuffer のバイト数。
         uint32_t GetConstantBufferSize() const { return m_constantBufferSize; }
@@ -173,6 +177,7 @@ namespace Hestia
         std::unordered_map<MaterialPropertyID, std::size_t> m_propertyIndices;  // PropertyID から m_properties のindexへの逆索引
         uint32_t m_constantBufferSize = 0;              // CBufferのバイト数
         std::vector<MaterialShaderPass> m_passes;       // Pass定義の配列
+        bool m_isInstancing = false;
         std::vector<Material*> m_materials;             // このShaderを参照するMaterialの逆索引
     };
 }

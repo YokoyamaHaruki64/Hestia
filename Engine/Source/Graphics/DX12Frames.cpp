@@ -151,7 +151,7 @@ bool DX12Frames::BeginDraw(DX12Device& device, DX12Presentation& presentation, c
     cmd->SetGraphicsRootConstantBufferView(0, frame.perFrameCB->GetGPUVirtualAddress());
 
     frame.visibleSRVCount = 0;
-    frame.materialConstantOffset = 0;
+    frame.drawDataOffset = 0;
     return true;
 }
 bool DX12Frames::EndDraw(DX12Device& device, DX12Presentation& presentation)
@@ -180,24 +180,31 @@ bool DX12Frames::EndDraw(DX12Device& device, DX12Presentation& presentation)
 
 D3D12_GPU_VIRTUAL_ADDRESS DX12Frames::UploadMaterialConstants(ID3D12Device* device, std::span<const std::byte> bytes)
 {
-    // Root CBV のアドレスを 256 バイトに揃え、ページ内の連続領域を確保
-    constexpr std::size_t pageSize = 1u << 20;
     if (bytes.size() > D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16u)
     {
         Logger::Error("Material constant buffer exceeds the DX12 limit");
         return 0;
     }
+    return UploadDrawData(device, bytes);
+}
+
+D3D12_GPU_VIRTUAL_ADDRESS DX12Frames::UploadDrawData(ID3D12Device* device, std::span<const std::byte> bytes)
+{
+    // CBVとインスタンスSRVで同じフレーム領域を使い、各開始アドレスを256バイトに揃える
+    constexpr std::size_t pageSize = 1u << 20;
+    if (bytes.size() > pageSize)
+        return 0;
 
     const auto size = Align256(static_cast<UINT>(std::max<std::size_t>(bytes.size(), 1)));
     auto& frame = m_FrameContexts[m_frameIndex];
-    auto offset = frame.materialConstantOffset;
+    auto offset = frame.drawDataOffset;
     if (offset % pageSize + size > pageSize)
         offset += pageSize - offset % pageSize;
 
     // 記録済みの Draw が参照するページを保持し、足りないときだけ次のページを追加
-    if (offset / pageSize == frame.materialConstantPages.size())
+    if (offset / pageSize == frame.drawDataPages.size())
     {
-        FrameContext::MaterialConstantPage page;
+        FrameContext::DrawDataPage page;
         const CD3DX12_HEAP_PROPERTIES heap(D3D12_HEAP_TYPE_UPLOAD);
         const auto desc = CD3DX12_RESOURCE_DESC::Buffer(pageSize);
         const D3D12_RANGE readRange{ 0, 0 };
@@ -206,20 +213,20 @@ D3D12_GPU_VIRTUAL_ADDRESS DX12Frames::UploadMaterialConstants(ID3D12Device* devi
                 D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(page.resource.GetAddressOf()))) ||
             FAILED(page.resource->Map(0, &readRange, &mappedData)))
         {
-            Logger::Error("Could not allocate the Material constant buffer");
+            Logger::Error("Could not allocate the frame draw data buffer");
             return 0;
         }
         page.mappedData = static_cast<std::byte*>(mappedData);
-        frame.materialConstantPages.push_back(std::move(page));
+        frame.drawDataPages.push_back(std::move(page));
     }
 
     // CPU 側のパック済みデータを転送し、次の Draw が上書きしないように進める
-    const auto& page = frame.materialConstantPages[offset / pageSize];
+    const auto& page = frame.drawDataPages[offset / pageSize];
     auto* destination = page.mappedData + offset % pageSize;
     if (!bytes.empty())
         std::memcpy(destination, bytes.data(), bytes.size());
     std::memset(destination + bytes.size(), 0, size - bytes.size());
-    frame.materialConstantOffset = offset + size;
+    frame.drawDataOffset = offset + size;
     return page.resource->GetGPUVirtualAddress() + offset % pageSize;
 }
 
@@ -234,10 +241,10 @@ void DX12Frames::Finalize()
         frame.srvVisibleHeap.Reset();
         frame.fenceValue = 0;
         frame.visibleSRVCount = 0;
-        for (auto& page : frame.materialConstantPages)
+        for (auto& page : frame.drawDataPages)
             page.resource->Unmap(0, nullptr);
-        frame.materialConstantPages.clear();
-        frame.materialConstantOffset = 0;
+        frame.drawDataPages.clear();
+        frame.drawDataOffset = 0;
     }
     m_frameIndex = 0;
 }

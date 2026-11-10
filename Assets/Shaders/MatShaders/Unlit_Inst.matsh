@@ -1,0 +1,52 @@
+MaterialShader "Hestia/Unlit_Inst"
+{
+    RenderType = Forward;
+    RenderPhase = Opaque;
+    Cull = None;
+
+    [InstancedStruct]
+    struct InstanceData
+    {
+        float4x4 worldMatrix;
+        float4 color;
+    };
+
+    SHARED_HLSL_BEGIN
+    #include "../Common.hlsl"
+    SHARED_HLSL_END
+
+    Pass "Unlit_Inst"
+    {
+        HLSL_BEGIN
+        #pragma vertex VSMain
+        #pragma pixel PSMain
+
+        struct VertexOutput
+        {
+            float4 position : SV_POSITION;
+            float3 worldPosition : TEXCOORD0;
+            float4 color : COLOR;
+        };
+
+        VertexOutput VSMain(float3 position : POSITION, uint instanceID : SV_InstanceID)
+        {
+            InstanceData instance = Instances[instanceID];
+            float4 worldPosition = mul(float4(position, 1.0f), instance.worldMatrix);
+
+            VertexOutput output;
+            output.position = mul(mul(worldPosition, view), proj);
+            output.worldPosition = worldPosition.xyz;
+            output.color = instance.color;
+            return output;
+        }
+
+        float4 PSMain(VertexOutput input) : SV_Target0
+        {
+            // 面ごとの色差でデバッグ立方体の形状を確認しやすくする
+            float3 normal = normalize(cross(ddx(input.worldPosition), ddy(input.worldPosition)));
+            float shade = 0.45f + 0.55f * abs(dot(normal, normalize(float3(-0.4f, 0.7f, -0.6f))));
+            return float4(input.color.rgb * shade, input.color.a);
+        }
+        HLSL_END
+    }
+}
