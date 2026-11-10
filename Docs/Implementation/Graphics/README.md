@@ -8,7 +8,7 @@
 
 GraphicsSystemはunique_ptrでDX12Backendを所有し、RenderDataのqueueとView/Projectionを保持する。単一instanceを接続し、初期化・資源登録・描画・終了は同じスレッドで行う。null HWND、正でない寸法、二重初期化を拒否する。初期Viewは単位行列、ProjectionはWindow寸法の左手系正射影（near 0.1、far 100）。Resizeは未対応。
 
-BackendはDevice、Direct Queue、SwapChain、二つのFrameContext、描画先、depth、descriptor heap、RootSignature、PSO cache、定数Buffer、GPU Asset Storage、UploadContextPool、Fenceを管理する。RTV/DSVは各64、master SRVは2048、material textureは16、最大描画提出数は32768。これらは現在の固定容量で、動的に無制限へ増える契約ではない。
+BackendはDevice、Direct Queue、SwapChain、二つのFrameContext、描画先、depth、descriptor heap、RootSignature、PSO cache、定数Buffer、GPU Asset Storage、UploadContextPool、Fenceを管理する。RTV/DSVは各64、master SRVは2048、MaterialのTextureは1テーブル16枠。
 
 ## CPU AssetからGPUへ
 
@@ -18,9 +18,9 @@ MeshはStream別Vertex Bufferとindex Bufferに変換する。TextureはRGBA8画
 
 ## フレームと描画
 
-SubmitはRenderDataを値で受け取りqueueに追加する。未初期化、容量超過、GPU Mesh不在ではfalse。MaterialSlot順のHandle列を受け取り、描画時にSubMeshごとのMaterialを解決する。
+SubmitはRenderDataを値で受け取りqueueに追加する。未初期化、容量超過、Meshがnullの場合はfalse。標準構成の提出上限は32,768件。GPU Meshの有無はBuildで調べ、未登録ならその提出を飛ばす。
 
-RenderはUpdate → BeginDraw → Draw → EndDrawを呼ぶ。BeginDraw失敗時は以降を呼ばない。BeginDrawはフレーム資源を準備し、PerFrame定数を書き、提出queueをBackend側へswapする。DrawはMaterialShaderのForward PassをPhase順に描画する。Passが必要とする任意頂点Streamが欠ける場合は既定Bufferを使う。
+RenderはUpdate → BeginDraw → Draw → EndDrawを呼ぶ。BeginDraw失敗時は以降を呼ばない。BeginDrawはフレーム資源を準備し、PerFrame定数を書き、提出queueをBackend側へswapする。DrawはForwardRenderPassのBuild → Sort → Recordを実行する。Shader Passが要求する任意頂点Streamが欠ける場合は既定Bufferを使う。 [RenderPassの設計](../../Design/RenderPass.md)
 
 EndDrawはscene colorをBackBufferへコピーし、状態遷移、コマンド実行、PresentとFenceの進行を行う。宣言された二つのscene colorだけから一般的なRenderGraphやポストエフェクト実装があると解釈しない。
 

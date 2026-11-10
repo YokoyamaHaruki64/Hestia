@@ -31,14 +31,18 @@ Property は Bool、Int、Float、Vector2/3/4、Color、Matrix3x3/4x4、Texture2
 
 生成する数値宣言は `PerMaterial` CBuffer にまとめる。Texture は宣言順に `t0` から割り当て、16 枠を超える宣言を拒否する。Reflection は使われた定数の Offset・サイズ・行列方向、使われた Texture の Slot を確定し、Stage／Pass 間の不一致を拒否する。
 
+### インスタンシング
+
+`[InstancedStruct]` はShader直下に1つ指定できる。対応するフィールドは宣言順に `float4x4 worldMatrix` と `float4 color`。Compilerが名前付き構造体と `StructuredBuffer` の `Instances` を生成する。全PassのVSがこのBufferを参照し、各StageはObject定数の `b1, space0` を使用しない。VSは `SV_InstanceID` を使って各個体を参照する。 [Unlit_Inst.matsh](../../../Assets/Shaders/MatShaders/Unlit_Inst.matsh)
+
 ## 提出から描画まで
 
-1. [RenderData](../../../Engine/Include/Graphics/DX12Object.h) に Mesh Handle、World 行列、MaterialSlot 順の `materials` を渡して `GraphicsSystem::Submit` する。 `materials` が空の場合は描画を行わない。
-2. Backend はアップロード時に GPU Mesh へ SubMesh の範囲をコピーする。SubMesh 未指定時は Index 全体を Slot 0 にする。描画時に Slot の Handle を解決し、Slot が範囲外または Material／Shader を解決できない場合はその SubMesh を飛ばす。
+1. [RenderData](../../../Engine/Include/Graphics/DX12Object.h) に Mesh と Material の非所有ポインタ、World 行列、インスタンス色を渡して `GraphicsSystem::Submit` する。Material 配列は MaterialSlot 順で、空の場合は描画を行わない。
+2. Backend はアップロード時に GPU Mesh へ SubMesh の範囲をコピーする。SubMesh 未指定時は Index 全体を Slot 0 にする。Build は提出1件につき GPU Mesh を一度解決し、Slot が範囲外、または Material／Shader がない SubMesh を飛ばす。
 3. [DX12MaterialPipeline.cpp](../../../Engine/Source/Graphics/DX12MaterialPipeline.cpp) が、登録済み Shader Handle の index／generation と Pass 番号で PSO を検索する。未作成なら `m_requiredVertexStreams` に対応する要素を固定表から取り出し、Blend、Rasterizer、Depth、Topology と共に PSO を生成する。
-4. [DX12Draw.cpp](../../../Engine/Source/Graphics/DX12Draw.cpp) が Opaque → Masked → Transparent の順に Forward Pass を実行する。Material 定数と Texture をバインドし、要求されたスロットの頂点バッファを設定して、SubMesh の `firstIndex` と `indexCount` で `DrawIndexedInstanced` を記録する。
+4. [ForwardRenderPass](../../../Engine/Source/Graphics/ForwardRenderPass.cpp) が Build、Sort、Record を実行する。Build は SubMesh × Shader Pass を共通の `DrawCommand` に展開する。Sort は Opaque と Masked を並べ替えて同じ描画状態のインスタンスをまとめ、Transparent は提出順で1件ずつ扱う。Record は Opaque → Masked → Transparent の順に、各バッチの `DrawIndexedInstanced` を記録する。 [RenderPassの設計](../../Design/RenderPass.md)
 
-Compiler は VS Reflection のシステム値を除外し、頂点入力のセマンティクス、インデックス 0、float32 型、成分マスクを確認する。対応する `VertexStream` は Pass 内に1件だけ登録する。Engine からの提出例は [デバッグ平面の初期化とフレーム更新](../../../Engine/Source/Engine.cpp) を参照。
+Compiler は VS Reflection のシステム値を除外し、頂点入力のセマンティクス、インデックス 0、float32 型、成分マスクを確認する。対応する `VertexStream` は Pass 内に1件だけ登録する。Engineの提出例は [MeshRenderer](../ECSProcess/MeshRenderer.md) を参照。
 
 `NormalTangent` を要求した PSO の Input Layout には `NORMAL` と `TANGENT` が入り、どちらも同一スロットを参照する。Mesh に任意 Stream がない場合は共通の既定バッファを使う。法線・接線の既定値は `(0, 0, -1)` と `(1, 0, 0, 1)`。 [AssetType.h](../../../Engine/Include/Asset/AssetType.h)
 
@@ -47,9 +51,10 @@ Compiler は VS Reflection のシステム値を除外し、頂点入力のセ�
 | フレーム・オブジェクト・Material の CBV | `b0`、`b1`、`b2`、いずれも space 0 |
 | System Texture テーブル | `t0–t15`, space 0 |
 | Material Texture テーブル | `t0–t15`, space 1 |
+| インスタンスBufferのRoot SRV | `t0`, space 2 |
 | 静的 Sampler | `s0–s3`、Linear／Point × Wrap／Clamp |
 
-FrameContext は Material 定数用の 1 MiB の Upload ページを必要に応じて確保する。1 Draw ごとに 256-byte 境界の領域を割り当て、64 KiB を超える定数を拒否する。Texture Slot が空または GPU 側で解決できない場合は白 Texture を使う。Draw ごとに 16 個の SRV を Visible Heap にコピーする。定数領域と Visible Heap は対象フレームのフェンス完了後に再利用する。提出は最大 32768 件、Material 経路の Draw はフレームの SRV 使用数が上限に達すると打ち切る。
+FrameContext は Material 定数とインスタンスデータで 1 MiB の Upload ページを共有する。データの開始アドレスは 256-byte 境界に揃える。Material 定数は最大64 KiB、インスタンスは1件80 bytes、1 Drawあたり最大1024件。Texture Slot が空または GPU 側で解決できない場合は白 Texture を使う。Draw ごとに16個のSRVを Visible Heap にコピーし、最大32,768テーブルで記録を打ち切る。UploadページとVisible HeapはフレームのFence完了後に再利用する。
 
 ## ビルドと現在の制約
 

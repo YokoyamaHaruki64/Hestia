@@ -13,7 +13,7 @@
 | `UploadContextPool` | Upload用allocator/listを管理し、空きがなければ追加。初期数16 | 同上 |
 | `UploadContext` | allocator、command list、使用中Fence値、空き状態 | 同上、Pool内部 |
 | `RootParameterIndex` | Frame/Object/Material CBV、System/Material SRVのRoot引数番号 | 同上 |
-| `PerObjectCB` | Object定数Bufferとmap先。要素strideは256byte境界 | [DX12Draw.h](../../../Engine/Include/Graphics/DX12Draw.h) |
+| `PerObjectCB` | Object定数Bufferとmap先。要素strideは256byte境界 | [ForwardRenderPass.h](../../../Engine/Include/Graphics/ForwardRenderPass.h) |
 | `GPUResourceStorage<TAsset,TGpuResource>` | HandleとGPU Resourceの対応を所有。Registerで重複indexを拒否、Getで世代も照合、Clearで全解放 | [GPUResourceStorage.h](../../../Engine/Include/Graphics/GPUResourceStorage.h) |
 | `GPUResourceStorage::Slot` | Resourceとgenerationを保持する内部slot | 同上 |
 

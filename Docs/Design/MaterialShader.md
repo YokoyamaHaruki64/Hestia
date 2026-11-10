@@ -8,7 +8,7 @@
 | --- | --- |
 | `MaterialShader` | Property の共通定義と、各 Pass の描画設定・コンパイル済み Shader・必要な頂点 Stream を所有する。複数の Material が共有する。 |
 | `Material` | Shader を借用し、Material ごとの型付き Property 値と GPU 転送用の定数キャッシュを所有する。 |
-| `AssetSystem` | MaterialShader、Material、Mesh、Texture の CPU 実体を所有する。提出側は型付き Handle で参照する。 |
+| `AssetSystem` | MaterialShader、Material、Mesh、Texture の CPU 実体を所有する。取得・登録には型付きHandleを使い、描画提出には解決済みの参照を渡す。 |
 | `DXMaterialShaderCompiler` | 解析済みの DSL から HLSL を組み立て、DXC でコンパイルし、Reflection の結果を CPU Asset 用のデータに変換する。 |
 | `DX12Backend` | PSO、GPU Buffer、Texture、Descriptor を所有する。Mesh と Material の組を解決し、Pass を描画する。 |
 
@@ -43,11 +43,12 @@ CPU Asset のアドレスは所有側から解放されるまで安定する。M
 
 スロットは Mesh と共通の番号を使う。例えば VS が `POSITION` と `NORMAL` を要求する場合、Input Layout には `POSITION`、`NORMAL`、`TANGENT` が入り、UV と Color の要素は入らない。描画する Mesh の Stream 構成は PSO の選択に影響しない。必要な Stream が Mesh にない場合は同じスロットへ共通の既定バッファをバインドする。法線と接線のうち片方だけを Mesh に設定する場合、同じ頂点構造体のもう片方には既定値を使う。
 
-描画提出は Mesh、World 行列、MaterialSlot 順の Material Handle を渡す。SubMesh の範囲と Slot から Material を選び、Material が参照する Shader の Pass を描画する。SubMesh が未指定の Mesh は全 Index を Slot 0 に割り当てる。
+描画提出は Mesh と MaterialSlot 順の Material の非所有ポインタ、World行列、インスタンス色を渡す。SubMesh の範囲と Slot から Material を選び、Material が参照する Shader の Pass を描画する。SubMesh が未指定の Mesh は全 Index を Slot 0 に割り当てる。
 
 ## 描画順と GPU 資源
 
-- Forward は Opaque → Masked → Transparent の順。同じ Phase の実行順は提出順とし、深度・ブレンド・ラスタライザの状態には Pass の指定を反映する。
+- Forward は Opaque → Masked → Transparent の順。Opaque・Maskedは描画状態でソートし、Transparentは提出順を保つ。深度・ブレンド・ラスタライザの状態にはShader Passの指定を反映する。 [RenderPassの設計](./RenderPass.md)
+- Shader直下の `[InstancedStruct]` はインスタンス描画を指定する。初版のレイアウトはWorld行列と色。バッチはPSO、Material、Mesh、SubMeshを共有し、個別データをInstance Bufferに並べる。
 - PSO は登録済み Shader の Handle と Pass 番号を基に再利用する。Mesh や個々の Material 値が変わっても同じ Pass の PSO を使う。
 - Draw ごとに Material の定数と Texture をバインドする。フレームが参照中のアップロード領域と Descriptor は、フェンス完了後に再利用する。
 - GBuffer 描画、LightingShader、透明物の距離ソート、個別アンロードと GPU Cache の連動は後続の設計対象。

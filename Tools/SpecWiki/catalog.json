@@ -27,8 +27,10 @@
   "pages": {
     "Design/Transform.md": { "category": "design", "order": 40, "label": "Transformの設計", "summary": "Transformのクラス構成、Local TRSを正本にする契約とGame向けFacadeの設計。" },
     "Design/MaterialShader.md": { "category": "design", "order": 50, "label": "MaterialShaderの設計", "summary": "Materialの所有、.matsh、PassのStream選択とSubMesh単位のForward描画。" },
+    "Design/RenderPass.md": { "category": "design", "order": 60, "label": "RenderPassの設計", "summary": "共通DrawCommand、Build・Sort・Record、Forwardのバッチ化。" },
     "Implementation/Graphics/MaterialShader.md": { "label": "MaterialShaderとForward描画", "summary": "DSL解析、DXCとReflection、Pass用PSO、Material定数と頂点Streamのバインド。" },
     "Implementation/ECSProcess/Transform.md": { "label": "Transform", "summary": "必須Component、親子関係、World行列の更新順とDLL公開Facadeの現行仕様。" },
+    "Implementation/ECSProcess/MeshRenderer.md": { "label": "MeshRenderer", "summary": "TransformCacheからの描画提出、Assetの参照、インスタンス色。" },
     "Implementation/README.md": { "category": "runtime", "label": "全体概要", "summary": "実装仕様書の索引、全体の接続、実装済みの対象範囲を確認する。", "diagrams": ["system"] },
     "Implementation/Application/README.md": { "summary": "WindowとEngineの起動、フレーム進行、現在の終了処理を確認する。" },
     "Implementation/Engine/README.md": {
