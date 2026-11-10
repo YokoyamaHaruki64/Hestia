@@ -113,7 +113,7 @@
     <ClCompile Include="Source\Graphics\DX12Frames.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Graphics\DX12Draw.cpp">
+    <ClCompile Include="Source\Graphics\ForwardRenderPass.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Backend.cpp">
@@ -283,7 +283,10 @@
     <ClInclude Include="Include\Graphics\DX12Frames.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Graphics\DX12Draw.h">
+    <ClInclude Include="Include\Graphics\IRenderPass.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\ForwardRenderPass.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Backend.h">

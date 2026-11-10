@@ -1,6 +1,6 @@
 ﻿/*=============================================================================
 
- File   : DX12Draw.cpp
+ File   : ForwardRenderPass.cpp
  Desc   : 描画提出から GPU の Draw を記録する。
 
 ------------------------------------------------------------------------------
@@ -11,20 +11,23 @@
 =============================================================================*/
 
 #include "pch.h"
-#include "Graphics/DX12Draw.h"
+#include "Graphics/ForwardRenderPass.h"
 
 #include "Graphics/DX12Frames.h"
 #include "Graphics/DX12Resources.h"
 #include "Graphics/DX12Descriptors.h"
 #include "Graphics/DX12Pipelines.h"
+#include "Graphics/DX12Support.h"
 #include "Asset/Material.h"
 #include "Asset/MaterialShader.h"
+#include <algorithm>
 #include <array>
 #include <cstring>
+#include <tuple>
 
 using namespace Hestia;
 
-bool DX12Draw::CreateConstants(ID3D12Device* device)
+bool ForwardRenderPass::CreateConstants(ID3D12Device* device)
 {
     HRESULT hr;
     D3D12_HEAP_PROPERTIES heapProperties{};
@@ -58,45 +61,47 @@ bool DX12Draw::CreateConstants(ID3D12Device* device)
     return true;
 }
 
-void DX12Draw::Finalize()
+void ForwardRenderPass::Finalize()
 {
     // Backend が GPU 待機を済ませてから永続マップを解除する。
     if (m_PerObjectCB.constantBuffer && m_PerObjectCB.mappedData)
         m_PerObjectCB.constantBuffer->Unmap(0, nullptr);
     m_PerObjectCB.mappedData = nullptr;
     m_PerObjectCB.constantBuffer.Reset();
-    ClearSubmissions();
+    ClearFrame();
 }
 
-void DX12Draw::ClearSubmissions()
+void ForwardRenderPass::ClearFrame()
 {
-    for (auto& phaseDraws : m_forwardDraws)
-        phaseDraws.clear();
-    m_currentFrameData.clear();
+    for (auto& phase : m_phaseDraws)
+    {
+        phase.m_commands.clear();
+        phase.m_batches.clear();
+    }
 }
 
-void DX12Draw::ExpandSubmissions(const DX12Resources& resources)
+void ForwardRenderPass::Build(std::span<const RenderData> submissions, const DX12Resources& resources)
 {
     // Phase の値をそのまま配列添字に使い、提出順を保ったまま描画順へ振り分ける
     static_assert(static_cast<std::size_t>(RenderPhase::Opaque) == 0 &&
         static_cast<std::size_t>(RenderPhase::Masked) == 1 &&
         static_cast<std::size_t>(RenderPhase::Transparent) == 2);
-    for (auto& phaseDraws : m_forwardDraws)
-        phaseDraws.clear();
+    ClearFrame();
 
-    for (std::size_t objectIndex = 0; objectIndex < m_currentFrameData.size(); ++objectIndex)
+    for (std::size_t submissionIndex = 0; submissionIndex < submissions.size(); ++submissionIndex)
     {
         // 提出ごとに一度だけ GPU Mesh を解決し、全 SubMesh と Pass で共有
-        const auto& data = m_currentFrameData[objectIndex];
+        const auto& data = submissions[submissionIndex];
         if (!data.mesh || data.materials.empty())
             continue;
         const auto* mesh = resources.GetMesh(data.mesh->m_handle);
         if (!mesh)
             continue;
 
-        for (const auto& subMesh : mesh->m_subMeshes)
+        for (std::size_t subMeshIndex = 0; subMeshIndex < mesh->m_subMeshes.size(); ++subMeshIndex)
         {
             // Slot の Material から使える Forward Pass を展開
+            const auto& subMesh = mesh->m_subMeshes[subMeshIndex];
             if (subMesh.m_materialSlot >= data.materials.size())
                 continue;
             const auto* material = data.materials[subMesh.m_materialSlot];
@@ -109,33 +114,66 @@ void DX12Draw::ExpandSubmissions(const DX12Resources& resources)
             {
                 const auto& info = passes[passIndex].m_info;
                 const auto phaseIndex = static_cast<std::size_t>(info.m_renderPhase);
-                if (info.m_renderType == RenderType::Forward && phaseIndex < m_forwardDraws.size())
-                    m_forwardDraws[phaseIndex].push_back({ mesh, &subMesh, material, shader, objectIndex, passIndex });
+                if (info.m_renderType != RenderType::Forward || phaseIndex >= m_phaseDraws.size())
+                    continue;
+
+                // フレーム内の参照から比較用のキーを一度だけ生成
+                const SortKey sortKey{
+                    reinterpret_cast<std::uintptr_t>(shader), passIndex,
+                    reinterpret_cast<std::uintptr_t>(material),
+                    reinterpret_cast<std::uintptr_t>(mesh), subMeshIndex,
+                };
+                m_phaseDraws[phaseIndex].m_commands.push_back({
+                    sortKey, mesh, material, shader, subMeshIndex, passIndex, submissionIndex,
+                });
             }
         }
     }
 }
 
-void DX12Draw::Draw(ID3D12Device* device, DX12Frames& frames, const DX12Resources& resources,
-    const DX12Descriptors& descriptors, DX12Pipelines& pipelines)
+void ForwardRenderPass::Sort()
 {
-    ExpandSubmissions(resources);
-
-    // 展開済みの描画を Phase 順に記録し、フレームの SRV 領域を使い切ったら終了
-    for (const auto& phaseDraws : m_forwardDraws)
+    for (std::size_t phaseIndex = 0; phaseIndex < m_phaseDraws.size(); ++phaseIndex)
     {
-        for (const auto& draw : phaseDraws)
+        // 透明物はブレンド順を維持し、OpaqueとMaskedだけをまとめる
+        auto& phase = m_phaseDraws[phaseIndex];
+        auto& commands = phase.m_commands;
+        const bool canReorder = phaseIndex != static_cast<std::size_t>(RenderPhase::Transparent);
+        if (canReorder)
+            std::ranges::sort(commands, [](const DrawCommand& left, const DrawCommand& right)
+            {
+                return std::tie(left.m_sortKey, left.m_submissionIndex) <
+                    std::tie(right.m_sortKey, right.m_submissionIndex);
+            });
+
+        // 通常描画では各コマンドが1件のバッチになる
+        for (std::size_t index = 0; index < commands.size(); ++index)
+            phase.m_batches.push_back({ index, 1 });
+    }
+}
+
+void ForwardRenderPass::Record(std::span<const RenderData> submissions, const RenderPassRecordContext& context)
+{
+    auto& frames = context.m_frames;
+    const auto& resources = context.m_resources;
+
+    // 確定済みのバッチをPhase順に記録
+    for (const auto& phase : m_phaseDraws)
+    {
+        for (const auto& batch : phase.m_batches)
         {
             if (!frames.CanCommitMaterialTextures())
                 return;
 
-            // Pass の PSO と Material／Object 定数を設定
-            const auto& pass = draw.m_shader->GetPasses()[draw.m_passIndex];
-            auto* pipeline = pipelines.GetMaterialPipeline(device, *draw.m_shader, draw.m_passIndex);
-            if (!pipeline || !BindMaterial(device, frames, resources, descriptors, *draw.m_material, *draw.m_shader))
+            // バッチ共通のPSOとMaterialを設定
+            const auto& draw = phase.m_commands[batch.m_first];
+            const auto& pass = draw.m_shader->GetPasses()[draw.m_shaderPassIndex];
+            auto* pipeline = context.m_pipelines.GetMaterialPipeline(context.m_device, *draw.m_shader, draw.m_shaderPassIndex);
+            if (!pipeline || !BindMaterial(context.m_device, frames, resources,
+                context.m_descriptors, *draw.m_material, *draw.m_shader))
                 continue;
 
-            BindObject(frames, m_currentFrameData[draw.m_objectIndex].worldMatrix, draw.m_objectIndex);
+            BindObject(frames, submissions[draw.m_submissionIndex].worldMatrix, draw.m_submissionIndex);
             frames.GetCommandList()->SetPipelineState(pipeline);
 
             // Pass のトポロジと Stream で SubMesh の範囲を描画
@@ -145,12 +183,14 @@ void DX12Draw::Draw(ID3D12Device* device, DX12Frames& frames, const DX12Resource
             else if (pass.m_pipeline.m_topology == PrimitiveTopologyType::Point)
                 topology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
 
-            DrawMesh(frames, resources, *draw.m_mesh, *draw.m_subMesh, topology, pass.m_pipeline.m_requiredVertexStreams);
+            const auto& subMesh = draw.m_mesh->m_subMeshes[draw.m_subMeshIndex];
+            DrawMesh(frames, resources, *draw.m_mesh, subMesh, topology, pass.m_pipeline.m_requiredVertexStreams,
+                static_cast<UINT>(batch.m_count));
         }
     }
 }
 
-void DX12Draw::BindObject(DX12Frames& frames, const Matrix4x4_SIMD& worldMatrix, size_t objectIndex)
+void ForwardRenderPass::BindObject(DX12Frames& frames, const Matrix4x4_SIMD& worldMatrix, size_t objectIndex)
 {
     // 各 Frame が独立した Object 定数の領域を持ち、他の Frame の Draw を上書きしない。
     const int index = frames.Index() * DX12_MAX_OBJECT_COUNT + objectIndex;
@@ -170,7 +210,7 @@ void DX12Draw::BindObject(DX12Frames& frames, const Matrix4x4_SIMD& worldMatrix,
             m_PerObjectCB.constantBuffer->GetGPUVirtualAddress() + offset);
 }
 
-bool DX12Draw::BindMaterial(ID3D12Device* device, DX12Frames& frames, const DX12Resources& resources,
+bool ForwardRenderPass::BindMaterial(ID3D12Device* device, DX12Frames& frames, const DX12Resources& resources,
     const DX12Descriptors& descriptors, const Material& material, const MaterialShader& shader)
 {
     // Reflection のスロットに Texture を割り当て、空きは白 Texture で埋める。
@@ -194,8 +234,8 @@ bool DX12Draw::BindMaterial(ID3D12Device* device, DX12Frames& frames, const DX12
     return true;
 }
 
-void DX12Draw::DrawMesh(DX12Frames& frames, const DX12Resources& resources, const DXMesh& mesh, const SubMesh& range, D3D_PRIMITIVE_TOPOLOGY topology,
-    std::span<const VertexStream> streams)
+void ForwardRenderPass::DrawMesh(DX12Frames& frames, const DX12Resources& resources, const DXMesh& mesh, const SubMesh& range, D3D_PRIMITIVE_TOPOLOGY topology,
+    std::span<const VertexStream> streams, UINT instanceCount)
 {
     std::array<D3D12_VERTEX_BUFFER_VIEW, static_cast<size_t>(VertexStream::Count)> views{};
 
@@ -211,5 +251,5 @@ void DX12Draw::DrawMesh(DX12Frames& frames, const DX12Resources& resources, cons
     commandList->IASetPrimitiveTopology(topology);
     commandList->IASetVertexBuffers(0, static_cast<UINT>(views.size()), views.data());
     commandList->IASetIndexBuffer(&mesh.m_indexView);
-    commandList->DrawIndexedInstanced(range.m_indexCount, 1, range.m_firstIndex, 0, 0);
+    commandList->DrawIndexedInstanced(range.m_indexCount, instanceCount, range.m_firstIndex, 0, 0);
 }

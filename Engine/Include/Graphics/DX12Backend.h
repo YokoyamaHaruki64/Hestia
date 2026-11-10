@@ -20,7 +20,7 @@
 #include "Graphics/DX12Resources.h"
 #include "Graphics/DX12Pipelines.h"
 #include "Graphics/DX12Frames.h"
-#include "Graphics/DX12Draw.h"
+#include "Graphics/ForwardRenderPass.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -38,7 +38,8 @@ namespace Hestia
         DX12Resources m_resources;
         DX12Pipelines m_pipelines;
         DX12Frames m_frames;
-        DX12Draw m_draw;
+        ForwardRenderPass m_forwardPass;
+        std::vector<RenderData> m_submissions;
 
     public:
         static constexpr size_t MAX_DRAW_COUNT = DX12_MAX_MATERIAL_COUNT;

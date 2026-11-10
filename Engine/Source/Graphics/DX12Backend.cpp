@@ -39,7 +39,7 @@ bool DX12Backend::Initialize(HWND hWnd, int width, int height)
     m_presentation.SetViewport(width, height);
     if (!m_pipelines.Initialize(m_device.GetDevice()) ||
         !m_frames.CreateConstants(m_device.GetDevice()) ||
-        !m_draw.CreateConstants(m_device.GetDevice()))
+        !m_forwardPass.CreateConstants(m_device.GetDevice()))
         return false;
 
     m_IsInitialized = true;
@@ -53,7 +53,8 @@ void DX12Backend::Finalize()
     if (!m_device.WaitForGPU())
         return;
 
-    m_draw.Finalize();
+    m_forwardPass.Finalize();
+    m_submissions.clear();
     m_resources.Finalize();
     m_frames.Finalize();
     m_presentation.Finalize();
@@ -76,19 +77,24 @@ bool DX12Backend::BeginDraw(std::vector<RenderData>& renderData, const Matrix4x4
         return false;
 
     // 記録できる状態になってから提出データを引き受ける。
-    m_draw.TakeSubmissions(renderData);
+    m_submissions.swap(renderData);
     return true;
 }
 
 void DX12Backend::Draw()
 {
-    m_draw.Draw(m_device.GetDevice(), m_frames, m_resources, m_descriptors, m_pipelines);
+    // 同じ提出列をBuildとRecordで参照し、Sortで記録順とバッチを確定
+    IRenderPass& pass = m_forwardPass;
+    pass.Build(m_submissions, m_resources);
+    pass.Sort();
+    pass.Record(m_submissions, { m_device.GetDevice(), m_frames, m_resources, m_descriptors, m_pipelines });
 }
 
 void DX12Backend::EndDraw()
 {
     // CPU側の記録が終わったので、フレームの送信結果にかかわらず借用参照を解除する
-    m_draw.ClearSubmissions();
+    m_forwardPass.ClearFrame();
+    m_submissions.clear();
     if (!m_frames.EndDraw(m_device, m_presentation))
         m_IsInitialized = false;
 }

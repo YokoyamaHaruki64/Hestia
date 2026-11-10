@@ -50,7 +50,7 @@
     <ClCompile Include="Source\Graphics\DX12Pipelines.cpp" />
     <ClCompile Include="Source\Graphics\DX12Resources.cpp" />
     <ClCompile Include="Source\Graphics\DX12Frames.cpp" />
-    <ClCompile Include="Source\Graphics\DX12Draw.cpp" />
+    <ClCompile Include="Source\Graphics\ForwardRenderPass.cpp" />
     <ClCompile Include="Source\Graphics\DX12Backend.cpp" />
     <ClCompile Include="Source\Graphics\DX12MaterialPipeline.cpp" />
     <ClCompile Include="Source\Graphics\DXMaterialShaderCompiler.cpp" />
@@ -104,7 +104,8 @@
     <ClInclude Include="Include\Graphics\DX12Pipelines.h" />
     <ClInclude Include="Include\Graphics\DX12Resources.h" />
     <ClInclude Include="Include\Graphics\DX12Frames.h" />
-    <ClInclude Include="Include\Graphics\DX12Draw.h" />
+    <ClInclude Include="Include\Graphics\IRenderPass.h" />
+    <ClInclude Include="Include\Graphics\ForwardRenderPass.h" />
     <ClInclude Include="Include\Graphics\DX12Backend.h" />
     <ClInclude Include="Include\Graphics\DX12Object.h" />
     <ClInclude Include="Include\Graphics\DXMaterialShaderCompiler.h" />
