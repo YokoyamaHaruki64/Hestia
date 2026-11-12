@@ -50,7 +50,7 @@ CPU Asset のアドレスは所有側から解放されるまで安定する。M
 - Forward は Opaque → Masked → Transparent の順。Opaque・Maskedは描画状態でソートし、Transparentは提出順を保つ。深度・ブレンド・ラスタライザの状態にはShader Passの指定を反映する。 [RenderPassの設計](./RenderPass.md)
 - Shader直下の `[InstancedStruct]` はインスタンス描画を指定する。初版のレイアウトはWorld行列と色。バッチはPSO、Material、Mesh、SubMeshを共有し、個別データをInstance Bufferに並べる。
 - PSO は登録済み Shader の Handle と Pass 番号を基に再利用する。Mesh や個々の Material 値が変わっても同じ Pass の PSO を使う。
-- Draw ごとに Material の定数と Texture をバインドする。フレームが参照中のアップロード領域と Descriptor は、フェンス完了後に再利用する。
+- 同一フレームのDraw間で、同じMaterialの定数とTextureテーブルを共有する。Object定数は通常Drawが使用する分をフレーム用のUploadページから確保する。アップロード領域とDescriptorは、参照したフレームのFence完了後に再利用する。
 - GBuffer 描画、LightingShader、透明物の距離ソート、個別アンロードと GPU Cache の連動は後続の設計対象。
 
 設計の出典は [Material](../../Reference/HestiaDesign/DevelopNotes/Class/Material.md)、[MaterialShader](../../Reference/HestiaDesign/DevelopNotes/Class/MaterialShader.md)、[Mesh と VertexStream](../../Reference/HestiaDesign/DevelopNotes/Class/AssetType.md)、[MaterialShaderDSL](../../Reference/HestiaDesign/Graphics/MaterialShaderDSL.md)。ここで採用した Stream 単位の Input Layout は、参考資料の入力要素を個別に保存する案から更新している。

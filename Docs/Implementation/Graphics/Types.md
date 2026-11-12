@@ -8,12 +8,13 @@
 | --- | --- | --- |
 | `GraphicsSystem` | Backendの所有、描画提出、View/Projection設定、Asset Uploadの入口 | [GraphicsSystem.h](../../../Engine/Include/Graphics/GraphicsSystem.h) |
 | `DX12Backend` | DX12資源・コマンド記録・同期・Presentを管理 | [DX12Backend.h](../../../Engine/Include/Graphics/DX12Backend.h) |
-| `FrameContext` | フレームごとのallocator、command list、Frame定数Buffer、Material定数のUploadページ、shader-visible SRV heapとFence値 | 同上、Backend内部 |
+| `FrameContext` | フレームごとのallocator、command list、Frame定数Buffer、Uploadページ、Materialのバインドキャッシュ、shader-visible SRV heapとFence値 | [DX12Frames.h](../../../Engine/Include/Graphics/DX12Frames.h) |
 | `WaitingResource` | 転送用ResourceのComPtrと解放可能になるFence値 | 同上 |
 | `UploadContextPool` | Upload用allocator/listを管理し、空きがなければ追加。初期数16 | 同上 |
 | `UploadContext` | allocator、command list、使用中Fence値、空き状態 | 同上、Pool内部 |
 | `RootParameterIndex` | Frame/Object/Material CBV、System/Material SRVのRoot引数番号 | 同上 |
-| `PerObjectCB` | Object定数Bufferとmap先。要素strideは256byte境界 | [ForwardRenderPass.h](../../../Engine/Include/Graphics/ForwardRenderPass.h) |
+| `DrawDataPage` | Object定数・Material定数・インスタンスデータのUpload用Resourceとmap先 | [DX12Frames.h](../../../Engine/Include/Graphics/DX12Frames.h) |
+| `MaterialBinding` | フレーム内で共有するMaterial定数のGPUアドレスとSRVテーブル先頭 | 同上 |
 | `GPUResourceStorage<TAsset,TGpuResource>` | HandleとGPU Resourceの対応を所有。Registerで重複indexを拒否、Getで世代も照合、Clearで全解放 | [GPUResourceStorage.h](../../../Engine/Include/Graphics/GPUResourceStorage.h) |
 | `GPUResourceStorage::Slot` | Resourceとgenerationを保持する内部slot | 同上 |
 
@@ -30,7 +31,7 @@
 | `DXMesh` | Stream別Vertex Buffer、index Resource/view、頂点数、SubMeshの描画範囲 |
 | `PerFrameConstants` | View、Projection、cameraPosition、経過時間 |
 | `PerObjectConstants` | worldMatrix |
-| `RenderData` | worldMatrix、Mesh Handle、MaterialSlot順のMaterial Handle列 |
+| `RenderData` | worldMatrix、Meshの非所有ポインタ、MaterialSlot順のMaterialの非所有ポインタ列、インスタンス色 |
 
 ## HLSLの型
 

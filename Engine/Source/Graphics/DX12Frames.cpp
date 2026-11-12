@@ -17,6 +17,9 @@
 #include "Graphics/DX12Descriptors.h"
 #include "Graphics/DX12Presentation.h"
 #include "Graphics/DX12Pipelines.h"
+#include "Graphics/DX12Resources.h"
+#include "Asset/Material.h"
+#include "Asset/MaterialShader.h"
 #include "Time/TimeSystem.h"
 #include "Log/Logger.h"
 #include "D3DX12/d3dx12.h"
@@ -150,6 +153,8 @@ bool DX12Frames::BeginDraw(DX12Device& device, DX12Presentation& presentation, c
 
     cmd->SetGraphicsRootConstantBufferView(0, frame.perFrameCB->GetGPUVirtualAddress());
 
+    // Fence完了済みのHeapとUpload領域を再利用し、今フレームのMaterialを再取得する
+    frame.m_materialBindings.clear();
     frame.visibleSRVCount = 0;
     frame.drawDataOffset = 0;
     return true;
@@ -176,16 +181,6 @@ bool DX12Frames::EndDraw(DX12Device& device, DX12Presentation& presentation)
     presentation.Present();
 
     return true;
-}
-
-D3D12_GPU_VIRTUAL_ADDRESS DX12Frames::UploadMaterialConstants(ID3D12Device* device, std::span<const std::byte> bytes)
-{
-    if (bytes.size() > D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16u)
-    {
-        Logger::Error("Material constant buffer exceeds the DX12 limit");
-        return 0;
-    }
-    return UploadDrawData(device, bytes);
 }
 
 D3D12_GPU_VIRTUAL_ADDRESS DX12Frames::UploadDrawData(ID3D12Device* device, std::span<const std::byte> bytes)
@@ -241,6 +236,7 @@ void DX12Frames::Finalize()
         frame.srvVisibleHeap.Reset();
         frame.fenceValue = 0;
         frame.visibleSRVCount = 0;
+        frame.m_materialBindings.clear();
         for (auto& page : frame.drawDataPages)
             page.resource->Unmap(0, nullptr);
         frame.drawDataPages.clear();
@@ -249,12 +245,54 @@ void DX12Frames::Finalize()
     m_frameIndex = 0;
 }
 
-bool DX12Frames::CanCommitMaterialTextures() const
+bool DX12Frames::BindMaterial(ID3D12Device* device, const DX12Resources& resources,
+    const DX12Descriptors& descriptors, const Material& material)
 {
-    return m_FrameContexts[m_frameIndex].visibleSRVCount < DX12_MAX_MATERIAL_COUNT;
+    // 既に記録したMaterialはHeapが満杯になった後も同じ領域を使える
+    auto& frame = Current();
+    auto binding = frame.m_materialBindings.find(&material);
+    if (binding == frame.m_materialBindings.end())
+    {
+        if (frame.visibleSRVCount >= DX12_MAX_MATERIAL_COUNT)
+            return false;
+
+        // このフレームでの初回利用時にMaterial定数を確保する
+        const auto bytes = material.GetConstantBuffer();
+        if (bytes.size() > D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16u)
+        {
+            Logger::Error("Material constant buffer exceeds the DX12 limit");
+            return false;
+        }
+        const auto address = UploadDrawData(device, bytes);
+        if (address == 0)
+            return false;
+
+        // ReflectionのスロットにTextureを割り当て、空きは白Textureで埋める
+        std::array<int, MAX_MATERIAL_TEXTURE> slots;
+        slots.fill(static_cast<int>(resources.WhiteTexture().m_masterSRVIndex));
+        for (const auto& property : material.GetShader()->GetProperties())
+        {
+            if (property.m_resourceSlot >= MAX_MATERIAL_TEXTURE)
+                continue;
+            if (const auto* texture = resources.GetTexture(material.GetTexture(property.m_name)))
+                slots[property.m_resourceSlot] = static_cast<int>(texture->m_masterSRVIndex);
+        }
+        const auto textures = CopyMaterialTextures(device, descriptors, slots);
+        binding = frame.m_materialBindings.emplace(&material, MaterialBinding{ address, textures }).first;
+    }
+
+    // System Textureは専用領域を用意するまで同じテーブルを参照する
+    const auto& data = binding->second;
+    frame.commandList->SetGraphicsRootConstantBufferView(
+        static_cast<UINT>(DX12RootParameterIndex::PerMaterialCBV), data.m_constants);
+    frame.commandList->SetGraphicsRootDescriptorTable(
+        static_cast<UINT>(DX12RootParameterIndex::PerMaterialSRV), data.m_textures);
+    frame.commandList->SetGraphicsRootDescriptorTable(
+        static_cast<UINT>(DX12RootParameterIndex::PerSystemSRV), data.m_textures);
+    return true;
 }
 
-void DX12Frames::CommitMaterialTextures(ID3D12Device* device, const DX12Descriptors& descriptors,
+D3D12_GPU_DESCRIPTOR_HANDLE DX12Frames::CopyMaterialTextures(ID3D12Device* device, const DX12Descriptors& descriptors,
     const std::array<int, MAX_MATERIAL_TEXTURE>& slots)
 {
     // 前の Draw が読むテーブルを残し、現在の Frame の空き範囲へコピーする。
@@ -271,13 +309,9 @@ void DX12Frames::CommitMaterialTextures(ID3D12Device* device, const DX12Descript
         destination.ptr += increment;
     }
 
-    // System Texture の専用領域を用意するまでは、Material Texture と同じ範囲を参照する。
+    // 後続のDrawからも参照できるようテーブルの先頭を返す
     auto gpuHandle = frame.srvVisibleHeap->GetGPUDescriptorHandleForHeapStart();
     gpuHandle.ptr += offset;
-    frame.commandList->SetGraphicsRootDescriptorTable(
-        static_cast<UINT>(DX12RootParameterIndex::PerMaterialSRV), gpuHandle);
-    frame.commandList->SetGraphicsRootDescriptorTable(
-        static_cast<UINT>(DX12RootParameterIndex::PerSystemSRV), gpuHandle);
-
     ++frame.visibleSRVCount;
+    return gpuHandle;
 }

@@ -17,6 +17,7 @@
 #include "Graphics/DX12Support.h"
 #include <array>
 #include <span>
+#include <unordered_map>
 #include <vector>
 
 namespace Hestia
@@ -25,6 +26,7 @@ namespace Hestia
     class DX12Presentation;
     class DX12Descriptors;
     class DX12Pipelines;
+    class DX12Resources;
 
     /// @brief フレームのフェンスと同じ寿命を持つコマンド記録・定数・Descriptor を保持する。
     class DX12Frames
@@ -36,19 +38,24 @@ namespace Hestia
         bool BeginDraw(DX12Device& device, DX12Presentation& presentation, const DX12Descriptors& descriptors,
             const DX12Pipelines& pipelines, const Matrix4x4_SIMD& view, const Matrix4x4_SIMD& projection);
         bool EndDraw(DX12Device& device, DX12Presentation& presentation);
-        D3D12_GPU_VIRTUAL_ADDRESS UploadMaterialConstants(ID3D12Device* device, std::span<const std::byte> bytes);
         D3D12_GPU_VIRTUAL_ADDRESS UploadDrawData(ID3D12Device* device, std::span<const std::byte> bytes);
         void Finalize();
 
-        /// @brief Frame の残り Descriptor 容量を確認する。
-        bool CanCommitMaterialTextures() const;
-        void CommitMaterialTextures(ID3D12Device* device, const DX12Descriptors& descriptors,
-            const std::array<int, MAX_MATERIAL_TEXTURE>& slots);
+        /// @brief フレーム内で共有するMaterial定数とTextureテーブルをバインドする
+        /// @pre MaterialにはShaderが設定され、記録中は定数とTextureが変わらない
+        /// @return 成功: true / 初回のUploadまたはDescriptor確保に失敗: false
+        bool BindMaterial(ID3D12Device* device, const DX12Resources& resources,
+            const DX12Descriptors& descriptors, const Material& material);
 
         ID3D12GraphicsCommandList* GetCommandList() { return Current().commandList.Get(); }
-        int Index() const { return m_frameIndex; }
 
     private:
+        struct MaterialBinding
+        {
+            D3D12_GPU_VIRTUAL_ADDRESS m_constants;
+            D3D12_GPU_DESCRIPTOR_HANDLE m_textures;
+        };
+
         struct FrameContext
         {
             struct DrawDataPage
@@ -64,12 +71,16 @@ namespace Hestia
 
             // Material Texture のテーブル数。各テーブルは MAX_MATERIAL_TEXTURE 枠を占める。
             int visibleSRVCount = 0;
+            std::unordered_map<const Material*, MaterialBinding> m_materialBindings;
             std::vector<DrawDataPage> drawDataPages;
             std::size_t drawDataOffset = 0;
 
             // この番号が完了するまで Allocator、定数、Descriptor を上書きしない。
             UINT64 fenceValue = 0;
         };
+
+        D3D12_GPU_DESCRIPTOR_HANDLE CopyMaterialTextures(ID3D12Device* device, const DX12Descriptors& descriptors,
+            const std::array<int, MAX_MATERIAL_TEXTURE>& slots);
 
         FrameContext& Current() { return m_FrameContexts[m_frameIndex]; }
         FrameContext m_FrameContexts[DX12_FRAME_COUNT];

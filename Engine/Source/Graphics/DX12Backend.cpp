@@ -38,8 +38,7 @@ bool DX12Backend::Initialize(HWND hWnd, int width, int height)
     // フレームを受け付ける前に、固定の描画設定と定数の書き込み先を確保する。
     m_presentation.SetViewport(width, height);
     if (!m_pipelines.Initialize(m_device.GetDevice()) ||
-        !m_frames.CreateConstants(m_device.GetDevice()) ||
-        !m_forwardPass.CreateConstants(m_device.GetDevice()))
+        !m_frames.CreateConstants(m_device.GetDevice()))
         return false;
 
     m_IsInitialized = true;
@@ -53,7 +52,7 @@ void DX12Backend::Finalize()
     if (!m_device.WaitForGPU())
         return;
 
-    m_forwardPass.Finalize();
+    m_forwardPass.ClearFrame();
     m_submissions.clear();
     m_resources.Finalize();
     m_frames.Finalize();

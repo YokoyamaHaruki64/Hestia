@@ -15,61 +15,15 @@
 
 #include "Graphics/DX12Frames.h"
 #include "Graphics/DX12Resources.h"
-#include "Graphics/DX12Descriptors.h"
 #include "Graphics/DX12Pipelines.h"
 #include "Graphics/DX12Support.h"
 #include "Asset/Material.h"
 #include "Asset/MaterialShader.h"
 #include <algorithm>
 #include <array>
-#include <cstring>
 #include <tuple>
 
 using namespace Hestia;
-
-bool ForwardRenderPass::CreateConstants(ID3D12Device* device)
-{
-    HRESULT hr;
-    D3D12_HEAP_PROPERTIES heapProperties{};
-    heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-    D3D12_RESOURCE_DESC cbDesc{};
-    cbDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    cbDesc.Alignment = 0;
-    cbDesc.Height = 1;
-    cbDesc.DepthOrArraySize = 1;
-    cbDesc.MipLevels = 1;
-    cbDesc.Format = DXGI_FORMAT_UNKNOWN;
-    cbDesc.SampleDesc.Count = 1;
-    cbDesc.SampleDesc.Quality = 0;
-    cbDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-    // PerObject ConstantBufferの作成
-    cbDesc.Width = m_PerObjectCB.SIZE * DX12_MAX_OBJECT_COUNT * DX12_FRAME_COUNT;
-    hr = device->CreateCommittedResource(
-        &heapProperties,
-        D3D12_HEAP_FLAG_NONE,
-        &cbDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(m_PerObjectCB.constantBuffer.GetAddressOf()));
-    if (!CheckDX12Result(hr, L"Failed to create PerObject ConstantBuffer.")) return false;
-
-    // PerObject ConstantBufferのマッピングを保持
-    if (!CheckDX12Result(m_PerObjectCB.constantBuffer->Map(0, nullptr, &m_PerObjectCB.mappedData), L"Failed to map PerObject CB.")) return false;
-
-    return true;
-}
-
-void ForwardRenderPass::Finalize()
-{
-    // Backend が GPU 待機を済ませてから永続マップを解除する。
-    if (m_PerObjectCB.constantBuffer && m_PerObjectCB.mappedData)
-        m_PerObjectCB.constantBuffer->Unmap(0, nullptr);
-    m_PerObjectCB.mappedData = nullptr;
-    m_PerObjectCB.constantBuffer.Reset();
-    ClearFrame();
-}
 
 void ForwardRenderPass::ClearFrame()
 {
@@ -179,15 +133,11 @@ void ForwardRenderPass::Record(std::span<const RenderData> submissions, const Re
     {
         for (const auto& batch : phase.m_batches)
         {
-            if (!frames.CanCommitMaterialTextures())
-                return;
-
             // バッチ共通のPSOとMaterialを設定
             const auto& draw = phase.m_commands[batch.m_first];
             const auto& pass = draw.m_shader->GetPasses()[draw.m_shaderPassIndex];
             auto* pipeline = context.m_pipelines.GetMaterialPipeline(context.m_device, *draw.m_shader, draw.m_shaderPassIndex);
-            if (!pipeline || !BindMaterial(context.m_device, frames, resources,
-                context.m_descriptors, *draw.m_material, *draw.m_shader))
+            if (!pipeline || !frames.BindMaterial(context.m_device, resources, context.m_descriptors, *draw.m_material))
                 continue;
 
             // 各InstanceのWorld行列と色を、SV_InstanceIDで参照する順に配置
@@ -208,7 +158,15 @@ void ForwardRenderPass::Record(std::span<const RenderData> submissions, const Re
                     static_cast<UINT>(DX12RootParameterIndex::InstancesSRV), address);
             }
             else
-                BindObject(frames, submissions[draw.m_submissionIndex].worldMatrix, draw.m_submissionIndex);
+            {
+                // 通常描画のWorld行列も、Fence完了まで保持するUploadページに配置
+                const PerObjectConstants constants{ submissions[draw.m_submissionIndex].worldMatrix };
+                const auto address = frames.UploadDrawData(context.m_device, std::as_bytes(std::span(&constants, 1)));
+                if (address == 0)
+                    continue;
+                frames.GetCommandList()->SetGraphicsRootConstantBufferView(
+                    static_cast<UINT>(DX12RootParameterIndex::PerObjectCBV), address);
+            }
             frames.GetCommandList()->SetPipelineState(pipeline);
 
             // Pass のトポロジと Stream で SubMesh の範囲を描画
@@ -223,50 +181,6 @@ void ForwardRenderPass::Record(std::span<const RenderData> submissions, const Re
                 static_cast<UINT>(batch.m_count));
         }
     }
-}
-
-void ForwardRenderPass::BindObject(DX12Frames& frames, const Matrix4x4_SIMD& worldMatrix, size_t objectIndex)
-{
-    // 各 Frame が独立した Object 定数の領域を持ち、他の Frame の Draw を上書きしない。
-    const int index = frames.Index() * DX12_MAX_OBJECT_COUNT + objectIndex;
-
-    size_t offset = m_PerObjectCB.SIZE * index;
-
-    // DataをPerObject ConstantBufferに書き込む
-    memcpy(
-        reinterpret_cast<uint8_t*>(m_PerObjectCB.mappedData) + offset,
-        &worldMatrix,
-        sizeof(Matrix4x4_SIMD));
-
-    // GPUAddressを設定
-    frames.GetCommandList()
-        ->SetGraphicsRootConstantBufferView(
-            static_cast<UINT>(DX12RootParameterIndex::PerObjectCBV),
-            m_PerObjectCB.constantBuffer->GetGPUVirtualAddress() + offset);
-}
-
-bool ForwardRenderPass::BindMaterial(ID3D12Device* device, DX12Frames& frames, const DX12Resources& resources,
-    const DX12Descriptors& descriptors, const Material& material, const MaterialShader& shader)
-{
-    // Reflection のスロットに Texture を割り当て、空きは白 Texture で埋める。
-    const auto address = frames.UploadMaterialConstants(device, material.GetConstantBuffer());
-    if (address == 0)
-        return false;
-    frames.GetCommandList()->SetGraphicsRootConstantBufferView(
-        static_cast<UINT>(DX12RootParameterIndex::PerMaterialCBV), address);
-
-    std::array<int, MAX_MATERIAL_TEXTURE> slots;
-    slots.fill(static_cast<int>(resources.WhiteTexture().m_masterSRVIndex));
-    for (const auto& property : shader.GetProperties())
-    {
-        if (property.m_resourceSlot >= MAX_MATERIAL_TEXTURE)
-            continue;
-        if (const auto* texture = resources.GetTexture(material.GetTexture(property.m_name)))
-            slots[property.m_resourceSlot] = static_cast<int>(texture->m_masterSRVIndex);
-    }
-
-    frames.CommitMaterialTextures(device, descriptors, slots);
-    return true;
 }
 
 void ForwardRenderPass::DrawMesh(DX12Frames& frames, const DX12Resources& resources, const DXMesh& mesh, const SubMesh& range, D3D_PRIMITIVE_TOPOLOGY topology,

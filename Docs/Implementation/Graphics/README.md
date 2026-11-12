@@ -18,9 +18,11 @@ MeshはStream別Vertex Bufferとindex Bufferに変換する。TextureはRGBA8画
 
 ## フレームと描画
 
-SubmitはRenderDataを値で受け取りqueueに追加する。未初期化、容量超過、Meshがnullの場合はfalse。標準構成の提出上限は32,768件。GPU Meshの有無はBuildで調べ、未登録ならその提出を飛ばす。
+SubmitはRenderDataを値で受け取りqueueに追加する。未初期化、容量超過、Meshがnullの場合はfalse。提出上限は1,000,000件。GPU Meshの有無はBuildで調べ、未登録ならその提出を飛ばす。 [提出上限の定義](../../../Engine/Include/Graphics/DX12Backend.h)
 
 RenderはUpdate → BeginDraw → Draw → EndDrawを呼ぶ。BeginDraw失敗時は以降を呼ばない。BeginDrawはフレーム資源を準備し、PerFrame定数を書き、提出queueをBackend側へswapする。DrawはForwardRenderPassのBuild → Sort → Recordを実行する。Shader Passが要求する任意頂点Streamが欠ける場合は既定Bufferを使う。 [RenderPassの設計](../../Design/RenderPass.md)
+
+描画記録で通常Drawが使うObject定数は、フレームごとのUploadページに追加する。Material定数とSRVテーブルはフレーム内の同じMaterialで共有する。提出キュー、Upload領域、Materialテーブルにはそれぞれ別の制約がある。 [定数とSRVの割り当て](MaterialShader.md)
 
 EndDrawはscene colorをBackBufferへコピーし、状態遷移、コマンド実行、PresentとFenceの進行を行う。宣言された二つのscene colorだけから一般的なRenderGraphやポストエフェクト実装があると解釈しない。
 

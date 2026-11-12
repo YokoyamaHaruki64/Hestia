@@ -54,7 +54,11 @@ Compiler は VS Reflection のシステム値を除外し、頂点入力のセ�
 | インスタンスBufferのRoot SRV | `t0`, space 2 |
 | 静的 Sampler | `s0–s3`、Linear／Point × Wrap／Clamp |
 
-FrameContext は Material 定数とインスタンスデータで 1 MiB の Upload ページを共有する。データの開始アドレスは 256-byte 境界に揃える。Material 定数は最大64 KiB、インスタンスは1件80 bytes、1 Drawあたり最大1024件。Texture Slot が空または GPU 側で解決できない場合は白 Texture を使う。Draw ごとに16個のSRVを Visible Heap にコピーし、最大32,768テーブルで記録を打ち切る。UploadページとVisible HeapはフレームのFence完了後に再利用する。
+### 定数とSRVの割り当て
+
+- FrameContextはObject定数、Material定数、インスタンスデータに共通の1 MiBのUploadページを必要に応じて追加する。各領域の開始アドレスを256 B境界に揃える。通常DrawはWorld行列64 Bを1件256 Bの領域に書き、GPUアドレスをObject用Root CBVに設定する。Material定数は最大64 KiB、インスタンスは1件80 Bで1 Drawあたり最大1,024件。 [Uploadページの割り当て](../../../Engine/Source/Graphics/DX12Frames.cpp) · [通常描画の記録](../../../Engine/Source/Graphics/ForwardRenderPass.cpp)
+- Materialの初回使用時に定数をUploadし、16個のSRVをVisible Heapへコピーする。Texture Slotが空、またはGPU側で解決できない場合は白Textureを使う。フレーム内の後続Drawは `Material*` をキーに、定数のGPUアドレスとテーブル先頭を再利用する。最大32,768テーブルに達した場合、新しいMaterialのDrawをスキップし、確保済みのMaterialは描画を続ける。 [Materialのバインド](../../../Engine/Source/Graphics/DX12Frames.cpp)
+- FrameContextを使い回すときは、Fence完了後にキャッシュと割り当て位置をリセットする。フレーム間のMaterial定数やTextureの変更は、次のフレームで最初に使用するときに反映する。
 
 ## ビルドと現在の制約
 
@@ -66,3 +70,4 @@ FrameContext は Material 定数とインスタンスデータで 1 MiB の Uplo
 
 - 2026-11-07 の Forward 描画統合時に、App の `Debug_Editor|x64` ビルドと関連テスト 7 件が成功した。 [Loader テスト](../../../Test/Hestia_Tests/Source/AssetTests.cpp) · [DX12 統合テスト](../../../Test/Hestia_Tests/Source/AssetGraphicsTests.cpp)
 - 追加した Forward 統合テストでは、NORMAL を要求する VS と法線 Stream のない Mesh を使い、Slot 1 の SubMesh で GPU が 1 プリミティブを処理し、PS を実行したことを統計で確認した。
+- 2026-11-12の容量検証では、同じMaterialを共有し、1 Drawにつき三角形1枚を提出する通常描画を100,000件と1,000,000件で実行した。GPUの入力プリミティブ数はどちらも提出数に一致した。Appの `Debug_Editor|x64` ビルドと既存描画テスト3件も成功した。容量検証でFPSの計測は行っていない。

@@ -42,7 +42,7 @@ namespace Hestia
         std::vector<RenderData> m_submissions;
 
     public:
-        static constexpr size_t MAX_DRAW_COUNT = DX12_MAX_MATERIAL_COUNT;
+        static constexpr size_t MAX_DRAW_COUNT = 1000000;
 
         DX12Backend() = default;
         ~DX12Backend()
