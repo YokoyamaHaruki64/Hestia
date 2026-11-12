@@ -128,6 +128,18 @@
     <None Include="..\Assets\Shaders\MatShaders\Sprite.matsh" />
     <None Include="..\Assets\Shaders\MatShaders\Unlit_Inst.matsh" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Common\Common.vcxproj">
+      <Project>{1cad1a6f-c175-4541-be2c-a87882b3a27d}</Project>
+      <SetConfiguration Condition="'$(Configuration)' == 'Debug_Editor' Or '$(Configuration)' == 'Debug_Game' Or '$(Configuration)' == 'Test'">Configuration=Debug</SetConfiguration>
+      <SetConfiguration Condition="'$(Configuration)' == 'Release_Editor' Or '$(Configuration)' == 'Release_Game'">Configuration=Release</SetConfiguration>
+    </ProjectReference>
+    <ProjectReference Include="..\Game\Game.vcxproj">
+      <Project>{949f5289-ac37-4a66-af85-500d108f2083}</Project>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
