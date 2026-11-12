@@ -1,13 +1,4 @@
 
-struct VSInput
-{
-    float3 position : POSITION;
-    float2 uv       : TEXCOORD0;
-    float3 normal   : NORMAL;
-    float4 tangent : TANGENT;
-    float4 color    : COLOR;
-};
-
 struct PSInput_Default
 {
     float4 position : SV_POSITION;
@@ -36,15 +27,6 @@ cbuffer PerFrameBuffer : register(b0)
 cbuffer PerObjectBuffer : register(b1)
 {
     float4x4 world;
-};
-
-cbuffer PerMaterialBuffer : register(b2)
-{
-    float4 color;
-    float4 specular;
-    float4 emission;
-    float roughness;
-    float metallic;
 };
 
 SamplerState WrapLinearSampler : register(s0);

@@ -24,15 +24,22 @@ namespace Hestia
     namespace
     {
         template<class T>
+        constexpr bool HasFileLoader =
+            std::is_same_v<T, Mesh> ||
+            std::is_same_v<T, Texture> ||
+            std::is_same_v<T, MaterialShader>;
+
+        template<class T>
         constexpr AssetType GetAssetType()
         {
             if constexpr (std::is_same_v<T, Mesh>)
                 return AssetType::Mesh;
             else if constexpr (std::is_same_v<T, Texture>)
                 return AssetType::Texture;
+            else if constexpr (std::is_same_v<T, MaterialShader>)
+                return AssetType::MaterialShader;
             else
-                static_assert(std::is_same_v<T, Mesh> || std::is_same_v<T, Texture>,
-                    "AssetSystem supports Mesh and Texture only");
+                static_assert(HasFileLoader<T>, "Asset type does not have a file loader");
         }
     }
 
@@ -53,6 +60,15 @@ namespace Hestia
         entries.emplace("TextureTest", AssetInfo{
             AssetType::Texture,
             "../Assets/Textures/texture_test_2048_rgba.png" });
+        entries.emplace("Unlit", AssetInfo{
+            AssetType::MaterialShader,
+            "../Assets/Shaders/MatShaders/Unlit.matsh" });
+        entries.emplace("Unlit_Inst", AssetInfo{
+            AssetType::MaterialShader,
+            "../Assets/Shaders/MatShaders/Unlit_Inst.matsh" });
+        entries.emplace("Sprite", AssetInfo{
+            AssetType::MaterialShader,
+            "../Assets/Shaders/MatShaders/Sprite.matsh" });
 
         AssetDB assetDB;
         if (!assetDB.Initialize(std::move(entries)))
@@ -72,6 +88,9 @@ namespace Hestia
     {
         if (s_instance != this)
             return;
+
+        // 借用元の Material を先に破棄して Shader の逆索引を解除
+        GetStorage<Material>() = {};
 
         // CPU Asset と検索情報を解放
         m_storages = {};
@@ -123,20 +142,29 @@ namespace Hestia
         if (cached.IsValid())
             return cached;
 
-        const AssetInfo* info = m_assetDB.Find(name);
-        if (info == nullptr)
+        if constexpr (!HasFileLoader<T>)
         {
-            Logger::Error("Asset name is not registered in AssetDB");
+            Logger::Error("Material is not registered in the CPU cache");
             return {};
         }
-
-        if (info->m_type != GetAssetType<T>())
+        else
         {
-            Logger::Error("AssetDB type does not match the requested Asset type");
-            return {};
-        }
+            // ファイルロード対象は DB の型とパスを解決
+            const AssetInfo* info = m_assetDB.Find(name);
+            if (info == nullptr)
+            {
+                Logger::Error("Asset name is not registered in AssetDB");
+                return {};
+            }
 
-        return GetLoader<T>().Load(name, info->m_path);
+            if (info->m_type != GetAssetType<T>())
+            {
+                Logger::Error("AssetDB type does not match the requested Asset type");
+                return {};
+            }
+
+            return GetLoader<T>().Load(name, info->m_path);
+        }
     }
 
     template<class T>
@@ -152,7 +180,11 @@ namespace Hestia
         const AssetInfo* info = m_assetDB.Find(name);
         if (databaseOrigin)
         {
-            if (info == nullptr || info->m_type != GetAssetType<T>())
+            bool matchesEntry = false;
+            if constexpr (HasFileLoader<T>)
+                matchesEntry = info != nullptr && info->m_type == GetAssetType<T>();
+
+            if (!matchesEntry)
             {
                 Logger::Error("Loader registration does not match an AssetDB entry");
                 return {};
@@ -180,9 +212,22 @@ namespace Hestia
                 return {};
             }
         }
+        else if constexpr (std::is_same_v<T, Material>)
+        {
+            if (asset->GetShader() == nullptr)
+            {
+                Logger::Error("Material registration requires a shader");
+                return {};
+            }
+        }
 
         // 型をまたいで Asset 名を一意に保つ
-        if (GetStorage<Mesh>().Contains(name) || GetStorage<Texture>().Contains(name))
+        const bool alreadyCached = std::apply([name](const auto&... storage)
+        {
+            return (storage.Contains(name) || ...);
+        }, m_storages);
+
+        if (alreadyCached)
         {
             Logger::Error("Asset name is already cached");
             return {};
@@ -234,12 +279,26 @@ namespace Hestia
             Logger::Error("Mesh was cached on CPU but GPU upload failed");
     }
 
+    // 明示的なテンプレートインスタンス化
+
+    // Load
     template AssetHandle<Mesh> AssetSystem::Load<Mesh>(std::string_view);
     template AssetHandle<Texture> AssetSystem::Load<Texture>(std::string_view);
+    template AssetHandle<MaterialShader> AssetSystem::Load<MaterialShader>(std::string_view);
+    template AssetHandle<Material> AssetSystem::Load<Material>(std::string_view);
+
+    // Get
     template Mesh* AssetSystem::Get<Mesh>(AssetHandle<Mesh>);
     template Texture* AssetSystem::Get<Texture>(AssetHandle<Texture>);
+    template MaterialShader* AssetSystem::Get<MaterialShader>(AssetHandle<MaterialShader>);
+    template Material* AssetSystem::Get<Material>(AssetHandle<Material>);
+
+    // Register
     template AssetHandle<Mesh> AssetSystem::Register<Mesh>(std::string_view, Mesh*);
     template AssetHandle<Texture> AssetSystem::Register<Texture>(std::string_view, Texture*);
+    template AssetHandle<MaterialShader> AssetSystem::Register<MaterialShader>(
+        std::string_view, MaterialShader*);
+    template AssetHandle<Material> AssetSystem::Register<Material>(std::string_view, Material*);
 
     template AssetHandle<Mesh> AssetSystem::LoadImpl<Mesh>(std::string_view);
     template AssetHandle<Texture> AssetSystem::LoadImpl<Texture>(std::string_view);
@@ -251,6 +310,8 @@ namespace Hestia
         std::string_view, std::unique_ptr<Mesh>);
     template AssetHandle<Texture> AssetSystem::RegisterFromLoader(
         std::string_view, std::unique_ptr<Texture>);
+    template AssetHandle<MaterialShader> AssetSystem::RegisterFromLoader(
+        std::string_view, std::unique_ptr<MaterialShader>);
     template AssetLoader<Mesh>& AssetSystem::GetLoader<Mesh>();
     template AssetLoader<Texture>& AssetSystem::GetLoader<Texture>();
     template AssetStorage<Mesh>& AssetSystem::GetStorage<Mesh>();

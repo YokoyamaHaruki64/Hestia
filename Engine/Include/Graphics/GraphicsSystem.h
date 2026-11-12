@@ -28,7 +28,8 @@ namespace Hestia
     public:
 
         /// @brief 一件の描画要求を次の Render へ提出する
-        /// @return 受付成功: true / 未初期化・容量超過・無効な Mesh: false
+        /// @note GPU Mesh が未登録の提出は描画時にスキップする
+        /// @return 受付成功: true / 未初期化・容量超過・Mesh が null: false
         static bool Submit(RenderData renderData);
 
         /// @brief 次の Render が使用する行ベクトル用 View を設定する

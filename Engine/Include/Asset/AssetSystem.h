@@ -20,12 +20,14 @@
 #include "Asset/AssetDB.h"
 #include "Asset/AssetLoader.h"
 #include "Asset/AssetStorage.h"
+#include "Asset/Material.h"
+#include "Asset/MaterialShader.h"
 
 namespace Hestia
 {
     class GraphicsSystem;
 
-    /// @brief Mesh / Texture Asset のロードと寿命を管理する。
+    /// @brief Asset のロードと寿命を管理する。
     class AssetSystem
     {
     public:
@@ -50,6 +52,7 @@ namespace Hestia
         /// @brief DB に登録された Asset をロードし、名前 Cache を再利用する。
         /// @param name ASCII 英字の大小を区別しない Asset 名。
         /// @return ロード済み Handle。未登録・型不一致・ロード失敗時は無効 Handle。
+        /// @note Material はメモリ上で登録済みの Asset を検索する。
         template<class T>
         static AssetHandle<T> Load(std::string_view name);
 
@@ -66,6 +69,7 @@ namespace Hestia
         /// @return 登録成功時の Handle。失敗時は無効 Handle。
         /// @note Mesh は無効なデータを拒否する。GPU Upload 失敗後も CPU Asset と Handle を保持する。
         /// @note Texture の手動登録は拒否する。受け取った Asset の所有権は失敗時も消費する。
+        /// @note Material は Shader を設定してから登録する。
         template<class T>
         static AssetHandle<T> Register(std::string_view name, T* asset);
 
@@ -93,8 +97,19 @@ namespace Hestia
         friend class AssetLoader;
 
         AssetDB m_assetDB;
-        std::tuple<AssetLoader<Mesh>, AssetLoader<Texture>> m_loaders;
-        std::tuple<AssetStorage<Mesh>, AssetStorage<Texture>> m_storages;
+        std::tuple<
+            AssetLoader<Mesh>,
+            AssetLoader<Texture>,
+            AssetLoader<MaterialShader>
+        > m_loaders;
+
+        std::tuple<
+            AssetStorage<Mesh>,
+            AssetStorage<Texture>,
+            AssetStorage<MaterialShader>,
+            AssetStorage<Material>
+        > m_storages;
+
         GraphicsSystem* m_graphics = nullptr;
 
         static AssetSystem* s_instance;

@@ -25,7 +25,10 @@
 
 #include "Asset/AssetAPI.h"
 #include "Asset/AssetSystem.h"
+#include "Asset/Material.h"
+#include "Asset/MaterialShaderParser.h"
 #include "Graphics/DX12Backend.h"
+#include "Graphics/DXMaterialShaderCompiler.h"
 #include "Graphics/GraphicsSystem.h"
 #include "Time/TimeSystem.h"
 
@@ -260,53 +263,147 @@ namespace
 
         auto plane = std::make_unique<Hestia::Mesh>(MakePlane());
         const auto meshHandle = m_assetAPI.Register<Hestia::Mesh>("GraphicsTestPlane", plane.release());
-        ASSERT_TRUE(meshHandle.IsValid());
+        const auto* mesh = m_assetAPI.Get(meshHandle);
+        ASSERT_NE(mesh, nullptr);
 
-        Hestia::Material texturedMaterial = Hestia::Material::Default();
-        texturedMaterial.textures.push_back(textureHandle);
+        // 実行時に Sprite をロードし、各フレームで同じ Material の Texture を切り替える。
+        auto* shader = Hestia::AssetSystem::Get(Hestia::AssetSystem::Load<Hestia::MaterialShader>("Sprite"));
+        ASSERT_NE(shader, nullptr);
+        auto materialAsset = std::make_unique<Hestia::Material>();
+        materialAsset->SetShader(shader);
+        const auto materialHandle = Hestia::AssetSystem::Register("GraphicsTestSprite", materialAsset.release());
+        auto* material = Hestia::AssetSystem::Get(materialHandle);
+        ASSERT_NE(material, nullptr);
 
         Matrix4x4_SIMD planeTransform = Matrix4x4_SIMD::Identity();
         planeTransform.Scale(64.0f, 64.0f, 1.0f);
         planeTransform.Translate(0.0f, 0.0f, 1.0f);
 
-        const Hestia::RenderData texturedDraw{
-            planeTransform,
-            texturedMaterial,
-            meshHandle,
-            L"../Shaders/Build/VS_Sprite.cso",
-            L"../Shaders/Build/PS_Sprite.cso"
+        const Hestia::RenderData draw{
+            .worldMatrix = planeTransform,
+            .mesh = mesh,
+            .materials = { material },
         };
-        ASSERT_TRUE(Hestia::GraphicsSystem::Submit(texturedDraw));
+        ASSERT_TRUE(Hestia::GraphicsSystem::Submit(draw));
         m_graphics.Render();
 
-        Hestia::Material untexturedMaterial = Hestia::Material::Default();
-        const Hestia::RenderData untexturedDraw{
-            planeTransform,
-            untexturedMaterial,
-            meshHandle,
-            L"../Shaders/Build/VS_Sprite.cso",
-            L"../Shaders/Build/PS_Sprite.cso"
-        };
-        ASSERT_TRUE(Hestia::GraphicsSystem::Submit(untexturedDraw));
+        ASSERT_TRUE(material->SetTexture("_BaseMap", textureHandle));
+        ASSERT_TRUE(Hestia::GraphicsSystem::Submit(draw));
         m_graphics.Render();
 
-        Hestia::Material missingTextureMaterial = Hestia::Material::Default();
         Hestia::AssetHandle<Hestia::Texture> missingTexture;
         missingTexture.m_index = 0xfffffffeu;
         missingTexture.m_generation = 1;
-        missingTextureMaterial.textures.push_back(missingTexture);
-        const Hestia::RenderData missingTextureDraw{
-            planeTransform,
-            missingTextureMaterial,
-            meshHandle,
-            L"../Shaders/Build/VS_Sprite.cso",
-            L"../Shaders/Build/PS_Sprite.cso"
-        };
-        ASSERT_TRUE(Hestia::GraphicsSystem::Submit(missingTextureDraw));
+        ASSERT_TRUE(material->SetTexture("_BaseMap", missingTexture));
+        ASSERT_TRUE(Hestia::GraphicsSystem::Submit(draw));
         m_graphics.Render();
 
         Hestia::RenderData invalidMeshDraw{};
         EXPECT_FALSE(Hestia::GraphicsSystem::Submit(invalidMeshDraw));
+    }
+
+    TEST(DX12BackendIntegration, DrawsForwardSubMeshWithDefaultNormalTangentStream)
+    {
+        BackendTestEnvironment environment;
+        ASSERT_TRUE(environment.IsValid());
+        Hestia::TimeSystem time;
+        TimeSystemGuard timeGuard(time);
+        auto backend = std::make_unique<Hestia::DX12Backend>();
+        ASSERT_TRUE(backend->Initialize(environment.GetWindow(), 1600, 900));
+
+        // NORMAL だけを要求する Pass をコンパイルし、Material を通常の Asset として登録
+        Hestia::GraphicsSystem graphics;
+        Hestia::AssetSystem assets;
+        ASSERT_TRUE(assets.Initialize(&graphics));
+        Hestia::ParsedMaterialShader parsed;
+        std::string error;
+        ASSERT_TRUE(Hestia::ParseMaterialShader(R"(
+MaterialShader "Test/ForwardSubMesh"
+{
+    RenderType = Forward;
+    Cull = None;
+    Properties
+    {
+        _Tint ("Tint", Color) = (1, 1, 1, 1)
+        _BaseMap ("Base Map", 2D) = "white"
+    }
+    Pass "Forward"
+    {
+        HLSL_BEGIN
+        #pragma vertex VSMain
+        #pragma pixel PSMain
+        SamplerState TestSampler : register(s0);
+        float4 VSMain(float3 position : POSITION, float3 normal : NORMAL) : SV_Position
+        {
+            // 既定の normal.z = -1 なら可視。0 の場合は遠クリップ面の外になる
+            return float4(position.xy, normal.z + 1.5f, 1);
+        }
+        float4 PSMain() : SV_Target0
+        {
+            return _Tint * _BaseMap.SampleLevel(TestSampler, float2(0, 0), 0);
+        }
+        HLSL_END
+    }
+}
+)", parsed, error)) << error;
+        Hestia::DXMaterialShaderCompiler::Result compiled;
+        ASSERT_TRUE(Hestia::DXMaterialShaderCompiler::Compile(
+            std::filesystem::absolute("ForwardSubMesh.matsh"), parsed, compiled, error)) << error;
+        auto shader = Hestia::MaterialShader::Create(std::move(parsed.m_name),
+            std::move(compiled.m_properties), compiled.m_constantBufferSize, std::move(compiled.m_passes));
+        ASSERT_NE(shader, nullptr);
+        const auto shaderHandle = Hestia::AssetSystem::Register("TestForwardShader", shader.release());
+        ASSERT_TRUE(shaderHandle.IsValid());
+        auto material = std::make_unique<Hestia::Material>();
+        material->SetShader(Hestia::AssetSystem::Get(shaderHandle));
+        const auto materialHandle = Hestia::AssetSystem::Register("TestForwardMaterial", material.release());
+        const auto* registeredMaterial = Hestia::AssetSystem::Get(materialHandle);
+        ASSERT_NE(registeredMaterial, nullptr);
+
+        // NormalTangent は作らず、Slot 1 の SubMesh だけに Material を提出
+        auto mesh = MakePlane();
+        mesh.m_handle = { 0, 1 };
+        mesh.m_indices = { 0, 0, 0, 2, 1, 3 }; // Slot 0 の範囲を描いてもピクセルは出ない
+        mesh.m_subMeshes = { { 0, 3, 0 }, { 3, 3, 1 } };
+        ASSERT_TRUE(backend->UploadMesh(mesh.m_handle, mesh));
+        std::vector<Hestia::RenderData> draws = {
+            { .mesh = &mesh, .materials = { nullptr, registeredMaterial } }
+        };
+
+        // GPU の統計を読み戻し、PSO の作成だけでなく実際の描画を確認
+        auto* device = backend->GetDevice();
+        const D3D12_QUERY_HEAP_DESC queryDesc{ D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS, 1, 0 };
+        ComPtr<ID3D12QueryHeap> query;
+        ASSERT_TRUE(SUCCEEDED(device->CreateQueryHeap(&queryDesc, IID_PPV_ARGS(query.GetAddressOf()))));
+        D3D12_HEAP_PROPERTIES heap{};
+        heap.Type = D3D12_HEAP_TYPE_READBACK;
+        heap.CreationNodeMask = heap.VisibleNodeMask = 1;
+        D3D12_RESOURCE_DESC buffer{};
+        buffer.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        buffer.Width = sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS);
+        buffer.Height = buffer.DepthOrArraySize = buffer.MipLevels = buffer.SampleDesc.Count = 1;
+        buffer.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        ComPtr<ID3D12Resource> readback;
+        ASSERT_TRUE(SUCCEEDED(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &buffer,
+            D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(readback.GetAddressOf()))));
+
+        ASSERT_TRUE(backend->BeginDraw(draws, Matrix4x4_SIMD::Identity(), Matrix4x4_SIMD::Identity()));
+        auto* commandList = backend->GetCommandList();
+        commandList->BeginQuery(query.Get(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS, 0);
+        backend->Draw();
+        commandList->EndQuery(query.Get(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS, 0);
+        commandList->ResolveQueryData(query.Get(), D3D12_QUERY_TYPE_PIPELINE_STATISTICS, 0, 1, readback.Get(), 0);
+        backend->EndDraw();
+        backend->Finalize();
+
+        const D3D12_RANGE readRange{ 0, sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS) };
+        void* data = nullptr;
+        ASSERT_TRUE(SUCCEEDED(readback->Map(0, &readRange, &data)));
+        const auto& statistics = *static_cast<const D3D12_QUERY_DATA_PIPELINE_STATISTICS*>(data);
+        EXPECT_EQ(statistics.IAPrimitives, 1u);
+        EXPECT_GT(statistics.PSInvocations, 0u);
+        const D3D12_RANGE writtenRange{ 0, 0 };
+        readback->Unmap(0, &writtenRange);
     }
 
     TEST(DX12BackendIntegration, DrawsFallbackBindingsGrowsStreamsAndReportsNoDeviceErrors)
@@ -349,7 +446,19 @@ namespace
         ASSERT_TRUE(backend->UploadTexture(textureHandle, textureDesc, pixel.data(), pixel.size(), pixel.size()));
         EXPECT_FALSE(backend->UploadTexture({}, textureDesc, pixel.data(), pixel.size(), pixel.size()));
 
-        const auto draw = [&](const Hestia::Material& material, Hestia::AssetHandle<Hestia::Mesh> meshHandle)
+        // 提出で使う Material を解決し、Texture は Backend に直接登録した Handle を設定する。
+        Hestia::GraphicsSystem graphics;
+        Hestia::AssetSystem assets;
+        ASSERT_TRUE(assets.Initialize(&graphics));
+        auto* shader = Hestia::AssetSystem::Get(Hestia::AssetSystem::Load<Hestia::MaterialShader>("Sprite"));
+        ASSERT_NE(shader, nullptr);
+        auto materialAsset = std::make_unique<Hestia::Material>();
+        materialAsset->SetShader(shader);
+        const auto materialHandle = Hestia::AssetSystem::Register("BackendTestSprite", materialAsset.release());
+        auto* material = Hestia::AssetSystem::Get(materialHandle);
+        ASSERT_NE(material, nullptr);
+
+        const auto draw = [&](const Hestia::Mesh& mesh)
         {
             Matrix4x4_SIMD worldMatrix = Matrix4x4_SIMD::Identity();
             worldMatrix.Scale(64.0f, 64.0f, 1.0f);
@@ -357,15 +466,13 @@ namespace
 
             std::vector<Hestia::RenderData> renderData = {
                 {
-                    worldMatrix,
-                    material,
-                    meshHandle,
-                    L"../Shaders/Build/VS_Sprite.cso",
-                    L"../Shaders/Build/PS_Sprite.cso"
+                    .worldMatrix = worldMatrix,
+                    .mesh = &mesh,
+                    .materials = { material },
                 }
             };
 
-            if (!backend->BeginDraw(renderData, Matrix4x4::Identity(), Matrix4x4::Identity()))
+            if (!backend->BeginDraw(renderData, Matrix4x4_SIMD::Identity(), Matrix4x4_SIMD::Identity()))
                 return false;
 
             backend->Draw();
@@ -373,28 +480,23 @@ namespace
             return true;
         };
 
-        Hestia::Material texturedMaterial = Hestia::Material::Default();
-        texturedMaterial.textures.push_back(textureHandle);
-        ASSERT_TRUE(draw(texturedMaterial, smallMeshHandle));
+        ASSERT_TRUE(draw(smallMesh));
 
-        Hestia::Material unsetTextureMaterial = Hestia::Material::Default();
-        ASSERT_TRUE(draw(unsetTextureMaterial, smallMeshHandle));
+        ASSERT_TRUE(material->SetTexture("_BaseMap", textureHandle));
+        ASSERT_TRUE(draw(smallMesh));
 
-        Hestia::Material invalidTextureMaterial = Hestia::Material::Default();
-        invalidTextureMaterial.textures.push_back({});
-        ASSERT_TRUE(draw(invalidTextureMaterial, smallMeshHandle));
+        ASSERT_TRUE(material->SetTexture("_BaseMap", {}));
+        ASSERT_TRUE(draw(smallMesh));
 
         auto staleTextureHandle = textureHandle;
         ++staleTextureHandle.m_generation;
-        Hestia::Material staleTextureMaterial = Hestia::Material::Default();
-        staleTextureMaterial.textures.push_back(staleTextureHandle);
-        ASSERT_TRUE(draw(staleTextureMaterial, smallMeshHandle));
+        ASSERT_TRUE(material->SetTexture("_BaseMap", staleTextureHandle));
+        ASSERT_TRUE(draw(smallMesh));
 
         auto missingTextureHandle = textureHandle;
         missingTextureHandle.m_index = 1;
-        Hestia::Material missingTextureMaterial = Hestia::Material::Default();
-        missingTextureMaterial.textures.push_back(missingTextureHandle);
-        ASSERT_TRUE(draw(missingTextureMaterial, smallMeshHandle));
+        ASSERT_TRUE(material->SetTexture("_BaseMap", missingTextureHandle));
+        ASSERT_TRUE(draw(smallMesh));
 
         Hestia::AssetHandle<Hestia::Mesh> largeMeshHandle{ 1, 1 };
         Hestia::Mesh largeMesh;
@@ -402,7 +504,8 @@ namespace
         largeMesh.m_positions.resize(256);
         largeMesh.m_indices = { 0, 1, 2 };
         ASSERT_TRUE(backend->UploadMesh(largeMeshHandle, largeMesh));
-        ASSERT_TRUE(draw(unsetTextureMaterial, largeMeshHandle));
+        ASSERT_TRUE(material->SetTexture("_BaseMap", {}));
+        ASSERT_TRUE(draw(largeMesh));
 
         backend->Finalize();
         backend.reset();

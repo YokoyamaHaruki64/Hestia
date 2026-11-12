@@ -1,6 +1,6 @@
 ﻿# 実装仕様書
 
-2026-11-02の実装調査を基に、2026-11-05にECSとEngine接続の記述を更新した。設計案の採否や将来の予定はこの文書から決定しない。
+2026-11-02の実装調査を基に、2026-11-05にECSとEngine接続、2026-11-07にMaterialShaderとDX12 Forward描画の記述を更新した。設計案の採否や将来の予定はこの文書から決定しない。
 
 ## 読み方
 
@@ -13,9 +13,9 @@
 | Time | [Time](Time/README.md) | [Types](Time/Types.md) |
 | Log | [Log](Log/README.md) | [Types](Log/Types.md) |
 | Asset | [Asset](Asset/README.md) | [Types](Asset/Types.md) |
-| Graphics / DX12 / Shader | [Graphics](Graphics/README.md) | [Types](Graphics/Types.md) |
+| Graphics / DX12 / Shader | [Graphics](Graphics/README.md)、[MaterialShader と Forward 描画](Graphics/MaterialShader.md) | [Types](Graphics/Types.md)、[MaterialShader の設計](../Design/MaterialShader.md)、[RenderPassの設計](../Design/RenderPass.md) |
 | ECS | [ECS](ECS/README.md) | [Types](ECS/Types.md)、[Process](ECS/Process.md)、[開発手引き](ECS/DevelopmentGuide.md) |
-| ECSProcess | [Transform](ECSProcess/Transform.md) | [Transformの設計](../Design/Transform.md) |
+| ECSProcess | [Transform](ECSProcess/Transform.md)、[MeshRenderer](ECSProcess/MeshRenderer.md) | [Transformの設計](../Design/Transform.md) |
 | Common / 数学・色・乱数 | [Common](Common/README.md) | [Types](Common/Types.md) |
 
 ## 全体の接続
@@ -28,7 +28,7 @@ ApplicationがWindowとフレーム進行を管理し、Engine.dllのAPIテー�
 
 Game向けの `HestiaGame::Transform` はEngine.dllから公開する。Input、Audio、Physics、Editor、GameRuntimeは、現在の稼働コードとして実装されたシステムに数えない。Engine.h内のコメント化された宣言を実装済みとは扱わない。PCH、DLL入口、Windows Header、DLL exportマクロはEngine/Commonの補助部分として扱う。外部ライブラリ本体、テスト基盤、ビルド・検証ツールはエンジンのランタイムシステムから除外する。
 
-各文書はソースの静的調査を根拠とする。2026-11-05にはEngineのDebug_EditorビルドとECS関連19件のテストが成功した。全体テストには5件の失敗が残り、GPU描画・Window操作の実機確認は行っていない。条件と未解消事項は[ECSの検証記録](ECS/README.md#検証記録2026-11-05)を参照する。
+各文書はソースの静的調査を根拠とする。2026-11-05のEngineビルドとECS関連19件の成功、当時の全体テスト5件の失敗は[ECSの検証記録](ECS/README.md#検証記録2026-11-05)を参照。2026-11-07のAppビルドとForward描画を含む関連テスト7件の成功は[MaterialShaderの検証記録](Graphics/MaterialShader.md#検証記録)を参照。
 
 ## Wikiの再生成
 

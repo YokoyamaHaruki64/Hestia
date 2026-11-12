@@ -30,6 +30,7 @@
     <ClInclude Include="Include\Math\Vector4.h" />
     <ClInclude Include="Include\Math\Vector4_SIMD.h" />
     <ClInclude Include="Include\Random.h" />
+    <ClInclude Include="Include\StringUtils.h" />
     <ClInclude Include="Include\WindowsHeaders.h" />
   </ItemGroup>
   <ItemGroup>
@@ -49,13 +50,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>

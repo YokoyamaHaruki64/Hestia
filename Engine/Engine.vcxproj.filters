@@ -71,6 +71,18 @@
     <ClCompile Include="Source\Asset\AssetType.cpp">
       <Filter>Source\Asset</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Asset\Material.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\MaterialShader.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\MaterialShaderLoader.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\MaterialShaderParser.cpp">
+      <Filter>Source\Asset</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Asset\AssetDB.cpp">
       <Filter>Source\Asset</Filter>
     </ClCompile>
@@ -83,10 +95,40 @@
     <ClCompile Include="Source\Asset\AssetAPI.cpp">
       <Filter>Source\Asset</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\DX12Device.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\DX12Descriptors.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\DX12Presentation.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\DX12Pipelines.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\DX12Resources.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\DX12Frames.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\ForwardRenderPass.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Backend.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\DX12MaterialPipeline.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\DXMaterialShaderCompiler.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Graphics\MeshRenderer.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\DllMain.cpp">
@@ -193,6 +235,18 @@
     <ClInclude Include="Include\Asset\AssetType.h">
       <Filter>Include\Asset</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Asset\Material.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\MaterialProperty.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\MaterialShader.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Asset\MaterialShaderParser.h">
+      <Filter>Include\Asset</Filter>
+    </ClInclude>
     <ClInclude Include="Include\Asset\AssetDB.h">
       <Filter>Include\Asset</Filter>
     </ClInclude>
@@ -208,29 +262,51 @@
     <ClInclude Include="Include\Asset\AssetAPI.h">
       <Filter>Include\Asset</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\DX12Support.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\DX12Device.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\DX12Descriptors.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\DX12Presentation.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\DX12Pipelines.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\DX12Resources.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\DX12Frames.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\IRenderPass.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\ForwardRenderPass.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Backend.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\GraphicsSystem.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\MeshRenderer.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Object.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Graphics\DXMaterialShaderCompiler.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\GPUResourceStorage.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="..\Shaders\Common.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\PS_Sprite.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="..\Shaders\VS_Sprite.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Include\Transform">
@@ -259,5 +335,16 @@
     <ClCompile Include="Source\Transform\TransformFacade.cpp">
       <Filter>Source\Transform</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Assets\Shaders\Common.hlsl">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="..\Assets\Shaders\MatShaders\Sprite.matsh">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="..\Assets\Shaders\MatShaders\Unlit_Inst.matsh">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

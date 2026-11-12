@@ -1,0 +1,73 @@
+﻿# MaterialShader と DX12 Forward 描画の実装仕様
+
+[設計書](../../Design/MaterialShader.md) / [Graphics](README.md) / [Asset](../Asset/README.md) / [全体索引](../README.md)
+
+DX12 の Forward 描画は MaterialShader の Pass を使う。
+
+## Asset と Property
+
+| 型・処理 | 現行の契約 |
+| --- | --- |
+| [AssetSystem](../../../Engine/Source/Asset/AssetSystem.cpp) | `MaterialShader` は名前から .matsh をロードできる。 `Material` は Shader を設定して手動登録する。Material ファイルの Loader はない。 |
+| [MaterialShader](../../../Engine/Include/Asset/MaterialShader.h) | Shader 名、共通 Property、CBuffer サイズ、宣言順の Pass、参照中の Material の逆索引を保持する。Create は Property 名・ハッシュ衝突・SRV Slot の重複・CBuffer 範囲と重なり・Pass の要求 Stream を検証する。 |
+| [Material](../../../Engine/Include/Asset/Material.h) | 型ごとの `SetBool`、`SetInt`、`SetFloat`、`SetFloat2/3/4`、`SetColor`、`SetMatrix3x3/4x4`、`SetTexture` と対応する Getter を提供する。名前と ID の両方を受ける。Setter は成功時に true、取得に失敗した Getter はログを出して型の既定値を返す。 |
+| [MaterialPropertyDesc](../../../Engine/Include/Asset/MaterialProperty.h) | 名前、型付き既定値、CBuffer の Offset とサイズ、SRV Slot、Reflection 上の行列方向。定数・SRV として使われない項目の Offset／Slot は `UINT32_MAX`。 |
+
+`MakePropertyID` は名前のバイト列に [StringToHash](../../../Common/Include/StringUtils.h) の FNV-1a 64-bit を適用する。Material の数値を更新すると変更箇所を CBuffer キャッシュに反映する。Texture は Handle のみを更新する。同じ値の再設定では `GetValueRevision()` の世代を進めない。Shader が破棄されると Material は Shader 参照と値・定数キャッシュを解除する。 [Material.cpp](../../../Engine/Source/Asset/Material.cpp)
+
+`bool` は 32-bit の 0／1 として書く。 `Matrix4x4` は行優先ならそのまま、列優先なら転置して書く。 `Matrix3x3` は Reflection の行／列方向に従い、各ベクトルを 16-byte 間隔に配置する。CBuffer の View は Material が所有する。 [PackConstant](../../../Engine/Source/Asset/Material.cpp)
+
+## .matsh の解析とコンパイル
+
+| 段階 | 現行の動作 |
+| --- | --- |
+| [Loader](../../../Engine/Source/Asset/MaterialShaderLoader.cpp) | UTF-8 のパスで .matsh を読み、Parser と Compiler を呼ぶ。名前付き Texture を AssetSystem で解決し、`white` は空 Handle として描画時の既定 Texture に委ねる。最後に MaterialShader を作成して登録する。 |
+| [Parser](../../../Engine/Source/Asset/MaterialShaderParser.cpp) | `MaterialShader`、`Properties`、共通 HLSL、Pass を解析する。全体の描画設定を読み終えてから各 Pass に適用し、Pass 固有の設定を優先する。 |
+| [DXMaterialShaderCompiler](../../../Engine/Source/Graphics/DXMaterialShaderCompiler.cpp) | 生成した Property 宣言・共通 HLSL・Pass 本文を連結し、`vs_6_0` と `ps_6_0` を `-Zpr` でコンパイルする。 `-I` には .matsh の親フォルダを渡す。DXC の診断をログに出し、Reflection の統合後に Bytecode と描画用データを返す。 |
+
+Parser は DSL の空白とコメントを読み飛ばす。HLSL 本文は境界と行頭の `#` を探して一括コピーする。コメント・引用符内の境界は無視し、独自の `#pragma vertex`・`pixel`・`surface` を取り出した範囲だけを空白に置き換える。 `#include` などは HLSL 本文に残る。
+
+Property は Bool、Int、Float、Vector2/3/4、Color、Matrix3x3/4x4、Texture2D を扱う。 `Range` は端点の順序を検証し、値型は Float として保持する。固定描画設定は `RenderType`、`RenderPhase`、`ShadingModel`、`Fill`、`Cull`、`Blend`、`Topology`、`ZWrite`、`ZTest` を受け付ける。Forward では vertex と pixel の指定が必要で、ShadingModel は `None`。GBuffer では Parser が vertex と surface の指定を確認し、Compiler が未実装エラーを返す。
+
+生成する数値宣言は `PerMaterial` CBuffer にまとめる。Texture は宣言順に `t0` から割り当て、16 枠を超える宣言を拒否する。Reflection は使われた定数の Offset・サイズ・行列方向、使われた Texture の Slot を確定し、Stage／Pass 間の不一致を拒否する。
+
+### インスタンシング
+
+`[InstancedStruct]` はShader直下に1つ指定できる。対応するフィールドは宣言順に `float4x4 worldMatrix` と `float4 color`。Compilerが名前付き構造体と `StructuredBuffer` の `Instances` を生成する。全PassのVSがこのBufferを参照し、各StageはObject定数の `b1, space0` を使用しない。VSは `SV_InstanceID` を使って各個体を参照する。 [Unlit_Inst.matsh](../../../Assets/Shaders/MatShaders/Unlit_Inst.matsh)
+
+## 提出から描画まで
+
+1. [RenderData](../../../Engine/Include/Graphics/DX12Object.h) に Mesh と Material の非所有ポインタ、World 行列、インスタンス色を渡して `GraphicsSystem::Submit` する。Material 配列は MaterialSlot 順で、空の場合は描画を行わない。
+2. Backend はアップロード時に GPU Mesh へ SubMesh の範囲をコピーする。SubMesh 未指定時は Index 全体を Slot 0 にする。Build は提出1件につき GPU Mesh を一度解決し、Slot が範囲外、または Material／Shader がない SubMesh を飛ばす。
+3. [DX12MaterialPipeline.cpp](../../../Engine/Source/Graphics/DX12MaterialPipeline.cpp) が、登録済み Shader Handle の index／generation と Pass 番号で PSO を検索する。未作成なら `m_requiredVertexStreams` に対応する要素を固定表から取り出し、Blend、Rasterizer、Depth、Topology と共に PSO を生成する。
+4. [ForwardRenderPass](../../../Engine/Source/Graphics/ForwardRenderPass.cpp) が Build、Sort、Record を実行する。Build は SubMesh × Shader Pass を共通の `DrawCommand` に展開する。Sort は Opaque と Masked を並べ替えて同じ描画状態のインスタンスをまとめ、Transparent は提出順で1件ずつ扱う。Record は Opaque → Masked → Transparent の順に、各バッチの `DrawIndexedInstanced` を記録する。 [RenderPassの設計](../../Design/RenderPass.md)
+
+Compiler は VS Reflection のシステム値を除外し、頂点入力のセマンティクス、インデックス 0、float32 型、成分マスクを確認する。対応する `VertexStream` は Pass 内に1件だけ登録する。Engineの提出例は [MeshRenderer](../ECSProcess/MeshRenderer.md) を参照。
+
+`NormalTangent` を要求した PSO の Input Layout には `NORMAL` と `TANGENT` が入り、どちらも同一スロットを参照する。Mesh に任意 Stream がない場合は共通の既定バッファを使う。法線・接線の既定値は `(0, 0, -1)` と `(1, 0, 0, 1)`。 [AssetType.h](../../../Engine/Include/Asset/AssetType.h)
+
+| Root Signature の用途 | レジスタ |
+| --- | --- |
+| フレーム・オブジェクト・Material の CBV | `b0`、`b1`、`b2`、いずれも space 0 |
+| System Texture テーブル | `t0–t15`, space 0 |
+| Material Texture テーブル | `t0–t15`, space 1 |
+| インスタンスBufferのRoot SRV | `t0`, space 2 |
+| 静的 Sampler | `s0–s3`、Linear／Point × Wrap／Clamp |
+
+### 定数とSRVの割り当て
+
+- FrameContextはObject定数、Material定数、インスタンスデータに共通の1 MiBのUploadページを必要に応じて追加する。各領域の開始アドレスを256 B境界に揃える。通常DrawはWorld行列64 Bを1件256 Bの領域に書き、GPUアドレスをObject用Root CBVに設定する。Material定数は最大64 KiB、インスタンスは1件80 Bで1 Drawあたり最大1,024件。 [Uploadページの割り当て](../../../Engine/Source/Graphics/DX12Frames.cpp) · [通常描画の記録](../../../Engine/Source/Graphics/ForwardRenderPass.cpp)
+- Materialの初回使用時に定数をUploadし、16個のSRVをVisible Heapへコピーする。Texture Slotが空、またはGPU側で解決できない場合は白Textureを使う。フレーム内の後続Drawは `Material*` をキーに、定数のGPUアドレスとテーブル先頭を再利用する。最大32,768テーブルに達した場合、新しいMaterialのDrawをスキップし、確保済みのMaterialは描画を続ける。 [Materialのバインド](../../../Engine/Source/Graphics/DX12Frames.cpp)
+- FrameContextを使い回すときは、Fence完了後にキャッシュと割り当て位置をリセットする。フレーム間のMaterial定数やTextureの変更は、次のフレームで最初に使用するときに反映する。
+
+## ビルドと現在の制約
+
+- .matsh は実行時に DXC を使うため、実行ファイルと同じ出力フォルダに `dxcompiler.dll` と `dxil.dll` を配置する。
+- [Sprite.matsh](../../../Assets/Shaders/MatShaders/Sprite.matsh) は `Sprite` の名前でロードする。Position、UV、頂点色を要求し、頂点色と `_Tint` を `_BaseMap` のサンプルに乗算する。Transparent フェーズでアルファ合成し、両面描画、深度比較 `Less`、深度書き込み有効で描画する。
+- GBuffer 描画、LightingShader、透明物の距離ソート、個別アンロード時の PSO 回収は未実装。現状の PSO Cache は Backend 終了時に解放する。
+
+## 検証記録
+
+- 2026-11-07 の Forward 描画統合時に、App の `Debug_Editor|x64` ビルドと関連テスト 7 件が成功した。 [Loader テスト](../../../Test/Hestia_Tests/Source/AssetTests.cpp) · [DX12 統合テスト](../../../Test/Hestia_Tests/Source/AssetGraphicsTests.cpp)
+- 追加した Forward 統合テストでは、NORMAL を要求する VS と法線 Stream のない Mesh を使い、Slot 1 の SubMesh で GPU が 1 プリミティブを処理し、PS を実行したことを統計で確認した。
+- 2026-11-12の容量検証では、同じMaterialを共有し、1 Drawにつき三角形1枚を提出する通常描画を100,000件と1,000,000件で実行した。GPUの入力プリミティブ数はどちらも提出数に一致した。Appの `Debug_Editor|x64` ビルドと既存描画テスト3件も成功した。容量検証でFPSの計測は行っていない。

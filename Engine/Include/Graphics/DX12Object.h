@@ -16,12 +16,9 @@
 #include "Common/Include/WindowsHeaders.h"
 
 #include <d3d12.h>
-#include <d3dcompiler.h>
 #include <dxgi1_6.h>
 #include <wrl/client.h>
 
-#include <string>
-#include <string_view>
 #include <vector>
 #include <array>
 #include <cstdint>
@@ -29,12 +26,18 @@
 
 #include "Asset/AssetType.h"
 #include "HMath.h"
-#include "Color.h"
 
 using Microsoft::WRL::ComPtr;
 
 namespace Hestia
 {
+    class Material;
+
+    static constexpr uint32_t MATERIAL_CONSTANT_BUFFER_REGISTER = 2;
+    static constexpr uint32_t MATERIAL_TEXTURE_REGISTER_SPACE = 1;
+    static constexpr uint32_t INSTANCE_BUFFER_REGISTER_SPACE = 2;
+    static constexpr int MAX_MATERIAL_TEXTURE = 16;
+
     struct DXRenderTexture
     {
         ComPtr<ID3D12Resource> resource;
@@ -69,30 +72,6 @@ namespace Hestia
         Matrix4x4_SIMD worldMatrix;
     };
 
-    struct Material
-    {
-        std::string name;
-
-        Color diffuseColor = Color::White();
-        Color specularColor = Color::White();
-        Color emissionColor = Color::Black();
-        float roughness = 0.5f;
-        float metallic = 0.0f;
-        std::vector<AssetHandle<Texture>> textures;
-
-        static Material Default()
-        {
-            Material mat;
-            mat.name = "Default";
-            mat.diffuseColor = Color::White();
-            mat.specularColor = Color::White();
-            mat.emissionColor = Color::Black();
-            mat.roughness = 0.5f;
-            mat.metallic = 0.0f;
-            return mat;
-        }
-    };
-
     struct DXVertexBuffer
     {
         ComPtr<ID3D12Resource> m_resource;
@@ -105,26 +84,20 @@ namespace Hestia
         ComPtr<ID3D12Resource> m_indexBuffer;
         D3D12_INDEX_BUFFER_VIEW m_indexView{};
         uint32_t m_vertexCount = 0;
-        uint32_t m_indexCount = 0;
+        std::vector<SubMesh> m_subMeshes;
     };
 
-    struct MaterialConstants
-    {
-        Color diffuseColor = Color::White();
-        Color specularColor = Color::White();
-        Color emissionColor = Color::Black();
-        float roughness = 0.5f;
-        float metallic = 0.0f;
-    };
-
+    /// @brief 1オブジェクト分の描画提出
+    /// @note Mesh と Material は非所有参照。提出の消費まで参照先を維持する
     struct RenderData
     {
         Matrix4x4_SIMD worldMatrix = Matrix4x4_SIMD::Identity();
-        Material material;
-        AssetHandle<Mesh> mesh;
+        const Mesh* mesh = nullptr;
 
-        std::wstring_view vsShaderPath;
-        std::wstring_view psShaderPath;
+        /// @brief SubMesh の MaterialSlot に対応する Material の配列
+        /// @note 範囲外または空の Slot に対応する SubMesh は描画しない
+        std::vector<const Material*> materials;
+        Vector4 instanceColor{ 1.0f, 1.0f, 1.0f, 1.0f };
     };
 }
 

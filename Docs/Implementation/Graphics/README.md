@@ -1,6 +1,6 @@
 ﻿# Graphicsの処理・構造
 
-[全体索引](../README.md) / [型](Types.md)
+[全体索引](../README.md) / [型](Types.md) / [MaterialShader と Forward 描画](MaterialShader.md)
 
 根拠: [GraphicsSystem.cpp](../../../Engine/Source/Graphics/GraphicsSystem.cpp)、[DX12Backend.cpp](../../../Engine/Source/Graphics/DX12Backend.cpp)
 
@@ -8,7 +8,7 @@
 
 GraphicsSystemはunique_ptrでDX12Backendを所有し、RenderDataのqueueとView/Projectionを保持する。単一instanceを接続し、初期化・資源登録・描画・終了は同じスレッドで行う。null HWND、正でない寸法、二重初期化を拒否する。初期Viewは単位行列、ProjectionはWindow寸法の左手系正射影（near 0.1、far 100）。Resizeは未対応。
 
-BackendはDevice、Direct Queue、SwapChain、二つのFrameContext、描画先、depth、descriptor heap、RootSignature、PSO cache、定数Buffer、GPU Asset Storage、UploadContextPool、Fenceを管理する。RTV/DSVは各64、master SRVは2048、material textureは16、最大描画提出数は32768。これらは現在の固定容量で、動的に無制限へ増える契約ではない。
+BackendはDevice、Direct Queue、SwapChain、二つのFrameContext、描画先、depth、descriptor heap、RootSignature、PSO cache、定数Buffer、GPU Asset Storage、UploadContextPool、Fenceを管理する。RTV/DSVは各64、master SRVは2048、MaterialのTextureは1テーブル16枠。
 
 ## CPU AssetからGPUへ
 
@@ -18,14 +18,16 @@ MeshはStream別Vertex Bufferとindex Bufferに変換する。TextureはRGBA8画
 
 ## フレームと描画
 
-SubmitはRenderDataを値で受け取りqueueに追加する。未初期化、容量超過、GPU Mesh不在ではfalse。Materialの値はコピーされるがShader pathのwstring_viewは借用のままであり、描画まで文字列を生存させる必要がある。
+SubmitはRenderDataを値で受け取りqueueに追加する。未初期化、容量超過、Meshがnullの場合はfalse。提出上限は1,000,000件。GPU Meshの有無はBuildで調べ、未登録ならその提出を飛ばす。 [提出上限の定義](../../../Engine/Include/Graphics/DX12Backend.h)
 
-RenderはUpdate → BeginDraw → Draw → EndDrawを呼ぶ。BeginDraw失敗時は以降を呼ばない。BeginDrawはフレーム資源を準備し、PerFrame定数を書き、提出queueをBackend側へswapする。Drawは提出順にGPU Meshを検索し、Object/Material、Pipeline、Textureを設定してindexed drawする。未登録Meshは除く。欠落する任意頂点Streamには既定Bufferを使う。
+RenderはUpdate → BeginDraw → Draw → EndDrawを呼ぶ。BeginDraw失敗時は以降を呼ばない。BeginDrawはフレーム資源を準備し、PerFrame定数を書き、提出queueをBackend側へswapする。DrawはForwardRenderPassのBuild → Sort → Recordを実行する。Shader Passが要求する任意頂点Streamが欠ける場合は既定Bufferを使う。 [RenderPassの設計](../../Design/RenderPass.md)
+
+描画記録で通常Drawが使うObject定数は、フレームごとのUploadページに追加する。Material定数とSRVテーブルはフレーム内の同じMaterialで共有する。提出キュー、Upload領域、Materialテーブルにはそれぞれ別の制約がある。 [定数とSRVの割り当て](MaterialShader.md)
 
 EndDrawはscene colorをBackBufferへコピーし、状態遷移、コマンド実行、PresentとFenceの進行を行う。宣言された二つのscene colorだけから一般的なRenderGraphやポストエフェクト実装があると解釈しない。
 
 ## Shaderとの対応
 
-[Common.hlsl](../../../Shaders/Common.hlsl) はb0=Frame、b1=Object、b2=Materialの定数と四つのsamplerを宣言する。[VS_Sprite](../../../Shaders/VS_Sprite.hlsl) は行ベクトルをworld → view → projの順で変換し、UVと頂点色を渡す。[PS_Sprite](../../../Shaders/PS_Sprite.hlsl) はspace1のt0をWrapLinearSamplerで読み、頂点色とMaterial色を乗算する。粗さ・metallic等のデータがあっても、このPSが物理ベースのライティングを実行するわけではない。
+`Common.hlsl` はFrame定数のb0、Object定数のb1、四つのsamplerを宣言する。Compilerはb2にMaterialのProperty宣言を生成する。Pass用PSOでは要求Streamに応じたInput Layoutを作る。 [Shaderの実装仕様](MaterialShader.md)
 
-FinalizeはGPU待機後にBufferのmap、GPU Storage、転送待ち、Context等を解放する。GPU待機に失敗した経路では途中でreturnするため、全解放成功を戻り値で通知する仕様にはなっていない。描画結果やGPU異常時の動作は今回実行確認していない。
+FinalizeはGPU待機後にBufferのmap、GPU Storage、転送待ち、Context等を解放する。GPU待機に失敗した経路では途中でreturnするため、全解放成功を戻り値で通知する仕様にはなっていない。Forward描画の確認範囲は[検証記録](MaterialShader.md#検証記録)を参照。

@@ -1,7 +1,7 @@
 ﻿/*=============================================================================
 
  File   : AssetLoader.h
- Desc   : Mesh / Texture の初期ロード経路を宣言する。
+ Desc   : Asset 型ごとのファイルロード境界を宣言する。
 
 ------------------------------------------------------------------------------
 
@@ -20,6 +20,7 @@
 namespace Hestia
 {
     class GraphicsSystem;
+    class MaterialShader;
 
     template<class T>
     class AssetLoader;
@@ -52,6 +53,18 @@ namespace Hestia
 
     private:
         GraphicsSystem* m_graphics = nullptr;
+    };
+
+    /// @brief MaterialShader の解析、コンパイル、登録境界。
+    template<>
+    class AssetLoader<MaterialShader>
+    {
+    public:
+        /// @brief AssetDB の情報で .matsh をロードする。
+        /// @param name 登録する AssetDB の名前。
+        /// @param path .matsh ファイルへの UTF-8 パス。
+        /// @return CPU Asset の Handle。読込、解析、コンパイル、登録失敗時は無効。
+        AssetHandle<MaterialShader> Load(std::string_view name, std::string_view path);
     };
 }
 

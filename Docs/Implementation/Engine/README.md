@@ -10,7 +10,7 @@ GetEngineAPIはDLL内の固定APIテーブルを返す。Createはnull Applicati
 
 EngineはApplicationAPIをコピーし、Log → Time → Graphics（1600×900）→ Asset → API接続 → ECSの順に初期化する。GraphicsはApplicationAPIからHWNDを取得する。初期化済みフラグを持ち、途中の失敗ではFinalizeで準備済みのSystemを解放する。
 
-初期化の最後に4頂点・6indexのDebugPlaneを登録し、Default MaterialとTextureTestを用意する。これらのHandleが無効なら初期化失敗となる。TextureのHandle有効性はGPU転送成功とは別である。
+初期化の最後に4頂点・6indexのDebugPlaneを登録し、UnlitのMaterialShaderとTextureTestを読み込む。Textureを `_BaseMap` に設定したMaterialを登録してSlot 0に渡す。必要なAssetの準備に失敗した場合は初期化失敗となる。TextureのHandle有効性はGPU転送成功とは別である。 [Forward描画の実装仕様](../Graphics/MaterialShader.md)
 
 ## 更新
 
