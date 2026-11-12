@@ -102,6 +102,7 @@ namespace Hestia
         // PreRenderではWorld行列を更新してから描画を収集
         REGISTER_PROCESS(&TransformProcess::Run, PreRender);
         REGISTER_PROCESS(&MeshRendererProcess::Run, PreRender);
+        REGISTER_PROCESS(&MoveTransform, Update);
 
         // マクロ解除
 #undef REGISTER_COMPONENT

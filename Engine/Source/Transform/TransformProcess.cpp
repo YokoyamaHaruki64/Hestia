@@ -396,4 +396,17 @@ namespace Hestia
         scale = SignedLengths(matrix, orthogonal);
         return true;
     }
+    void MoveTransform(size_t count, const Entity* entities, Transform* transforms)
+    {
+        for (size_t index = 0; index < count; ++index)
+        {
+            if (!entities[index].IsActive())
+                continue;
+
+            transforms[index].m_localDirty = true;
+            transforms[index].m_worldDirty = true;
+
+            transforms[index].m_localRotation = Quaternion::EulerToQuat({ 0.0f, 0.0f, 0.01f }) * transforms[index].m_localRotation;
+        }
+    }
 }

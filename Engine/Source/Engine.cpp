@@ -102,14 +102,26 @@ namespace Hestia
         if (!debugMaterial)
             return false;
 
-        // 位置と色だけを変え、同じDrawから各インスタンスを識別できるようにする
+        // 斜め上から透視投影し、手前と奥で立方体の見かけの大きさに差を出す
+        GraphicsSystem::SetView(Matrix4x4_SIMD::LookAtLH(
+            { 440.0f, 275.0f, -820.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }));
+        GraphicsSystem::SetProj(Matrix4x4_SIMD::PerspectiveFovLH(
+            0.8f, 1600.0f / 900.0f, 10.0f, 1600.0f));
+
+        // 100×25×40の格子に並べ、回転後の対角線もセル間隔より小さくする
+        constexpr int columns = 100;
+        constexpr int rows = 25;
+        constexpr int layers = 40;
+        constexpr int cubeCount = columns * rows * layers;
+        constexpr float spacing = 10.0f;
+        constexpr float cubeSize = 5.5f;
         const Vector4 colors[] = {
             { 1.0f, 0.25f, 0.30f, 1.0f }, { 0.25f, 0.85f, 0.40f, 1.0f },
             { 0.30f, 0.60f, 1.0f, 1.0f }, { 1.0f, 0.75f, 0.25f, 1.0f },
             { 0.75f, 0.40f, 1.0f, 1.0f }, { 0.20f, 0.85f, 0.85f, 1.0f },
         };
         const auto rotation = Quaternion::EulerToQuat({ 0.5f, 0.65f, 0.0f });
-        for (int index = 0; index < static_cast<int>(std::size(colors)); ++index)
+        for (int index = 0; index < cubeCount; ++index)
         {
             const auto entity = ECSSystem::CreateEntity();
             if (!entity.IsValid())
@@ -119,15 +131,21 @@ namespace Hestia
             if (!renderer)
                 return false;
 
-            // 共有Assetと個体ごとのデータを登録
+            // 格子の位置を求め、奥行きのある色分けを設定
+            const int column = index % columns;
+            const int row = index / columns % rows;
+            const int layer = index / (columns * rows);
             renderer->m_mesh = debugMesh;
             renderer->m_materials = { debugMaterial };
-            renderer->m_instanceColor = colors[index];
+            renderer->m_instanceColor = colors[(column / 5 + row / 5 + layer / 5) % std::size(colors)];
+
+            // 格子の中心を原点に揃えてTransformへ登録
+            const float x = (column - (columns - 1) * 0.5f) * spacing;
+            const float y = (row - (rows - 1) * 0.5f) * spacing;
+            const float z = (layer - (layers - 1) * 0.5f) * spacing;
             HestiaGame::Transform transform(entity);
-            const float x = static_cast<float>(index % 3 - 1) * 120.0f;
-            const float y = index < 3 ? 55.0f : -55.0f;
-            if (!transform.SetLocalScale({ 56.0f, 56.0f, 56.0f }) ||
-                !transform.SetLocalRotation(rotation) || !transform.SetLocalPosition({ x, y, 50.0f }))
+            if (!transform.SetLocalScale({ cubeSize, cubeSize, cubeSize }) ||
+                !transform.SetLocalRotation(rotation) || !transform.SetLocalPosition({ x, y, z }))
                 return false;
         }
         return true;
@@ -204,6 +222,7 @@ namespace Hestia
 
         m_time.Update(deltaTime);
 
+        auto start = std::chrono::high_resolution_clock::now();
         if (m_ecsInitialized)
         {
             // phase順にProcessを実行し、各phase内は登録順を維持する
@@ -212,11 +231,18 @@ namespace Hestia
             ECSSystem::Run(ECSProcessPhase::LateUpdate);
             ECSSystem::Run(ECSProcessPhase::PreRender);
         }
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         Logger::Log("FrameExecute: DeltaTime= " + std::to_string(TimeSystem::DeltaTime()));
-
+        OutputDebugString((L"FPS = " + std::to_wstring(static_cast<int>(1.0f / TimeSystem::DeltaTime())) + L"\n").c_str());
+        OutputDebugString((L"Process Time = " + std::to_wstring(duration.count()) + L" us\n").c_str());
         // PreRenderで収集した描画提出を記録
+        start = std::chrono::high_resolution_clock::now();
         m_graphics.Render();
-
+        end = std::chrono::high_resolution_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start
+        );
+        OutputDebugString((L"Render Time = " + std::to_wstring(duration.count()) + L" us\n").c_str());
         // 描画が終わるまでEntity実体を維持し、破棄予約をFrame末尾で確定する
         if (m_ecsInitialized)
             ECSSystem::EndFrame();

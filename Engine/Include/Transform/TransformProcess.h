@@ -66,6 +66,11 @@ namespace Hestia
         static bool DecomposeWorld(const Matrix4x4_SIMD& matrix,
             const Quaternion& fallback, Vector3& position, Quaternion& rotation, Vector3& scale);
     };
+
+    // Test用のProcess。Transformを回転させるだけで、子孫への伝播は行わない
+    void MoveTransform(size_t count, const Entity* entities, Transform* transforms);
+
 }
+
 
 #endif // _TRANSFORM_PROCESS_H_
