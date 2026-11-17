@@ -28,6 +28,7 @@
     { "directory": "Design/GameRuntime", "category": "design" }
   ],
   "pages": {
+    "Design/ECS.md": { "category": "design", "order": 35, "summary": "Entityの配置と寿命、Processの要求Component、Gameとの受け渡し。" },
     "Design/Transform.md": { "category": "design", "order": 40, "label": "Transformの設計", "summary": "Transformのクラス構成、Local TRSを正本にする契約とGame向けFacadeの設計。" },
     "Design/MaterialShader.md": { "category": "design", "order": 50, "label": "MaterialShaderの設計", "summary": "Materialの所有、.matsh、PassのStream選択とSubMesh単位のForward描画。" },
     "Design/RenderPass.md": { "category": "design", "order": 60, "label": "RenderPassの設計", "summary": "共通DrawCommand、Build・Sort・Record、Forwardのバッチ化。" },
@@ -57,9 +58,9 @@
       "category": "guides", "order": 40, "summary": "初期描画実装に対する手動計測値、原因候補と計測上の留保。",
       "notes": [{ "text": "これは過去の観測記録。本文にはRenderDataがDXMeshを保持するという記述があるが、現在の定義はAssetHandle<Mesh>。当時の数値や原因候補を現在の実装の確定仕様として扱わない。", "sources": ["Engine/Include/Graphics/DX12Object.h"] }]
     },
-    "Architecture.md": { "category": "design", "order": 10, "summary": "DevelopNotesを基に整理された全体構造と設計上の依存関係。", "notes": [{ "text": "設計参考資料。現行コードとの差分の節には、EngineロードやAPIが未実装だった時点の記述が残る。現在の実装状況は実装仕様の各ページを参照する。", "sources": ["Application/Source/Application.cpp", "Engine/Source/API/EngineAPI.cpp"] }] },
+    "Architecture.md": { "category": "design", "order": 10, "summary": "Application・Engine・Gameの責務と所有、DLL境界、起動から終了までの契約。" },
     "DesignSources.md": { "category": "design", "order": 20, "summary": "参照資料の出典、優先関係、設計案の位置づけ。" },
-    "OpenDecisions.md": { "category": "design", "order": 30, "summary": "実装前に整理された未確定事項と資料間の差分。", "notes": [{ "text": "実装前の検討資料。ApplicationAPIの名前空間、HWND取得、Engineロード等について、現在のコードと異なる過去の状態が記載されている。", "sources": ["Application/Include/ApplicationAPI.h", "Application/Source/Application.cpp"] }] }
+    "OpenDecisions.md": { "category": "design", "order": 30, "summary": "Editor、公開API、描画、Scriptなどの未決事項とPrefabの将来案。" }
   },
   "diagrams": {
     "ecs-process": { "title": "Processの生成・登録から実行まで", "caption": "RegisterProcessでProcessを生成してWorldへ登録し、要求Componentが揃うArchetypeをキャッシュする。Run(phase)は登録順・Chunk単位で関数を呼ぶ。AddProcessはEntityのComponent構成を変更する。RegisterECSはTransformProcessをPreRenderに登録する。", "sources": ["Docs/Implementation/ECS/Process.md", "Docs/Implementation/ECSProcess/Transform.md", "Engine/Include/ECS/ECSWorld.h", "Engine/Include/ECS/ECSProcess.h", "Engine/Include/ECS/ECSProcessExecution.h", "Engine/Source/ECS/ECSWorld.cpp", "Engine/Source/ECS/ECSProcess.cpp"] },

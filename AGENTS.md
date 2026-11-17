@@ -6,8 +6,9 @@ Use Japanese for user-facing responses, questions, and Q&A. Keep the design docu
 ## Design References
 
 - Read [Architecture](Docs/Architecture.md) for the overall structure, [DesignSources](Docs/DesignSources.md) for source provenance, and [OpenDecisions](Docs/OpenDecisions.md) for unresolved decisions.
-- When refining the design, start with [DevelopNotes](Reference/HestiaDesign/DevelopNotes/Overview.md) and cross-check the topic-specific material for the relevant System.
-- Do not treat alternatives or supplemental drafts as decisions. If documentation and implementation differ, identify the difference and rationale before changing code.
+- Use `Reference/` as research material when refining a design. Before implementing an adopted design, write or update its canonical document under `Docs/Design/`, adapting it to the repository's current types, APIs, and structure.
+- Make the design document self-contained within `Docs/`. Incorporate the adopted material into the document and use `Docs/` links for related contracts. Keep references to `Reference/` in [DesignSources](Docs/DesignSources.md) for provenance when needed.
+- Treat alternatives and supplemental drafts as proposals. If the canonical design and implementation differ, identify the difference and rationale before changing code.
 
 ## Coding Standard
 

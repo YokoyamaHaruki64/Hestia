@@ -53,4 +53,4 @@ CPU Asset のアドレスは所有側から解放されるまで安定する。M
 - 同一フレームのDraw間で、同じMaterialの定数とTextureテーブルを共有する。Object定数は通常Drawが使用する分をフレーム用のUploadページから確保する。アップロード領域とDescriptorは、参照したフレームのFence完了後に再利用する。
 - GBuffer 描画、LightingShader、透明物の距離ソート、個別アンロードと GPU Cache の連動は後続の設計対象。
 
-設計の出典は [Material](../../Reference/HestiaDesign/DevelopNotes/Class/Material.md)、[MaterialShader](../../Reference/HestiaDesign/DevelopNotes/Class/MaterialShader.md)、[Mesh と VertexStream](../../Reference/HestiaDesign/DevelopNotes/Class/AssetType.md)、[MaterialShaderDSL](../../Reference/HestiaDesign/Graphics/MaterialShaderDSL.md)。ここで採用した Stream 単位の Input Layout は、参考資料の入力要素を個別に保存する案から更新している。
+Input Layout を Stream 単位で定めることで、Mesh の Stream 構成にかかわらず同じ Pass の PSO を再利用できる。実際の処理は [MaterialShader の実装仕様](../Implementation/Graphics/MaterialShader.md) を参照する。

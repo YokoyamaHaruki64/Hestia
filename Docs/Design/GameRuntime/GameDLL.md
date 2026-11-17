@@ -2,7 +2,7 @@
 ---
 Hestia の起動経路に `Game.dll` を加え、通常の C++ `.h/.cpp` で書いたゲームコードを初期化・更新・終了できるようにする。初版では `HestiaGame::Time` を通して更新を確認し、GameRuntime が型ごとの Script を実行する。
 
-[Engine の境界設計](../../../Reference/HestiaDesign/DevelopNotes/Class/Engine.md) ・ [GameRuntime の原案](../../../Reference/HestiaDesign/DevelopNotes/Class/GameRuntime.md) ・ [Time](../../../Reference/HestiaDesign/DevelopNotes/Class/Time.md) ・ [Script の設計](./Script.md) ・ [World](./World.md) ・ [Engine と Game の API 構成](./APIArchitecture.md)
+[全体構造](../../Architecture.md) ・ [Script の設計](./Script.md) ・ [World](./World.md) ・ [Engine と Game の API 構成](./APIArchitecture.md)
 
 ## DLL 境界と所有
 ---
@@ -57,8 +57,9 @@ Game プロジェクトは共有 Header と、Engine が渡すデータおよび
 - Engine は `TimeSystem` と `TimeAPI` を値として所有する。`TimeAPI` は System が所有する `TimeData` への非所有参照を保持し、既存の inline Getter がその値を読む。
 - `TimeAPI::SetTimeScale` は inline で、`TimeAPI::Initialize` が設定した関数ポインタと参照先を使う。関数の本体は Engine.dll 内で `TimeSystem::SetTimeScale` に委譲する。倍率の検証と反映は既存の `TimeSystem` が担う。
 - `HestiaGame::Time` は `TimeAPI` への非所有参照を持ち、Game コードに時間の取得と倍率設定を公開する。`Bind / Unbind` は private とし、GameRuntime だけが呼ぶ。ゲームの初期化から終了処理まで接続を維持する。
+- 各 delta は App が渡した秒数を基にする。scaled 値はその秒数に `timeScale` を掛け、通常更新だけが累積時間を進める。倍率は有限かつ非負の値を受理し、0 で scaled 時間を止める。App が固定更新を呼ぶ頻度は実経過時間で決まる。
 
-[Time の設計](../../../Reference/HestiaDesign/DevelopNotes/Class/Time.md) ・ [現行の TimeAPI](../../../Engine/Include/API/TimeAPI.h)
+[Time の実装仕様](../../Implementation/Time/README.md)
 
 ## 起動・更新・終了
 ---
@@ -76,7 +77,7 @@ Editor・Game の両構成で `Game.dll` を必須とする。DLL のロード�
 ## ビルドと初版の確認
 ---
 
-`Game` をソリューションの DLL プロジェクトに加え、既存の構成ごとの出力先に App、Engine.dll、Game.dll を揃える。App のビルド時に Game.dll も生成されるよう、ビルド順の依存を設定する。Hestia 本体の実行バイナリはこの三つとし、DXC など現行の外部ランタイム依存は別途扱う。 [共通出力先](../../../Props/Hestia_Common.props) ・ [現行の DXC 配置](../../../Engine/Engine.vcxproj)
+Editor・Game 構成では同じ出力先に App、Engine.dll、Game.dll を揃える。Engine から Game へのプロジェクト参照はビルド順に使う。Engine と Game は `Common.lib` を利用でき、Game と Engine の間は実行時に接続する。`Test` 構成はテスト exe が静的 `Game.lib` をリンクし、同じ `GetGameRuntimeAPI` を直接呼ぶ。DXC などの外部ランタイム依存は別途配置する。
 
 - Editor・Game 構成で App から起動し、GameRuntime の初期化、通常更新、LateUpdate、固定更新、フレーム末尾の処理と終了を確認する。各更新で対応する `HestiaGame::Time` の値を取得する。
 - Game のリンク入力と Game.dll のインポートを確認し、`Engine.lib` が不要で、`Engine.dll` への静的インポートがないことを確認する。

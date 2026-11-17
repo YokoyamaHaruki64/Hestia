@@ -1,4 +1,4 @@
-﻿# ECS ComponentとProcessの開発手引き
+# ECS ComponentとProcessの開発手引き
 
 [処理・構造](README.md) / [型](Types.md) / [Process実行](Process.md)
 
@@ -83,7 +83,7 @@ REGISTER_GAME_PROCESS(MeshRendererAPI, &MeshRendererProcess::Run, PreRender);
 - 生存中EntityへのDestroyEntityは破棄予約を設定し、IsActiveはその時点でfalseになる。activeの設定値は変えず、実体はEndFrameで破棄する。生成待ちなら構築せず取消となる。
 - EntityHandle::IsValidは形式の判定であり、Entityの生存を保証しない。取得結果を確認し、長期保持したHandleは使う時点で解決する。
 
-初期 Component 列／Process 列を指定する生成 API と Prefab は ECS の将来案にある。Script の `OnStart` は GameRuntime が Script の追加時に呼ぶ。 [ECS の将来案](../../OpenDecisions.md#将来案ecsの初期構成指定とprefab復元) ・ [Script の実行](../GameRuntime/README.md)
+初期 Component 列／Process 列を指定する生成 API と Prefab は ECS の将来案にある。Script の `OnStart` は GameRuntime が Script の追加時に呼ぶ。 [ECS の将来案](../../OpenDecisions.md) ・ [Script の実行](../GameRuntime/README.md)
 
 ### Gameから公開Processを操作する
 
@@ -111,3 +111,5 @@ Component構築に失敗した構造変更は、移行元を変更せず拒否�
 - [既存のGoogleTest基盤](../../../Test/README.md)で関係する範囲を確認し、VerifyProjectでEngineをビルドする。検証した条件と未確認範囲を記録する。
 
 基盤APIの変更が必要になった場合は、利用側で迂回処理を増やす前に、必要な操作・所有・反映時点を整理してECS本体の変更として検討する。
+
+

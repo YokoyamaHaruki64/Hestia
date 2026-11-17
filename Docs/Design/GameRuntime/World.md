@@ -2,7 +2,7 @@
 ---
 `HestiaGame::World` は、ゲームコードから現在のゲーム世界を操作する入口とする。初版では Entity の生成・検索と、Script や Process に対応する操作用 Facade を扱う。Game 側では Unity の Component のように Entity 単位で操作し、Engine 側では ECS が Component の配置と Process の実行を管理する。
 
-[Game.dll の境界](./GameDLL.md) ・ [Script の所有と更新](./Script.md) ・ [現行の ECS](../../Implementation/ECS/README.md)
+[Game.dll の境界](./GameDLL.md) ・ [Script の所有と更新](./Script.md) ・ [ECS の設計](../ECS.md)
 
 ## Entity の受け渡し
 ---
@@ -16,21 +16,24 @@
 ## World の操作
 ---
 
-| 用途 | Game 向け API 案 | 動作 |
+| 用途 | Game 向け API | 動作 |
 | --- | --- | --- |
 | 生成・破棄 | `CreateEntity()` / `DestroyEntity(entity)` | 生成した Entity の Handle を返す。破棄は ECS に予約する |
 | Active 状態 | `IsActive(entity)` / `SetActive(entity, active)` | 現在の実行可否を読み、Active 設定を変更する |
 | 名前・タグ | `SetName(entity, name)` / `SetTag(entity, tag)` | Engine が持つ Name と Tag を設定する |
 | 名前・タグで検索 | `FindFirstEntityByName(name)` / `FindEntitiesByTag(tag)` | 名前が一致する一件、またはタグが一致する全件を返す |
+| Script の登録 | `RegisterScript<T>()` | GameRuntime 初期化時の型登録中に、具象型 `T` の Storage を用意する |
 | Script の操作 | `GetScript<T>(entity)` / `AddScript<T>(entity, ...)` / `RemoveScript<T>(entity)` | GameRuntime が型ごとの Storage を操作する。取得と追加は `ScriptRef<T>` を返す |
 | Script の有効設定 | `SetScriptEnabled<T>(entity, enabled)` | Script の `enabled` を変更する。Entity が Active な場合は変更に応じて `OnEnable` または `OnDisable` を呼ぶ |
 | Script で検索 | `FindEntitiesWithScript<T>()` | `T` の Script を保持する Entity を返す |
 | Process 用 Facade | `GetProcess<T>(entity)` / `AddProcess<T>(entity)` | 操作用 Facade を取得し、対応する Process に必要な Component を補う |
 | Process で検索 | `FindEntitiesWithProcess<T>()` | 対応する Process の Component 条件を満たす Entity を返す |
 
-検索結果は `EntityHandle` で返す。検索には非 Active の Entity も含め、生成待ちと破棄予約済みは除外する。名前検索は同名の Entity のうち一件を返し、同名間の順序は規定しない。タグは現行 ECS の `Tag` と同じ数値 ID を使う。 [現行の Name と Tag](../../../Engine/Include/ECS/Component.h)
+検索には非 Active の Entity も含め、生成待ちと破棄予約済みは除外する。名前は UTF-8 のポインタとバイト数、タグは `uint32_t` で渡す。名前検索は同名の Entity のうち一件を返し、一致なしは無効 Handle を返す。同名間の順序は規定しない。
 
-`GetScript<T>` と `AddScript<T>` は `ScriptRef<T>` を値で返す。対象が見つからない場合や追加に失敗した場合は空の値を返す。保持した参照は Storage 内での実体の移動に追従し、Script の削除予約時に無効になる。走査中の追加は走査後に反映し、追加した Script の更新は次のフレームから始まる。 [ScriptRef の契約](./Script.md#scriptref-と参照先の所有) ・ [追加・削除の契約](./Script.md#走査中の追加削除)
+タグと Process の複数件検索では Engine が一回走査し、作業配列の先頭ポインタと件数を返す。`World` は結果を Game 側の `std::vector<EntityHandle>` にコピーし、`ClearEntitySearchResults()` で借用を終えてから返す。空結果でも明示的にクリアし、Engine は作業配列の容量を再利用する。Script の検索は Game 側の Storage で行う。
+
+`GetScript<T>` と `AddScript<T>` は `ScriptRef<T>` を値で返す。対象が見つからない場合や追加に失敗した場合は空の値を返す。保持した参照は Storage 内での実体の移動に追従し、Script の削除予約時に無効になる。追加した Script は保留中も取得でき、更新はフレーム末尾に反映した次のフレームから始まる。 [ScriptRef の契約](./Script.md#scriptref-と参照先の所有) ・ [追加・削除の契約](./Script.md#走査中の追加削除)
 
 ## Process と操作用 Facade
 ---

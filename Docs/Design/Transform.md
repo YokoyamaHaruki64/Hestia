@@ -28,11 +28,11 @@ namespace Hestia
 ```
 
 [Transform](#transform) ・ [TransformCache](#transformcache) ・ [TransformHierarchy](#transformhierarchy)
-[ECSProcess](../../Reference/HestiaDesign/DevelopNotes/Class/ECS/ECSProcess.md#ecsprocess) ・ [Entity](../../Reference/HestiaDesign/DevelopNotes/Class/ECS/Entity.md#entity)
+[ECS の Process 実行](../Implementation/ECS/Process.md) ・ [Entity の受け渡し](GameRuntime/World.md#entity-の受け渡し)
 
 **所有・参照**
 
-Engineが所有する `ECSSystem` のWorldで実行し、Chunk内のComponent列をその実行中だけ借用する。Transform専用のSystemや別のEntity格納領域は持たない。 [ECSSystemの設計](../../Reference/HestiaDesign/DevelopNotes/Class/ECS/ECSSystem.md#ecssystem)
+Engine が所有する `ECSSystem` の単一 World で実行し、Chunk 内の Component 列をその実行中だけ借用する。 [ECS の所有と初期化](../Implementation/ECS/README.md#所有と初期化)
 
 **更新順**
 
@@ -87,7 +87,7 @@ namespace Hestia
 
 [Transform](#transform) ・ [TransformProcess](#transformprocess)
 
-World行列だけを格納する。将来の描画収集Processは、Transform更新後にこの列を読み取る構成を想定する。
+World 行列だけを格納する。`PreRender` は Transform を先に実行し、MeshRenderer は描画提出にこの列を読む。 [RenderPass の設計](RenderPass.md)
 
 ### TransformHierarchy
 ---
@@ -106,7 +106,7 @@ namespace Hestia
 }
 ```
 
-[EntityHandle](../../Reference/HestiaDesign/DevelopNotes/Class/ECS/Entity.md#entityhandle) ・ [HestiaGame::Transform](#hestiagametransform)
+[Entity の受け渡し](GameRuntime/World.md#entity-の受け渡し) ・ [HestiaGame::Transform](#hestiagametransform)
 
 **所有・参照**
 
@@ -121,7 +121,7 @@ ChunkはComponentを所有し、親子は互いのEntityをHandleで非所有参
 **役割**
 
 GameからEntityのLocal・Worldの位置、回転、拡縮とWorld行列、親を操作する非所有Facade。
-操作はEngine.dllに直接公開し、各呼び出しでHandleを現在のEntityへ解決する。
+Game は `World::GetProcess<HestiaGame::Transform>(entity)` で値を取得する。Facade は EntityHandle と Engine が所有する `TransformAPI` への非所有ポインタを保持し、操作時に対象 Entity を解決する。
 
 ```cpp
 namespace Hestia
@@ -135,40 +135,41 @@ namespace HestiaGame
     {
     public:
         Transform() = default;
-        explicit Transform(Hestia::EntityHandle entity) noexcept;
-        HESTIA_ENGINE_API bool IsValid() const noexcept;
+        using API = Hestia::TransformAPI;
+        bool IsValid() const noexcept;
 
-        HESTIA_ENGINE_API Vector3 GetLocalPosition() const;
-        HESTIA_ENGINE_API Quaternion GetLocalRotation() const;
-        HESTIA_ENGINE_API Vector3 GetLocalScale() const;
-        HESTIA_ENGINE_API bool SetLocalPosition(const Vector3& position);
-        HESTIA_ENGINE_API bool SetLocalRotation(const Quaternion& rotation);
-        HESTIA_ENGINE_API bool SetLocalScale(const Vector3& scale);
+        Vector3 GetLocalPosition() const;
+        Quaternion GetLocalRotation() const;
+        Vector3 GetLocalScale() const;
+        bool SetLocalPosition(const Vector3& position);
+        bool SetLocalRotation(const Quaternion& rotation);
+        bool SetLocalScale(const Vector3& scale);
 
-        HESTIA_ENGINE_API Vector3 GetWorldPosition() const;
-        HESTIA_ENGINE_API Quaternion GetWorldRotation() const;
-        HESTIA_ENGINE_API Vector3 GetWorldScale() const;
-        HESTIA_ENGINE_API Matrix4x4_SIMD GetWorldMatrix() const;
-        HESTIA_ENGINE_API bool SetWorldPosition(const Vector3& position);
-        HESTIA_ENGINE_API bool SetWorldRotation(const Quaternion& rotation);
-        HESTIA_ENGINE_API bool SetWorldScale(const Vector3& scale);
-        HESTIA_ENGINE_API bool SetWorldMatrix(const Matrix4x4_SIMD& matrix);
+        Vector3 GetWorldPosition() const;
+        Quaternion GetWorldRotation() const;
+        Vector3 GetWorldScale() const;
+        Matrix4x4_SIMD GetWorldMatrix() const;
+        bool SetWorldPosition(const Vector3& position);
+        bool SetWorldRotation(const Quaternion& rotation);
+        bool SetWorldScale(const Vector3& scale);
+        bool SetWorldMatrix(const Matrix4x4_SIMD& matrix);
 
-        HESTIA_ENGINE_API Transform GetParent() const;
-        HESTIA_ENGINE_API bool SetParent(const Transform& parent,
+        Transform GetParent() const;
+        bool SetParent(const Transform& parent,
             Hestia::ParentMode mode = Hestia::ParentMode::KeepWorld);
 
     private:
         Hestia::EntityHandle m_entity;
+        const API* m_api = nullptr;
     };
 }
 ```
 
-[TransformProcess](#transformprocess) ・ [TransformHierarchy](#transformhierarchy) ・ [EntityHandle](../../Reference/HestiaDesign/DevelopNotes/Class/ECS/Entity.md#entityhandle)
+[TransformProcess](#transformprocess) ・ [TransformHierarchy](#transformhierarchy) ・ [公開 Process の設計](GameRuntime/APIArchitecture.md#processapifacade-の登録)
 
 **DLL境界**
 
-FacadeはHandleを値保持し、Getterは値を返す。各メソッドの実装をEngine.dll側に置き、呼び出し時にECSへ接続する。これは従来のBoundary APIと `Bind` を使う設計に対するTransformでの試行であり、他のSubsystemへの採用は別途判断する。 [従来のSubsystem／Facade設計](../../Reference/HestiaDesign/DevelopNotes/SubsystemApiFacadeDesign.md)
+Facade の inline 操作は `TransformAPI` の関数ポインタを呼ぶ。Getter は値を返し、親 Facade にも同じテーブルを渡す。Archetype 移行後も同じ Handle を解決し、破棄予約後の操作は無効になる。 [Engine と Game の API 構成](GameRuntime/APIArchitecture.md)
 
 **親の変更**
 

@@ -2,13 +2,13 @@
 
 ## コピーの範囲と時点
 
-現在の収録先は **`Reference/HestiaDesign/`** であり、以下の相対リンクはこの配置を指す。31 ファイルは本リポジトリのコミット `3d0fb19116ad2cf2efe613b13864e82913d42495`（2026-10-06 16:09:59 JST）で、当時の `Refarence/HestiaDesign/` に追加された。現在の配置への移動は作業ツリー上の変更であり、このコミットに含まれない。各分野の元リポジトリのコミットや個別コピー時刻は収録資料から確認できないため、このコミットを**本リポジトリで再現できる元のコピー時点**とする。コミット ID と時刻は Git 履歴で確認した値である。
+現在の収録先は **`Reference/HestiaDesign/`**。最初の31ファイルはコミット `3d0fb19116ad2cf2efe613b13864e82913d42495`（2026-10-06 16:09:59 JST）で、当時の `Refarence/HestiaDesign/` に追加された。各分野の元リポジトリのコミットや個別コピー時刻は収録資料から確認できないため、このコミットを本リポジトリで再現できるコピー時点とする。
 
 DevelopNotes の基になった外部 `chaba0426/Develop_Notes` は [SourceNotes](../Reference/HestiaDesign/DevelopNotes/SourceNotes.md) に `main` の `1e76747792192b2b56abf3da0dbddf2e2d731af5`、確認日 2026-10-06 JST と記録されている。ただし本リポジトリの DevelopNotes は原文だけでなく会話での決定と追加草案を含む。外部リポジトリの**現在**の状態を確認した記録ではない。
 
 ## 資料の優先関係
 
-**資料に明記された内容**：全体構造は [DevelopNotes/Overview](../Reference/HestiaDesign/DevelopNotes/Overview.md) と [OpenQuestions](../Reference/HestiaDesign/DevelopNotes/OpenQuestions.md) の回答済み判断を起点とする。クラス資料は [ClassDesign](../Reference/HestiaDesign/DevelopNotes/ClassDesign.md) が示す概念設計で、コンパイル可能な Header ではない。分野別資料は System の用途と候補を具体化するが、未確定の Boundary API を自動で確定しない。
+以下は原資料の内容と位置づけを確認するための一覧。現行の採用設計は [全体設計](Architecture.md) からたどれる。クラス資料は [ClassDesign](../Reference/HestiaDesign/DevelopNotes/ClassDesign.md) の書式で概念設計を表し、分野別資料には System の用途や候補が含まれる。
 
 | 分野 | 参照資料 | 位置づけ |
 | --- | --- | --- |
@@ -24,16 +24,16 @@ DevelopNotes の基になった外部 `chaba0426/Develop_Notes` は [SourceNotes
 
 空ファイルの [Graphics.md](../Reference/HestiaDesign/Graphics/Graphics.md) には判断根拠がない。独立した `Runtime/` と `Editor/` ディレクトリはこのコピーに存在しない。Runtime は DevelopNotes の Application／Engine／GameRuntime、[ECS Plan2](../Reference/HestiaDesign/ECS/ECSArchitecture_Plan2.md) と描画資料、Editor は [Class/Editor](../Reference/HestiaDesign/DevelopNotes/Class/Editor.md) と Plan2 内の記述を参照する。コピーが参照する `SimpleArchitecture` などの未収録資料は判断根拠にしない。
 
-**実装リポジトリ向けの提案**：判断を確定する際は、該当資料の先頭にある更新注記と OpenQuestions の回答を読み、採用した範囲を [OpenDecisions](./OpenDecisions.md) に記録する。**未確定事項**：分野別資料の元コミットと未収録資料の正本は確認できていない。
+判断を確定する際は、該当資料の先頭にある更新注記と OpenQuestions の回答を確認する。未決事項は [OpenDecisions](./OpenDecisions.md) を参照する。分野別資料の元コミットと未収録資料の所在は確認できていない。
 
 ## ECS資料の追加と実装との差分
 
 [Class/ECS](../Reference/HestiaDesign/DevelopNotes/Class/ECS/ECSWorld.md)の9ファイルは上記31ファイルとは別の追加資料。2026-11-05に、HestiaDesignの正本 `DevelopNotesDesign/Class/ECS/` とコピーの内容一致を確認した。正本側のコミットIDは未記録であり、この照合を元コミットの特定として扱わない。
 
-コピーは概念設計のスケッチとして保持し、現在の型・API・失敗時の動作は[実装仕様書のECS](Implementation/ECS/README.md)を参照する。主な具体化・差分は以下。
+以下は ECS を導入した時点でのコピーと実装の差分。採用設計は [ECS の設計](Design/ECS.md)、現在の型・API・失敗時の動作は [ECS の実装仕様](Implementation/ECS/README.md) を参照する。
 
 - ID方式をUTF-8登録名のFNV-1a 64bit、Chunkの既定値を16KiBとして実装した。
 - Registryの検索・登録はoptionalやポインタで不在・失敗を表し、草案にあるComponentのCopy構築操作は実装していない。
 - 構造変更では不足Componentを先に構築し、成功後に共通Componentをnoexcept Moveする。失敗時の逆Moveは行わない。
 - Process関数の例外は受付済み要求の反映後に現在のRunを中断する。Engineのphase接続とEndFrameの位置も実装仕様書に記載する。
-- OnAttach／OnStart、Script、Game向けAPI、初期構成指定の生成APIとPrefabは未実装。
+- 導入時点の対象は Engine 内部の ECS。Game 向け API と Script の寿命は後続の [World](Design/GameRuntime/World.md) と [Script](Design/GameRuntime/Script.md) に定めた。
