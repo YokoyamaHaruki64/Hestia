@@ -142,6 +142,9 @@ namespace Hestia
         m_isEndingFrame = false;
         m_pendingChanges.clear();
         m_pendingDestroy.clear();
+        ClearEntitySearchResults();
+        m_entityActiveChanged = nullptr;
+        m_entityActiveChangedContext = nullptr;
 
         m_processIndices.clear();
         m_processes.clear();
@@ -411,6 +414,141 @@ namespace Hestia
         return slot == nullptr ? nullptr : slot->m_chunk->GetEntity(slot->m_row);
     }
 
+    bool ECSWorld::SetActive(EntityHandle handle, bool active)
+    {
+        // 破棄予約を含む実行可否とActive設定を混同しないよう、生存中の対象だけを扱う
+        Entity* entity = GetEntity(handle);
+        if (entity == nullptr || entity->IsDestroy())
+            return false;
+
+        if (entity->IsActive() == active)
+            return true;
+
+        // 通知先はEntity構成を変え得るため、Entityへの借用は通知前に使い終える
+        entity->SetActive(active);
+        if (m_entityActiveChanged != nullptr)
+            m_entityActiveChanged(m_entityActiveChangedContext, handle, active);
+
+        return true;
+    }
+
+    bool ECSWorld::SetName(EntityHandle handle, std::string_view name)
+    {
+        const Entity* entity = GetEntity(handle);
+        if (entity == nullptr || entity->IsDestroy())
+            return false;
+
+        GetComponent<Name>(handle)->m_value.assign(name);
+        return true;
+    }
+
+    bool ECSWorld::SetTag(EntityHandle handle, uint32_t tag) noexcept
+    {
+        const Entity* entity = GetEntity(handle);
+        if (entity == nullptr || entity->IsDestroy())
+            return false;
+
+        GetComponent<Tag>(handle)->m_value = tag;
+        return true;
+    }
+
+    EntityHandle ECSWorld::FindFirstEntityByName(std::string_view name) const noexcept
+    {
+        if (m_isApplyingChanges || !m_nameType)
+            return {};
+
+        // Nameは必須Componentなので、各Archetypeで列を一度だけ解決する
+        for (const auto& [signature, archetype] : m_archetypes)
+        {
+            const size_t column = archetype->FindColumn(*m_nameType);
+            for (size_t chunkIndex = 0; chunkIndex < archetype->GetChunkCount(); ++chunkIndex)
+            {
+                const Chunk& chunk = archetype->GetChunk(chunkIndex);
+                const auto entities = chunk.GetEntities();
+                for (size_t row = 0; row < entities.size(); ++row)
+                {
+                    const auto* value = static_cast<const Name*>(chunk.GetElement(column, row));
+                    if (!entities[row].IsDestroy() && value->m_value == name)
+                        return entities[row].GetHandle();
+                }
+            }
+        }
+
+        return {};
+    }
+
+    EntitySearchResult ECSWorld::FindEntitiesByTag(uint32_t tag)
+    {
+        ClearEntitySearchResults();
+        if (m_isApplyingChanges || !m_isInitialized)
+            return {};
+
+        // 一度の走査で一致した Handle を再利用可能な作業配列に集める
+        const ComponentTypeId tagType = *m_registry->GetId<Tag>();
+        for (const auto& [signature, archetype] : m_archetypes)
+        {
+            const size_t column = archetype->FindColumn(tagType);
+            for (size_t chunkIndex = 0; chunkIndex < archetype->GetChunkCount(); ++chunkIndex)
+            {
+                const Chunk& chunk = archetype->GetChunk(chunkIndex);
+                const auto entities = chunk.GetEntities();
+                for (size_t row = 0; row < entities.size(); ++row)
+                {
+                    const auto* value = static_cast<const Tag*>(chunk.GetElement(column, row));
+                    if (entities[row].IsDestroy() || value->m_value != tag)
+                        continue;
+
+                    m_searchResults.push_back(entities[row].GetHandle());
+                }
+            }
+        }
+
+        return { m_searchResults.data(), m_searchResults.size() };
+    }
+
+    EntitySearchResult ECSWorld::FindEntitiesWithProcess(ECSProcessInvoke process)
+    {
+        ClearEntitySearchResults();
+        if (m_isApplyingChanges)
+            return {};
+
+        const auto found = m_processIndices.find(process);
+        if (found == m_processIndices.end())
+            return {};
+
+        // Processの条件はEntity単位ではなくArchetype単位で照合する
+        const ECSProcess& registered = *m_processes[found->second];
+        for (const auto& [signature, archetype] : m_archetypes)
+        {
+            if (!registered.MatchesArchetype(*archetype))
+                continue;
+
+            for (size_t chunkIndex = 0; chunkIndex < archetype->GetChunkCount(); ++chunkIndex)
+            {
+                const Chunk& chunk = archetype->GetChunk(chunkIndex);
+                for (const Entity& entity : chunk.GetEntities())
+                {
+                    if (entity.IsDestroy())
+                        continue;
+
+                    m_searchResults.push_back(entity.GetHandle());
+                }
+            }
+        }
+
+        return { m_searchResults.data(), m_searchResults.size() };
+    }
+
+    bool ECSWorld::TryGetPendingDestroy(size_t index, EntityHandle& handle) const noexcept
+    {
+        if (index >= m_pendingDestroy.size())
+            return false;
+
+        // OnDestroyから破棄要求が増えても、Game側には配列への参照を渡さない
+        handle = m_pendingDestroy[index];
+        return true;
+    }
+
     void ECSWorld::AppendChange(ChangeRequest request)
     {
         // 要求保存に失敗した場合は例外を操作境界へ伝える
@@ -475,18 +613,18 @@ namespace Hestia
         }
     }
 
-    void ECSWorld::AddProcess(EntityHandle handle, ECSProcessInvoke process)
+    bool ECSWorld::AddProcess(EntityHandle handle, ECSProcessInvoke process)
     {
         if (!m_isInitialized || m_isApplyingChanges || m_isEndingFrame)
         {
             Logger::Error("AddProcess is unavailable in the current ECS state");
-            return;
+            return false;
         }
 
         if (!m_processIndices.contains(process))
         {
             Logger::Error("AddProcess references an unregistered Process");
-            return;
+            return false;
         }
 
         EntitySlot* slot = FindSlot(handle);
@@ -494,17 +632,16 @@ namespace Hestia
             slot->m_chunk->GetEntity(slot->m_row)->IsDestroy()))
         {
             Logger::Error("AddProcess received an invalid or destroy-reserved EntityHandle");
-            return;
+            return false;
         }
 
         const ChangeRequest request{ handle, process, ChangeKind::AddProcess };
         if (m_isRunningProcess)
-        {
             AppendChange(request);
-            return;
-        }
+        else
+            ApplyChange(request);
 
-        ApplyChange(request);
+        return true;
     }
 
     void ECSWorld::RemoveProcess(EntityHandle handle, ECSProcessInvoke process)

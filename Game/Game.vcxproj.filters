@@ -17,6 +17,12 @@
     <ClCompile Include="Source\DllMain.cpp">
       <Filter>Bootstrap</Filter>
     </ClCompile>
+    <ClCompile Include="Source\GameRuntime.cpp">
+      <Filter>_Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\World.cpp">
+      <Filter>_Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Pch.cpp">
       <Filter>Bootstrap</Filter>
     </ClCompile>
@@ -24,6 +30,27 @@
   <ItemGroup>
     <ClInclude Include="Include\pch.h">
       <Filter>Bootstrap</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\GameRuntime.h">
+      <Filter>_Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ScriptRef.h">
+      <Filter>_Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\ScriptStorage.h">
+      <Filter>_Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\GameTime.h">
+      <Filter>_Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\GameLogger.h">
+      <Filter>_Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\GameAssets.h">
+      <Filter>_Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\World.h">
+      <Filter>_Include</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

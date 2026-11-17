@@ -32,6 +32,9 @@
     <Filter Include="_Include\Game">
       <UniqueIdentifier>{d8d63ad3-8e26-48a3-9eb5-4c75b5c10ef0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="_Include\API">
+      <UniqueIdentifier>{bb91ea4b-af02-48e7-908c-ee441979142a}</UniqueIdentifier>
+    </Filter>
     <Filter Include="_Source">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -57,6 +60,9 @@
     <Filter Include="_Source\Transform">
       <UniqueIdentifier>{1fba6bd2-452e-4d5e-9035-97965d0a1671}</UniqueIdentifier>
     </Filter>
+    <Filter Include="_Source\API">
+      <UniqueIdentifier>{8f105040-ee13-4ea6-a432-e805b514ea2c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Log\LogStorage.cpp">
@@ -71,17 +77,14 @@
     <ClCompile Include="Source\Log\LogSystem.cpp">
       <Filter>_Source\Log</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Log\LogAPI.cpp">
-      <Filter>_Source\Log</Filter>
+    <ClCompile Include="Source\API\LogAPI.cpp">
+      <Filter>_Source\API</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Time\TimeAPI.cpp">
-      <Filter>_Source\Time</Filter>
+    <ClCompile Include="Source\API\TimeAPI.cpp">
+      <Filter>_Source\API</Filter>
     </ClCompile>
     <ClCompile Include="Source\Time\TimeSystem.cpp">
       <Filter>_Source\Time</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Asset\AssetType.cpp">
-      <Filter>_Source\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\Material.cpp">
       <Filter>_Source\Asset</Filter>
@@ -104,8 +107,8 @@
     <ClCompile Include="Source\Asset\AssetSystem.cpp">
       <Filter>_Source\Asset</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Asset\AssetAPI.cpp">
-      <Filter>_Source\Asset</Filter>
+    <ClCompile Include="Source\API\AssetAPI.cpp">
+      <Filter>_Source\API</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Device.cpp">
       <Filter>_Source\Graphics</Filter>
@@ -146,8 +149,11 @@
     <ClCompile Include="Source\Engine.cpp">
       <Filter>_Source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Source\EngineAPI.cpp">
-      <Filter>_Source\Core</Filter>
+    <ClCompile Include="Source\API\EngineAPI.cpp">
+      <Filter>_Source\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\API\EntityAPI.cpp">
+      <Filter>_Source\API</Filter>
     </ClCompile>
     <ClCompile Include="Source\ECS\ComponentRegistry.cpp">
       <Filter>_Source\ECS</Filter>
@@ -181,8 +187,11 @@
     <ClInclude Include="Include\Engine.h">
       <Filter>_Include</Filter>
     </ClInclude>
-    <ClInclude Include="Include\EngineAPI.h">
-      <Filter>_Include</Filter>
+    <ClInclude Include="Include\API\EngineAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\EntityAPI.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\ComponentRegistry.h">
       <Filter>_Include\ECS</Filter>
@@ -226,8 +235,8 @@
     <ClInclude Include="Include\Log\LogSystem.h">
       <Filter>_Include\Log</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Log\LogAPI.h">
-      <Filter>_Include\Log</Filter>
+    <ClInclude Include="Include\API\LogAPI.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
     <ClInclude Include="Include\Time\TimeSystem.h">
       <Filter>_Include\Time</Filter>
@@ -235,8 +244,8 @@
     <ClInclude Include="Include\Time\TimeData.h">
       <Filter>_Include\Time</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Time\TimeAPI.h">
-      <Filter>_Include\Time</Filter>
+    <ClInclude Include="Include\API\TimeAPI.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\AssetHandle.h">
       <Filter>_Include\Asset</Filter>
@@ -268,8 +277,8 @@
     <ClInclude Include="Include\Asset\AssetSystem.h">
       <Filter>_Include\Asset</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Asset\AssetAPI.h">
-      <Filter>_Include\Asset</Filter>
+    <ClInclude Include="Include\API\AssetAPI.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Support.h">
       <Filter>_Include\Graphics</Filter>
@@ -330,11 +339,38 @@
     <ClInclude Include="Include\Game\Transform.h">
       <Filter>_Include\Game</Filter>
     </ClInclude>
+    <ClInclude Include="Include\API\GameEngineAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\ECSProcessAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\ECSProcess\TransformAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\ECSProcess\MeshRendererAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Game\MeshRenderer.h">
+      <Filter>_Include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\Generated\ECSProcessAPI.generated.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
     <ClCompile Include="Source\Transform\TransformProcess.cpp">
       <Filter>_Source\Transform</Filter>
     </ClCompile>
     <ClCompile Include="Source\Transform\TransformFacade.cpp">
       <Filter>_Source\Transform</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\API\ECSProcess\TransformAPI.cpp">
+      <Filter>_Source\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\API\ECSProcess\MeshRendererAPI.cpp">
+      <Filter>_Source\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\API\Generated\ECSProcessAPI.generated.cpp">
+      <Filter>_Source\API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

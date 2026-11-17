@@ -15,8 +15,7 @@
 
 #include <cassert>
 
-#include "Common/Include/DllAPI.h"
-#include "TimeData.h"
+#include "Engine/Include/Time/TimeData.h"
 
 namespace Hestia
 {
@@ -24,7 +23,7 @@ namespace Hestia
 
     /// @brief TimeSystem とその TimeData を非所有で参照する DLL 境界 API。
     /// @note Initialize 後から System の破棄前まで、System と同じスレッドで利用する。
-    class HESTIA_ENGINE_API TimeAPI
+    class TimeAPI
     {
     public:
         /// @brief 参照先を設定する。
@@ -102,11 +101,16 @@ namespace Hestia
         /// @brief System に時間倍率の設定を委譲する。
         /// @param scale 有限の非負値。0 は停止。負数・NaN・無限大は拒否する。
         /// @pre Initialize 済みで参照先の System が生存している。
-        void SetTimeScale(float scale);
+        void SetTimeScale(float scale) const
+        {
+            assert(m_setTimeScale != nullptr);
+            m_setTimeScale(m_system, scale);
+        }
 
     private:
         TimeSystem* m_system = nullptr;
         const TimeData* m_data = nullptr;
+        void (*m_setTimeScale)(TimeSystem*, float) = nullptr;
     };
 }
 

@@ -13,14 +13,15 @@
 #ifndef _ENGINE_H_
 #define _ENGINE_H_
 
-#include "EngineAPI.h"
+#include "API/EngineAPI.h"
+#include "API/GameEngineAPI.h"
 #include "Time/TimeSystem.h"
-#include "Time/TimeAPI.h"
+#include "API/TimeAPI.h"
 #include "Log/LogSystem.h"
-#include "Log/LogAPI.h"
+#include "API/LogAPI.h"
 #include "Graphics/GraphicsSystem.h"
 #include "Asset/AssetSystem.h"
-#include "Asset/AssetAPI.h"
+#include "API/AssetAPI.h"
 #include "ECS/ECSSystem.h"
 
 namespace Hestia
@@ -60,6 +61,8 @@ namespace Hestia
 
     private:
         bool CreateDebugScene();
+        bool LoadGame();
+        void UnloadGame();
 
         ApplicationAPI m_applicationAPI;
 
@@ -72,6 +75,11 @@ namespace Hestia
         AssetSystem m_assets;
         AssetAPI m_assetAPI;
         ECSSystem m_ecs;
+        EntityAPI m_entityAPI;
+        GameEngineAPI m_gameEngineAPI;
+        HMODULE m_gameModule = nullptr;
+        const GameRuntimeAPI* m_gameRuntimeAPI = nullptr;
+        void* m_gameRuntime = nullptr;
 
         bool m_logInitialized = false;
         bool m_timeInitialized = false;
@@ -94,14 +102,6 @@ namespace Hestia
         AudioAPI m_audioAPI;
         PhysicsAPI m_physicsAPI;
 
-        HMODULE m_gameModule = nullptr;
-        GameEngineAPI m_gameEngineAPI;
-        const GameRuntimeAPI* m_gameRuntimeAPI = nullptr;
-        void* m_gameRuntime = nullptr;
-
-        bool LoadGame();
-        void UnloadGame();
-        GameEngineAPI CreateGameEngineAPI();
         */
     };
 }

@@ -24,6 +24,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\DllMain.cpp" />
+    <ClCompile Include="Source\GameRuntime.cpp" />
+    <ClCompile Include="Source\World.cpp" />
     <ClCompile Include="Source\Pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Create</PrecompiledHeader>
@@ -34,6 +36,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\pch.h" />
+    <ClInclude Include="Include\GameRuntime.h" />
+    <ClInclude Include="Include\ScriptRef.h" />
+    <ClInclude Include="Include\ScriptStorage.h" />
+    <ClInclude Include="Include\GameTime.h" />
+    <ClInclude Include="Include\GameLogger.h" />
+    <ClInclude Include="Include\GameAssets.h" />
+    <ClInclude Include="Include\World.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Common\Common.vcxproj">

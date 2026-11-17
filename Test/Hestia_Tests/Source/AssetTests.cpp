@@ -24,7 +24,6 @@
 #include <variant>
 #include <vector>
 
-#include "Asset/AssetAPI.h"
 #include "Asset/AssetDB.h"
 #include "Asset/AssetLoader.h"
 #include "Asset/AssetStorage.h"
@@ -32,6 +31,7 @@
 #include "Graphics/GraphicsSystem.h"
 #include "Log/Logger.h"
 #include "Log/LogStorage.h"
+#include "Game/Include/GameAssets.h"
 
 namespace
 {
@@ -533,12 +533,11 @@ MaterialShader "Test/Broken"
 )", "MissingShaderValue");
     }
 
-    TEST(AssetAPI, UnsetApiFailsSafely)
+    TEST(AssetAPI, UnboundGameFacadeFailsSafely)
     {
-        Hestia::AssetAPI api;
-        EXPECT_FALSE(api.Load<Hestia::Mesh>("AnyMesh").IsValid());
-        EXPECT_EQ(api.Get<Hestia::Texture>({}), nullptr);
-        EXPECT_FALSE(api.Register<Hestia::Mesh>(
+        EXPECT_FALSE(HestiaGame::Assets::Load<Hestia::Mesh>("AnyMesh").IsValid());
+        EXPECT_EQ(HestiaGame::Assets::Get<Hestia::Texture>({}), nullptr);
+        EXPECT_FALSE(HestiaGame::Assets::Register<Hestia::Mesh>(
             "AnyMesh", new Hestia::Mesh(MakeValidMesh())).IsValid());
     }
 }

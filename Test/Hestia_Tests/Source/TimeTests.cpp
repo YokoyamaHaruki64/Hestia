@@ -17,8 +17,8 @@
 #include <type_traits>
 
 #include "Time/TimeSystem.h"
-#include "Time/TimeAPI.h"
-#include "EngineAPI.h"
+#include "API/TimeAPI.h"
+#include "API/EngineAPI.h"
 
 namespace
 {

@@ -13,6 +13,8 @@
   <ItemGroup>
     <ClInclude Include="Include\Color.h" />
     <ClInclude Include="Include\DllAPI.h" />
+    <ClInclude Include="Include\EntityHandle.h" />
+    <ClInclude Include="Include\GameRuntimeAPI.h" />
     <ClInclude Include="Include\HMath.h" />
     <ClInclude Include="Include\Math\Curve.h" />
     <ClInclude Include="Include\Math\MathCommon.h" />
@@ -115,6 +117,10 @@
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <!-- Engine と Game が共通で参照するため、両方のコンパイルより先に一度生成する。 -->
+  <Target Name="GenerateECSProcessAPI" BeforeTargets="PrepareForBuild">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\Tools\APIGenerator\GenerateECSProcessAPI.ps1&quot;" />
+  </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>

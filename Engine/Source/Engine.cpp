@@ -13,6 +13,8 @@
 #include "pch.h"
 #include "Engine.h"
 
+#include <filesystem>
+
 #include "Asset/Material.h"
 #include "Game/Transform.h"
 #include "Graphics/MeshRenderer.h"
@@ -68,7 +70,103 @@ namespace Hestia
             Finalize();
             return false;
         }
+
+        // Game の初期化と Facade の接続は、参照先の System が揃ってから行う
+        if (!LoadGame())
+        {
+            Finalize();
+            return false;
+        }
         return true;
+    }
+
+    bool Engine::LoadGame()
+    {
+#if defined(HESTIA_TEST) && HESTIA_TEST
+        const GameRuntimeAPI* runtimeAPI = GetGameRuntimeAPI();
+#else
+        // 作業ディレクトリから独立して、App と同じ場所の DLL を開く
+        std::wstring executablePath(MAX_PATH, L'\0');
+        DWORD pathLength = 0;
+        while(true)
+        {
+            pathLength = GetModuleFileNameW(nullptr, executablePath.data(),
+                static_cast<DWORD>(executablePath.size()));
+            if (pathLength == 0)
+            {
+                Logger::Error("Game.dll: could not resolve the executable path");
+                return false;
+            }
+            if (pathLength < executablePath.size())
+                break;
+            executablePath.resize(executablePath.size() * 2);
+        }
+        executablePath.resize(pathLength);
+        const auto gamePath = std::filesystem::path(executablePath).parent_path() / L"Game.dll";
+        m_gameModule = LoadLibraryW(gamePath.c_str());
+        if (m_gameModule == nullptr)
+        {
+            const DWORD error = GetLastError();
+            Logger::Error("Game.dll: load failed (Win32 " + std::to_string(error) + ")");
+            return false;
+        }
+
+        // 入口とテーブルを確認してから、Runtime へ Engine 側の参照を渡す
+        const auto getRuntimeAPI = reinterpret_cast<decltype(&GetGameRuntimeAPI)>(
+            GetProcAddress(m_gameModule, "GetGameRuntimeAPI"));
+        if (getRuntimeAPI == nullptr)
+        {
+            Logger::Error("Game.dll: GetGameRuntimeAPI export is missing");
+            return false;
+        }
+        const GameRuntimeAPI* runtimeAPI = getRuntimeAPI();
+#endif
+        if (runtimeAPI == nullptr ||
+            runtimeAPI->Create == nullptr ||
+            runtimeAPI->Destroy == nullptr ||
+            runtimeAPI->FixedUpdate == nullptr ||
+            runtimeAPI->Update == nullptr ||
+            runtimeAPI->LateUpdate == nullptr ||
+            runtimeAPI->EndFrame == nullptr)
+        {
+            Logger::Error("Game.dll: invalid GameRuntimeAPI table");
+            return false;
+        }
+
+        m_entityAPI = ECSSystem::CreateEntityAPI();
+        m_gameEngineAPI = { &m_timeAPI, &m_entityAPI, &m_ecs.GetProcessAPI(), &m_logAPI, &m_assetAPI };
+        m_gameRuntime = runtimeAPI->Create(&m_gameEngineAPI);
+        if (m_gameRuntime == nullptr)
+        {
+            Logger::Error("Game.dll: GameRuntime creation failed");
+            return false;
+        }
+
+        // Active 設定の通知先を含む Runtime の初期化が済んでから、更新用 API を保持する
+        m_gameRuntimeAPI = runtimeAPI;
+        Logger::Log("GameRuntime initialized");
+        return true;
+    }
+
+    void Engine::UnloadGame()
+    {
+        // Game の終了処理からは引き続き Engine API を使えるようにする
+        if (m_gameRuntime != nullptr)
+        {
+            m_gameRuntimeAPI->Destroy(m_gameRuntime);
+            m_gameRuntime = nullptr;
+            Logger::Log("GameRuntime finalized");
+        }
+
+        // DLL 内の関数テーブルへの参照をアンロード前に解除する
+        m_gameRuntimeAPI = nullptr;
+        m_gameEngineAPI = {};
+        m_entityAPI = {};
+        if (m_gameModule != nullptr)
+        {
+            FreeLibrary(m_gameModule);
+            m_gameModule = nullptr;
+        }
     }
 
     bool Engine::CreateDebugScene()
@@ -87,7 +185,7 @@ namespace Hestia
             0, 1, 5, 0, 5, 4,   3, 7, 6, 3, 6, 2,
         };
 
-        const auto* debugMesh = m_assetAPI.Get(m_assetAPI.Register<Mesh>("DebugCube", mesh.release()));
+        const auto* debugMesh = AssetSystem::Get(AssetSystem::Register<Mesh>("DebugCube", mesh.release()));
         if (!debugMesh)
             return false;
 
@@ -153,6 +251,9 @@ namespace Hestia
 
     void Engine::Finalize()
     {
+        // Facade の参照先を解放する前に Game を終了する
+        UnloadGame();
+
         if (m_ecsInitialized)
         {
             m_ecs.Finalize();
@@ -212,6 +313,8 @@ namespace Hestia
             m_time.UpdateFixed(deltaTime);
             if (m_ecsInitialized)
                 ECSSystem::Run(ECSProcessPhase::FixedUpdate);
+            if (m_gameRuntime != nullptr)
+                m_gameRuntimeAPI->FixedUpdate(m_gameRuntime);
         }
     }
 
@@ -228,7 +331,11 @@ namespace Hestia
             // phase順にProcessを実行し、各phase内は登録順を維持する
             ECSSystem::Run(ECSProcessPhase::FrameBegin);
             ECSSystem::Run(ECSProcessPhase::Update);
+            if (m_gameRuntime != nullptr)
+                m_gameRuntimeAPI->Update(m_gameRuntime);
             ECSSystem::Run(ECSProcessPhase::LateUpdate);
+            if (m_gameRuntime != nullptr)
+                m_gameRuntimeAPI->LateUpdate(m_gameRuntime);
             ECSSystem::Run(ECSProcessPhase::PreRender);
         }
         auto end = std::chrono::high_resolution_clock::now();
@@ -243,7 +350,9 @@ namespace Hestia
         duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start
         );
         OutputDebugString((L"Render Time = " + std::to_wstring(duration.count()) + L" us\n").c_str());
-        // 描画が終わるまでEntity実体を維持し、破棄予約をFrame末尾で確定する
+        // Script の終了処理が済んでから、破棄予約された Entity の実体を解放する
+        if (m_gameRuntime != nullptr)
+            m_gameRuntimeAPI->EndFrame(m_gameRuntime);
         if (m_ecsInitialized)
             ECSSystem::EndFrame();
     }

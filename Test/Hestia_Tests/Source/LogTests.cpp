@@ -27,8 +27,8 @@
 #include <thread>
 #include <vector>
 
-#include "EngineAPI.h"
-#include "Log/LogAPI.h"
+#include "API/EngineAPI.h"
+#include "API/LogAPI.h"
 #include "Log/Logger.h"
 #include "Log/LogStorage.h"
 #include "Log/LogSystem.h"

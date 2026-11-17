@@ -12,7 +12,7 @@
 
 #include <gtest/gtest.h>
 
-#include "EngineAPI.h"
+#include "API/EngineAPI.h"
 
 namespace
 {
