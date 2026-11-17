@@ -2,7 +2,7 @@
 ---
 Hestia の起動経路に `Game.dll` を加え、通常の C++ `.h/.cpp` で書いたゲームコードを初期化・更新・終了できるようにする。初版では `HestiaGame::Time` を通して更新を確認し、GameRuntime が型ごとの Script を実行する。
 
-[Engine の境界設計](../../../Reference/HestiaDesign/DevelopNotes/Class/Engine.md) ・ [GameRuntime の原案](../../../Reference/HestiaDesign/DevelopNotes/Class/GameRuntime.md) ・ [Time](../../../Reference/HestiaDesign/DevelopNotes/Class/Time.md) ・ [Script の設計](./Script.md) ・ [World](./World.md)
+[Engine の境界設計](../../../Reference/HestiaDesign/DevelopNotes/Class/Engine.md) ・ [GameRuntime の原案](../../../Reference/HestiaDesign/DevelopNotes/Class/GameRuntime.md) ・ [Time](../../../Reference/HestiaDesign/DevelopNotes/Class/Time.md) ・ [Script の設計](./Script.md) ・ [World](./World.md) ・ [Engine と Game の API 構成](./APIArchitecture.md)
 
 ## DLL 境界と所有
 ---
@@ -19,12 +19,18 @@ Hestia の起動経路に `Game.dll` を加え、通常の C++ `.h/.cpp` で書�
 namespace Hestia
 {
     class TimeAPI;
+    class LogAPI;
+    class AssetAPI;
     struct EntityAPI;
+    struct ECSProcessAPI;
 
     struct GameEngineAPI
     {
-        TimeAPI* m_time = nullptr;
+        const TimeAPI* m_time = nullptr;
         const EntityAPI* m_entity = nullptr;
+        const ECSProcessAPI* m_ecsProcess = nullptr;
+        const LogAPI* m_log = nullptr;
+        const AssetAPI* m_asset = nullptr;
     };
 
     struct GameRuntimeAPI
@@ -41,18 +47,18 @@ namespace Hestia
 extern "C" HESTIA_GAME_API const Hestia::GameRuntimeAPI* GetGameRuntimeAPI();
 ```
 
-Game プロジェクトは共有 Header と、Engine が渡すデータおよび関数ポインタを使う。`Engine.lib` は Game のリンク入力に含めない。Game に許可する操作は `GameEngineAPI` からたどれる API に追加する。App 向けの入口は既存の `GetEngineAPI` を使う。 [現行の EngineAPI](../../../Engine/Include/EngineAPI.h)
+Game プロジェクトは共有 Header と、Engine が渡すデータおよび関数ポインタを使う。`Engine.lib` は Game のリンク入力に含めない。Game に許可する操作は `GameEngineAPI` からたどれる API に追加する。App 向けの入口は既存の `GetEngineAPI` を使う。 [現行の EngineAPI](../../../Engine/Include/API/EngineAPI.h)
 
-`EntityAPI` は Game 側の Entity 操作と、Script の実行対象を判定するための Entity の状態、フレーム末尾で処理する破棄予約を `EntityHandle` 経由で扱う。Active 設定の変更は Script に通知する。`World` はこれらの Engine 側 API と、GameRuntime が所有する Script の操作をまとめて公開する。 [Entity の受け渡し](./World.md#entity-の受け渡し) ・ [Script と Entity の寿命](./Script.md#entity-との寿命の同期)
+`EntityAPI` は Game 側の Entity 操作と、Script の実行対象を判定するための Entity の状態、フレーム末尾で処理する破棄予約を `EntityHandle` 経由で扱う。GameRuntime は `EntityAPI` を通じて Active 設定の変更通知を購読する。`World` はこれらの Engine 側 API と、GameRuntime が所有する Script の操作をまとめて公開する。 [Entity の受け渡し](./World.md#entity-の受け渡し) ・ [Script と Entity の寿命](./Script.md#entity-との寿命の同期)
 
 ## Time の接続
 ---
 
 - Engine は `TimeSystem` と `TimeAPI` を値として所有する。`TimeAPI` は System が所有する `TimeData` への非所有参照を保持し、既存の inline Getter がその値を読む。
-- `TimeAPI::SetTimeScale` は inline で、`TimeAPI::Initialize` が設定した関数ポインタと参照先を使う。関数の本体は Engine.dll 内で `TimeSystem::SetTimeScale` に委譲する。倍率の検証と反映は既存の `TimeSystem` が担う。`TimeAPI` の DLL 属性は必要な個別メソッドに付け、Game が呼ぶ inline メソッドには import を要求しない。
+- `TimeAPI::SetTimeScale` は inline で、`TimeAPI::Initialize` が設定した関数ポインタと参照先を使う。関数の本体は Engine.dll 内で `TimeSystem::SetTimeScale` に委譲する。倍率の検証と反映は既存の `TimeSystem` が担う。
 - `HestiaGame::Time` は `TimeAPI` への非所有参照を持ち、Game コードに時間の取得と倍率設定を公開する。`Bind / Unbind` は private とし、GameRuntime だけが呼ぶ。ゲームの初期化から終了処理まで接続を維持する。
 
-[Time の設計](../../../Reference/HestiaDesign/DevelopNotes/Class/Time.md) ・ [現行の TimeAPI](../../../Engine/Include/Time/TimeAPI.h)
+[Time の設計](../../../Reference/HestiaDesign/DevelopNotes/Class/Time.md) ・ [現行の TimeAPI](../../../Engine/Include/API/TimeAPI.h)
 
 ## 起動・更新・終了
 ---
@@ -65,7 +71,7 @@ Game プロジェクトは共有 Header と、Engine が渡すデータおよび
 
 Editor・Game の両構成で `Game.dll` を必須とする。DLL のロード、エクスポートの取得、関数テーブルの確認、`Create` のいずれかで失敗したら、Engine が失敗した段階をログに残し、既存の初期化失敗経路で App に返す。GameRuntime の生成や初期化が失敗した場合、Game.dll 内で Bind と生成済みの状態を解放し、`Create` は `nullptr` を返す。Engine は取得済みの DLL と初期化済みの System を解放する。
 
-[現行の更新・終了経路](../../../Engine/Source/Engine.cpp) ・ [Engine 初期化結果の返し方](../../../Engine/Source/EngineAPI.cpp)
+[現行の更新・終了経路](../../../Engine/Source/Engine.cpp) ・ [Engine 初期化結果の返し方](../../../Engine/Source/API/EngineAPI.cpp)
 
 ## ビルドと初版の確認
 ---

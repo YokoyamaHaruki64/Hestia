@@ -2,7 +2,7 @@
 
 [全体索引](../README.md) / [型](Types.md)
 
-根拠: [TimeSystem.cpp](../../../Engine/Source/Time/TimeSystem.cpp)、[TimeAPI.cpp](../../../Engine/Source/Time/TimeAPI.cpp)
+根拠: [TimeSystem.cpp](../../../Engine/Source/Time/TimeSystem.cpp)、[TimeAPI.cpp](../../../Engine/Source/API/TimeAPI.cpp)
 
 TimeSystemは時計を直接読まず、ApplicationからEngine経由で渡された秒数を保持する。InitializeはTimeDataを既定値へ戻し、単一のstatic instanceを接続する。Finalizeは接続を解除する。初期化・終了・参照は同一スレッドで行う。
 

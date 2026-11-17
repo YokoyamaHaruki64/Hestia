@@ -1,6 +1,6 @@
 ﻿# 実装仕様書
 
-2026-11-02の実装調査を基に、2026-11-05にECSとEngine接続、2026-11-07にMaterialShaderとDX12 Forward描画の記述を更新した。設計案の採否や将来の予定はこの文書から決定しない。
+2026-11-02の実装調査を基に、2026-11-05にECSとEngine接続、2026-11-07にMaterialShaderとDX12 Forward描画、2026-11-17にGameRuntimeと公開APIの記述を更新した。
 
 ## 読み方
 
@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | Application / Window | [Application](Application/README.md) | [Types](Application/Types.md) |
 | Engine / DLL境界 | [Engine](Engine/README.md) | [Types](Engine/Types.md) |
+| GameRuntime / Game向けAPI | [GameRuntime](GameRuntime/README.md) | [型とAPI](GameRuntime/Types.md)、[Processの登録と公開](ECS/DevelopmentGuide.md#公開processのapiとfacade) |
 | Time | [Time](Time/README.md) | [Types](Time/Types.md) |
 | Log | [Log](Log/README.md) | [Types](Log/Types.md) |
 | Asset | [Asset](Asset/README.md) | [Types](Asset/Types.md) |
@@ -20,13 +21,13 @@
 
 ## 全体の接続
 
-ApplicationがWindowとフレーム進行を管理し、Engine.dllのAPIテーブルを取得してEngineを生成する。EngineはLog、Time、Graphics、Asset、ECSを所有する。AssetのCPU実体とGraphicsのGPU実体は型付きHandleで対応付ける。ECSは現在単一Worldで、Engineがphaseを進める。
+ApplicationがWindowとフレーム進行を管理し、Engine.dllのAPIテーブルを取得してEngineを生成する。EngineはLog、Time、Graphics、Asset、ECSを所有し、Game.dllからGameRuntimeを生成する。GameRuntimeはScriptを所有し、Engineから借りたAPIでEntityやProcessを操作する。AssetのCPU実体とGraphicsのGPU実体は型付きHandleで対応付ける。ECSは現在単一Worldで、Engineがphaseを進める。
 
 既存の [Architecture](../Architecture.md)、[DesignSources](../DesignSources.md)、[OpenDecisions](../OpenDecisions.md) は設計資料の整理である。一部に現在より前の実装状態の記述があるため、現在の動作は本書のリンク先コードで確認する。
 
 ## 対象の境界
 
-Game向けの `HestiaGame::Transform` はEngine.dllから公開する。Input、Audio、Physics、Editor、GameRuntimeは、現在の稼働コードとして実装されたシステムに数えない。Engine.h内のコメント化された宣言を実装済みとは扱わない。PCH、DLL入口、Windows Header、DLL exportマクロはEngine/Commonの補助部分として扱う。外部ライブラリ本体、テスト基盤、ビルド・検証ツールはエンジンのランタイムシステムから除外する。
+Gameは `World` を通じて `HestiaGame::Transform` と `HestiaGame::MeshRenderer` を取得する。Game向けの公開面にはEntity、Process、Time、Log、Assetが含まれる。Input、Audio、Physics、Editorは未接続。PCH、DLL入口、Windows Header、DLL exportマクロはEngine/Commonの補助部分として扱う。
 
 各文書はソースの静的調査を根拠とする。2026-11-05のEngineビルドとECS関連19件の成功、当時の全体テスト5件の失敗は[ECSの検証記録](ECS/README.md#検証記録2026-11-05)を参照。2026-11-07のAppビルドとForward描画を含む関連テスト7件の成功は[MaterialShaderの検証記録](Graphics/MaterialShader.md#検証記録)を参照。
 

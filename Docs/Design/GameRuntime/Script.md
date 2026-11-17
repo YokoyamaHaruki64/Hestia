@@ -18,7 +18,7 @@ ScriptStorage<Enemy>
 └─ Sparse        EntityIndex → Generation、DenseIndex
 ```
 
-- Script 本体と管理情報は同じ DenseIndex で対応する。`enabled` の初期値は `true`、`started` は `false`。各 Script 型はこれらのフィールドを定義しなくてよい。
+- Script 本体と管理情報は同じ DenseIndex で対応する。`enabled` の初期値は `true`。追加時に所属 Entity の Active を読み、以降は ECS から受け取った変更を管理情報に反映する。各 Script 型はこれらのフィールドを定義しなくてよい。
 - 同じ Entity に同型の Script は一つ。Sparse Index は Entity の Generation も照合する。Script 本体への生ポインタや参照は Storage の構造変更まで借用できる。長期保持には `ScriptRef<T>` を使う。
 - 削除は Swap Remove を使う。末尾要素を削除位置に移すときは本体と管理情報を一緒に移し、移動した Entity の Sparse Index を更新する。配列の並びは削除で変わるため、Script の実行順序の指定には使わない。
 
@@ -29,7 +29,7 @@ ScriptStorage<Enemy>
 
 | 型 | 内部メンバ | 役割 |
 | --- | --- | --- |
-| `ScriptState<T>` | `EntityHandle m_entity`、`bool m_enabled`、`bool m_started`、`ScriptRef<T> m_reference` | Script の状態を保持し、Storage 側の参照を一つ所有する |
+| `ScriptState<T>` | `EntityHandle m_entity`、`bool m_enabled`、`bool m_entityActive`、`ScriptReference<T>* m_reference` | Script の有効設定と受け取った Entity の Active 設定を保持し、Storage 側の参照を一つ所有する |
 | `ScriptReference<T>` | `T* m_script`、整数の `m_refCount` | Script 本体の現在のアドレスと、自身を所有する `ScriptRef<T>` の数を持つ。`m_script` は非所有 |
 | `ScriptRef<T>` | `ScriptReference<T>* m_reference` | 参照先を一つ所有し、値としてコピー・ムーブできる。空の値では `m_reference` が `nullptr` |
 
@@ -51,23 +51,22 @@ if (m_health)
 
 | コールバック | 発火条件 |
 | --- | --- |
-| `OnStart` | 初めて更新対象になったとき、最初に実行する更新コールバックの直前に一度だけ呼ぶ |
+| `OnStart` | 追加時に一度だけ呼ぶ。追加時の `OnEnable` があればその後に呼ぶ。非 Active の Entity に追加した場合も呼ぶ |
 | `FixedUpdate` / `Update` / `LateUpdate` | 対応する ECS phase の直後に呼ぶ。Script が有効で、所属 Entity が Active のときに実行する |
-| `OnEnable` / `OnDisable` | Script 自身の `enabled` が変わったときに呼ぶ。有効な初期状態で追加するときも `OnEnable` を呼ぶ |
-| `OnActive` / `OnInactive` | 所属 Entity の Active 設定が変わったときに呼ぶ |
+| `OnEnable` / `OnDisable` | `Entity の Active && Script の enabled` が `false → true` で `OnEnable`、`true → false` で `OnDisable`。Active な Entity への追加時も `OnEnable` を呼ぶ |
 | `OnDestroy` | Script の削除要求時、Entity の破棄前、または GameRuntime の終了時に、Script 実体ごとに一度だけ呼ぶ |
 
-Script の有効状態と Entity の Active 設定は独立している。例えば非 Active の Entity 上で Script を有効化すると `OnEnable` が発火し、更新は Entity が Active になるまで待つ。`OnStart` 内で Script を無効化・削除した場合も、その直後の更新コールバックを呼ぶ前に実行条件を確認する。
+Script の `enabled` と Entity の Active 設定は独立している。enabled のまま Entity を非 Active にすると `OnDisable`、Active に戻すと `OnEnable` を呼ぶ。非 Active の Entity 上で `enabled` を切り替えた場合と、disabled の Script を持つ Entity の Active を切り替えた場合は通知しない。追加時の `OnEnable` で Script が削除された場合は `OnStart` を省く。
 
 ## 走査中の追加・削除
 ---
 
-走査中は既存の Dense 配列を維持し、Script の追加・削除に伴うコールバックを要求時に実行する。構造変更は走査後にまとめて反映する。
+走査中は既存の Dense 配列を維持し、Script の追加・削除に伴うコールバックを要求時に実行する。構造変更はフレーム末尾にまとめて反映する。
 
-1. **追加**。保留領域に Script 実体と管理情報を作り、初期状態が有効ならその実体に `OnEnable` を呼ぶ。走査後に本体と管理情報を Dense 配列に追加し、Sparse Index に登録する。
-2. **削除**。Script を削除予定にして以降の更新対象から外し、その場で `OnDestroy` を一度だけ呼ぶ。実体と Sparse Index の除去は走査後に Swap Remove で行う。走査中に追加した Script を反映前に削除した場合は、保留実体に `OnDestroy` を呼んで追加を取り消す。
+1. **追加**。保留領域に Script 実体と管理情報を作り、Entity が Active なら `OnEnable` を呼ぶ。その後に `OnStart` を呼ぶ。フレーム末尾に本体と管理情報を Dense 配列に追加し、Sparse Index に登録する。
+2. **削除**。Script を削除予定にして以降の更新対象から外し、その場で `OnDestroy` を一度だけ呼ぶ。実体と Sparse Index の除去はフレーム末尾に Swap Remove で行う。追加を反映する前に削除した場合は、保留実体に `OnDestroy` を呼んで追加を取り消す。
 
-追加された Script が更新対象になるのは、**次の App フレーム**から。同一フレーム内に残る `FixedUpdate`、`Update`、`LateUpdate` はスキップする。GameRuntime の `EndFrame` で次フレームの対象を確定し、最初に対象となる phase で必要に応じて `OnStart` を呼ぶ。 [App のフレームループ](../../../Application/Source/Application.cpp) ・ [GameRuntime の更新順](./GameDLL.md#起動更新終了)
+実行中に追加された Script が更新対象になるのは、**次の App フレーム**から。同一フレーム内に残る `FixedUpdate`、`Update`、`LateUpdate` はスキップし、GameRuntime の `EndFrame` で次フレームの対象を確定する。起動時の初期配置は最初のフレームの前に反映する。 [App のフレームループ](../../../Application/Source/Application.cpp) ・ [GameRuntime の更新順](./GameDLL.md#起動更新終了)
 
 ## Entity との寿命の同期
 ---
@@ -76,7 +75,7 @@ Script の有効状態と Entity の Active 設定は独立している。例え
 2. **描画後、ECS の実体破棄前**。GameRuntime は ECS の破棄予約を `EntityHandle` 単位で受け取り、各型の Sparse Index から所属 Script を引く。`OnDestroy` を呼び、Swap Remove で取り除く。`OnDestroy` の実行中に追加された Entity 破棄予約も、ECS が実体を破棄する前に同じ手順で処理する。
 3. **GameRuntime の終了時**。残っている Script の `OnDestroy` と Storage の解放を済ませ、その後に Facade を Unbind する。
 
-Active 設定の変更はその変更を起点に `OnActive / OnInactive` へ伝える。破棄予約は更新対象の判定と `OnDestroy` に反映する。非 Active の Entity も Script を保持し、再び Active になれば有効な Script の更新を再開する。 [Entity のフラグ](../../../Engine/Include/ECS/Entity.h) ・ [ECS の破棄予約と EndFrame](../../Implementation/ECS/README.md)
+GameRuntime は初期配置前に ECS の Active 設定変更の通知先を登録し、終了時に解除する。受け取った変更は順に各 Script へ届け、有効状態が変わった場合に `OnEnable` または `OnDisable` を呼ぶ。非 Active の Entity も Script を保持し、再び Active になれば有効な Script の更新を再開する。破棄予約後は更新を止め、フレーム末尾に `OnDestroy` を呼ぶ。 [Entity のフラグ](../../../Engine/Include/ECS/Entity.h) ・ [ECS の破棄予約と EndFrame](../../Implementation/ECS/README.md)
 
 ## 初版の確認項目
 ---

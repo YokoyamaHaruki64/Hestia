@@ -9,7 +9,7 @@
 
 - Entity の識別には `Hestia::EntityHandle` を値で使う。Script の全コールバックは所属 Entity の Handle を `self` として受け取る。Handle の正当性は、操作を受ける Engine または Script Storage が Index と Generation で確認する。
 - Entity の状態と配置は ECS が所有する。Game 側は `GameEngineAPI` の `EntityAPI` を通して、Handle に対応する状態を Engine から取得する。`IsActive` は呼び出した時点の状態を読み、破棄予約済みなら `false` を返す。DLL 境界に渡すのは Handle と各操作に必要な値で、`EntitySlot` や Chunk の配置は Engine 内部に置く。
-- Active 設定の変更は Engine の変更処理を起点に Script の `OnActive / OnInactive` へ伝える。更新可否の判定には Active 設定と破棄予約の両方を使う。所属 Script の除去は ECS が Entity の実体を破棄する前に GameRuntime が行う。
+- Active 設定の変更は Engine から GameRuntime に通知する。`Entity の Active && Script の enabled` が変化した場合に Script の `OnEnable` または `OnDisable` を呼ぶ。破棄予約後は Script の更新を止め、ECS が Entity の実体を破棄する前に GameRuntime が所属 Script を除去する。
 
 [現行の Entity と Slot](../../../Engine/Include/ECS/Entity.h) ・ [Script と Entity の寿命](./Script.md#entity-との寿命の同期)
 
@@ -23,6 +23,7 @@
 | 名前・タグ | `SetName(entity, name)` / `SetTag(entity, tag)` | Engine が持つ Name と Tag を設定する |
 | 名前・タグで検索 | `FindFirstEntityByName(name)` / `FindEntitiesByTag(tag)` | 名前が一致する一件、またはタグが一致する全件を返す |
 | Script の操作 | `GetScript<T>(entity)` / `AddScript<T>(entity, ...)` / `RemoveScript<T>(entity)` | GameRuntime が型ごとの Storage を操作する。取得と追加は `ScriptRef<T>` を返す |
+| Script の有効設定 | `SetScriptEnabled<T>(entity, enabled)` | Script の `enabled` を変更する。Entity が Active な場合は変更に応じて `OnEnable` または `OnDisable` を呼ぶ |
 | Script で検索 | `FindEntitiesWithScript<T>()` | `T` の Script を保持する Entity を返す |
 | Process 用 Facade | `GetProcess<T>(entity)` / `AddProcess<T>(entity)` | 操作用 Facade を取得し、対応する Process に必要な Component を補う |
 | Process で検索 | `FindEntitiesWithProcess<T>()` | 対応する Process の Component 条件を満たす Entity を返す |
@@ -54,7 +55,7 @@ void PlayerMove::Update(Hestia::EntityHandle)
 }
 ```
 
-`World` の Script 操作は GameRuntime に委譲する。Entity 操作と Process の構成変更、Facade による Component 操作は、`GameEngineAPI` から受け取った関数ポインタ経由で Engine が行う。Facade 型と Process の対応付け、および検索結果の受け渡しに使う具体的な DLL 境界のシグネチャは実装前に定める。 [DLL 境界と所有](./GameDLL.md#dll-境界と所有)
+`World` の Script 操作は GameRuntime に委譲する。Entity 操作と Process の構成変更、Facade による Component 操作は、`GameEngineAPI` から受け取った関数ポインタ経由で Engine が行う。`World` は Facade の `API` 型から、操作テーブルと Process Handle の組を取得する。 [Engine と Game の API 構成](./APIArchitecture.md)
 
 ## 最初のプレイアブルでの確認
 ---

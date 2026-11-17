@@ -2,7 +2,7 @@
 
 [処理・構造](README.md) / [型](Types.md) / [Process実行](Process.md)
 
-Engine内部ECSを利用して、具体的なComponentとProcessを追加する際の手順と判断基準をまとめる。型・寿命・反映時点の詳細は上記の実装仕様、書式は[コーディング規約](../../CodingStandard.md)を参照する。
+Engine 内部の ECS に Component と Process を追加する手順をまとめる。Game から操作する Process は、同じ手順の中で API と Facade を接続する。型・寿命・反映時点の詳細は上記の実装仕様、書式は [コーディング規約](../../CodingStandard.md) を参照する。
 
 ## 1. Processの目的から必要なデータを決める
 
@@ -40,9 +40,10 @@ Componentのデータを独自にバイトコピーして移行しない。構�
 
 新しいHeader／Sourceは既存のEngine配置とinclude規則に従い、Engineプロジェクトとフィルターへ登録する。Componentの型定義とProcess関数の宣言をECSSystem.cppから参照できるようにする。
 
-1. privateのECSSystem::RegisterECSで、Componentを名前空間付きのUTF-8名とともにRegisterComponentへ登録する。
-2. Component登録が成功した後、m_world.RegisterProcess<Function>(phase)でProcessを登録する。
-3. Component登録のoptionalとProcess登録のboolを確認し、失敗したらRegisterECSからfalseを返す。
+1. `ECSSystem::RegisterECS` で、Component を名前空間付きの UTF-8 名とともに `REGISTER_COMPONENT(Type, TypeName)` で登録する。
+2. Component 登録後に、Engine 内で使う Process を `REGISTER_PROCESS(Func, Phase)` で登録する。Game に公開する Process は、以下の手順で `REGISTER_GAME_PROCESS(API, Func, Phase)` を使う。
+
+各マクロは登録に失敗した場合にログを記録し、`RegisterECS` から `false` を返す。 [ECS の登録箇所](../../../Engine/Source/ECS/ECSSystem.cpp)
 
 同じ関数を別phaseへ重複登録することはできない。同じphase内の依存順は登録順で表す。登録名はComponent IDの生成元になるため、登録名を変更した場合の保存互換性は保証されない。
 
@@ -54,7 +55,24 @@ Componentのデータを独自にバイトコピーして移行しない。構�
 | LateUpdate | Updateの後 |
 | PreRender | LateUpdateの後、既存描画の前 |
 
-通常操作はECSSystemのstatic APIを使う。WorldのGetterや外部登録コールバックを追加する必要はない。
+Engine 内からの通常操作は `ECSSystem` の static API を使う。
+
+### 公開ProcessのAPIとFacade
+
+1. `Engine/Include/API/ECSProcess/` に `XxxAPI.h` を置き、Game に公開する個別操作を `Hestia::XxxAPI` の関数ポインタとして宣言する。`Engine/Source/API/ECSProcess/XxxAPI.cpp` の `XxxAPIImpl::CreateAPI()` で Engine 内の関数を割り当てる。個別操作は `EntityHandle` から Component を解決する。
+2. `Engine/Include/Game/` に Facade を置く。クラス内の `using API = Hestia::XxxAPI;` で対応する型を指定し、`World` から受け取った `EntityHandle` と API ポインタを保持する。Facade のメソッドは保持した Handle を渡して関数ポインタを呼ぶ。
+3. `ECSSystem::RegisterECS()` に `REGISTER_GAME_PROCESS(XxxAPI, &XxxProcess::Run, Phase)` を追加する。`ECSSystem` は ECS の登録が成功した時点で `ECSProcessBinding<XxxAPI>` に `ProcessHandle` を設定する。同じ公開 API への再登録は拒否する。
+
+現行の `PreRender` では、以下の順序で Transform の更新と描画提出を登録している。 [ECS の登録箇所](../../../Engine/Source/ECS/ECSSystem.cpp)
+
+```cpp
+REGISTER_GAME_PROCESS(TransformAPI, &TransformProcess::Run, PreRender);
+REGISTER_GAME_PROCESS(MeshRendererAPI, &MeshRendererProcess::Run, PreRender);
+```
+
+`Common.vcxproj` のビルド中、PowerShell の生成器が `Engine/Include/API/ECSProcess/` 直下の `*API.h` をファイル名順に処理する。`ECSProcessBinding<XxxAPI>` の集約メンバ、型ごとの `Member` オーバーロード、`XxxAPIImpl::CreateAPI()` を呼ぶ初期化コードを `API/Generated/` に生成する。内容が同じ場合は既存ファイルを再利用する。 [生成スクリプト](../../../Tools/APIGenerator/GenerateECSProcessAPI.ps1) ・ [ビルドの生成ターゲット](../../../Common/Common.vcxproj) ・ [集約の入口](../../../Engine/Include/API/ECSProcessAPI.h)
+
+`ProcessHandle` は Engine の登録済み Process 配列の添字。EntityAPI は追加・検索時に範囲を確認し、解決した Process の呼び出し口を ECS に渡す。 [型付き登録](../../../Engine/Include/ECS/ECSSystem.h) ・ [EntityAPI の実装](../../../Engine/Source/API/EntityAPI.cpp)
 
 ## 5. Entityへ適用する
 
@@ -65,7 +83,19 @@ Componentのデータを独自にバイトコピーして移行しない。構�
 - 生存中EntityへのDestroyEntityは破棄予約を設定し、IsActiveはその時点でfalseになる。activeの設定値は変えず、実体はEndFrameで破棄する。生成待ちなら構築せず取消となる。
 - EntityHandle::IsValidは形式の判定であり、Entityの生存を保証しない。取得結果を確認し、長期保持したHandleは使う時点で解決する。
 
-初期Component列／Process列を指定する生成API、Prefab、OnAttach／OnStartは未実装。[将来案](../../OpenDecisions.md#将来案ecsの初期構成指定とprefab復元)を実装済みの入口として使用しない。
+初期 Component 列／Process 列を指定する生成 API と Prefab は ECS の将来案にある。Script の `OnStart` は GameRuntime が Script の追加時に呼ぶ。 [ECS の将来案](../../OpenDecisions.md#将来案ecsの初期構成指定とprefab復元) ・ [Script の実行](../GameRuntime/README.md)
+
+### Gameから公開Processを操作する
+
+`World` は Facade の `API` 型に対応する集約メンバをコンパイル時に選ぶ。同じ登録から取得・追加・検索に必要な情報を得る。 [World の公開 API](../../../Game/Include/World.h)
+
+| World の操作 | 呼び出し経路 |
+| --- | --- |
+| `GetProcess<T>(entity)` | 登録の API ポインタと `EntityHandle` から Facade を値で作る。未接続や未登録の場合は無効な Facade を返す。操作時に Engine が Component を解決するため、保持した Facade は Archetype の移動をまたいで使える |
+| `AddProcess<T>(entity)` | `ProcessHandle` を EntityAPI に渡し、要求 Component を追加する。既存 Component の値は維持する |
+| `FindEntitiesWithProcess<T>()` | 同じ `ProcessHandle` で、要求 Component の構成に一致する Entity を検索する |
+
+個別操作の使い方は [Transform](../ECSProcess/Transform.md) と [MeshRenderer](../ECSProcess/MeshRenderer.md) を参照する。
 
 ## 6. エラーと完了条件を確認する
 

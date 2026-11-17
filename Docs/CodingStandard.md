@@ -58,4 +58,4 @@
 ## include パス
 
 - 同一プロジェクト内の Header は、そのプロジェクトの include path を基準にファイル名で指定する。
-- 別プロジェクトの Header はリポジトリルートからのパスで指定し、依存先プロジェクトが分かるようにする。例: `#include "Engine/Include/EngineAPI.h"`。
+- 別プロジェクトの Header はリポジトリルートからのパスで指定し、依存先プロジェクトが分かるようにする。例: `#include "Engine/Include/API/EngineAPI.h"`。
