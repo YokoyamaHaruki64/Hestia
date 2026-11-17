@@ -62,6 +62,11 @@ bool Window::Initialize(
 
 void Window::Finalize()
 {
+    if (m_handle != nullptr)
+    {
+        DestroyWindow(m_handle);
+        m_handle = nullptr;
+    }
     UnregisterClass(m_title.c_str(), GetModuleHandle(nullptr));
 
     CoUninitialize();
