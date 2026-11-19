@@ -16,6 +16,12 @@
     <ClInclude Include="Include\DllAPI.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="Include\EntityHandle.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\GameRuntimeAPI.h">
+      <Filter>Include</Filter>
+    </ClInclude>
     <ClInclude Include="Include\Math\Curve.h">
       <Filter>Include</Filter>
     </ClInclude>

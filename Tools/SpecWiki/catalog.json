@@ -3,6 +3,7 @@
     { "id": "runtime", "title": "実装仕様", "description": "現在の実装を根拠に、責務・データの流れ・型・制約を確認する。" },
     { "id": "application", "parent": "runtime", "title": "Application・Window", "description": "起動、メッセージ処理、固定更新とフレーム制御。" },
     { "id": "engine", "parent": "runtime", "title": "Engine・DLL境界", "description": "Systemの所有、初期化・終了、APIテーブルと更新順序。" },
+    { "id": "game-runtime", "parent": "runtime", "title": "GameRuntime・Game向けAPI", "description": "Game.dllの接続、Scriptの実行と寿命、WorldとProcess Facadeの実装。" },
     { "id": "time", "parent": "runtime", "title": "Time", "description": "通常・固定更新の時間値、時間倍率と非所有API。" },
     { "id": "ecs", "parent": "runtime", "title": "ECS", "description": "World、Archetype、Chunk、構造変更とEntityの寿命。" },
     { "id": "ecs-processes", "parent": "runtime", "title": "ECSProcess", "description": "個別のProcessが扱うComponent、更新順、公開操作の仕様。" },
@@ -16,21 +17,25 @@
   "groups": [
     { "directory": "Implementation/Application", "category": "application" },
     { "directory": "Implementation/Engine", "category": "engine" },
+    { "directory": "Implementation/GameRuntime", "category": "game-runtime" },
     { "directory": "Implementation/Time", "category": "time" },
     { "directory": "Implementation/ECS", "category": "ecs" },
     { "directory": "Implementation/ECSProcess", "category": "ecs-processes" },
     { "directory": "Implementation/Asset", "category": "asset" },
     { "directory": "Implementation/Graphics", "category": "graphics" },
     { "directory": "Implementation/Log", "category": "log" },
-    { "directory": "Implementation/Common", "category": "common" }
+    { "directory": "Implementation/Common", "category": "common" },
+    { "directory": "Design/GameRuntime", "category": "design" }
   ],
   "pages": {
+    "Design/ECS.md": { "category": "design", "order": 35, "summary": "Entityの配置と寿命、Processの要求Component、Gameとの受け渡し。" },
     "Design/Transform.md": { "category": "design", "order": 40, "label": "Transformの設計", "summary": "Transformのクラス構成、Local TRSを正本にする契約とGame向けFacadeの設計。" },
     "Design/MaterialShader.md": { "category": "design", "order": 50, "label": "MaterialShaderの設計", "summary": "Materialの所有、.matsh、PassのStream選択とSubMesh単位のForward描画。" },
     "Design/RenderPass.md": { "category": "design", "order": 60, "label": "RenderPassの設計", "summary": "共通DrawCommand、Build・Sort・Record、Forwardのバッチ化。" },
+    "Design/GameRuntime/APIArchitecture.md": { "category": "design", "order": 70, "label": "EngineとGameのAPI構成の設計", "summary": "DLLを越える接続、公開Processの追加手順、初期の描画方針。" },
     "Implementation/Graphics/MaterialShader.md": { "label": "MaterialShaderとForward描画", "summary": "DSL解析、DXCとReflection、Pass用PSO、Material定数と頂点Streamのバインド。" },
     "Implementation/ECSProcess/Transform.md": { "label": "Transform", "summary": "必須Component、親子関係、World行列の更新順とDLL公開Facadeの現行仕様。" },
-    "Implementation/ECSProcess/MeshRenderer.md": { "label": "MeshRenderer", "summary": "TransformCacheからの描画提出、Assetの参照、インスタンス色。" },
+    "Implementation/ECSProcess/MeshRenderer.md": { "label": "MeshRenderer", "summary": "描画提出と、Game向けのMesh、MaterialSlot、インスタンス色の設定。" },
     "Implementation/README.md": { "category": "runtime", "label": "全体概要", "summary": "実装仕様書の索引、全体の接続、実装済みの対象範囲を確認する。", "diagrams": ["system"] },
     "Implementation/Application/README.md": { "summary": "WindowとEngineの起動、フレーム進行、現在の終了処理を確認する。" },
     "Implementation/Engine/README.md": {
@@ -44,7 +49,7 @@
       "notes": [{ "text": "Entityの実行対象はComponent構成から決まり、Process所属一覧は持たない。共有ComponentだけならRemoveProcess後も対象Processが一致し続ける。初期構成指定の生成APIとPrefabは将来案。", "sources": ["Docs/Implementation/ECS/README.md", "Docs/OpenDecisions.md"] }]
     },
     "Implementation/ECS/Process.md": { "order": 30, "label": "Process実行と型", "summary": "要求Componentの照合、Chunk単位の呼び出し、実行順と変更反映を確認する。" },
-    "Implementation/ECS/DevelopmentGuide.md": { "order": 40, "label": "開発手引き", "summary": "Processの目的から必要なデータを整理し、Component定義・関数実装・登録・Entity操作・検証へ進む手順。" },
+    "Implementation/ECS/DevelopmentGuide.md": { "order": 40, "label": "開発手引き", "summary": "ComponentとProcessの定義・登録から、公開APIとFacadeを介したGame側の操作までの開発手順。" },
     "Implementation/Asset/README.md": { "summary": "名前Cache、CPU Assetの登録、TextureデコードとGPU転送の成否を確認する。", "diagrams": ["asset"] },
     "CodingStandard.md": { "category": "guides", "order": 10, "summary": "名前、コメント、処理構成、includeパスの規約。" },
     "CodingExamples.md": { "category": "guides", "order": 20, "summary": "LogProcessを題材にしたヘッダー・実装・コメントの記述例。" },
@@ -53,14 +58,14 @@
       "category": "guides", "order": 40, "summary": "初期描画実装に対する手動計測値、原因候補と計測上の留保。",
       "notes": [{ "text": "これは過去の観測記録。本文にはRenderDataがDXMeshを保持するという記述があるが、現在の定義はAssetHandle<Mesh>。当時の数値や原因候補を現在の実装の確定仕様として扱わない。", "sources": ["Engine/Include/Graphics/DX12Object.h"] }]
     },
-    "Architecture.md": { "category": "design", "order": 10, "summary": "DevelopNotesを基に整理された全体構造と設計上の依存関係。", "notes": [{ "text": "設計参考資料。現行コードとの差分の節には、EngineロードやAPIが未実装だった時点の記述が残る。現在の実装状況は実装仕様の各ページを参照する。", "sources": ["Application/Source/Application.cpp", "Engine/Source/EngineAPI.cpp"] }] },
+    "Architecture.md": { "category": "design", "order": 10, "summary": "Application・Engine・Gameの責務と所有、DLL境界、起動から終了までの契約。" },
     "DesignSources.md": { "category": "design", "order": 20, "summary": "参照資料の出典、優先関係、設計案の位置づけ。" },
-    "OpenDecisions.md": { "category": "design", "order": 30, "summary": "実装前に整理された未確定事項と資料間の差分。", "notes": [{ "text": "実装前の検討資料。ApplicationAPIの名前空間、HWND取得、Engineロード等について、現在のコードと異なる過去の状態が記載されている。", "sources": ["Application/Include/ApplicationAPI.h", "Application/Source/Application.cpp"] }] }
+    "OpenDecisions.md": { "category": "design", "order": 30, "summary": "Editor、公開API、描画、Scriptなどの未決事項とPrefabの将来案。" }
   },
   "diagrams": {
     "ecs-process": { "title": "Processの生成・登録から実行まで", "caption": "RegisterProcessでProcessを生成してWorldへ登録し、要求Componentが揃うArchetypeをキャッシュする。Run(phase)は登録順・Chunk単位で関数を呼ぶ。AddProcessはEntityのComponent構成を変更する。RegisterECSはTransformProcessをPreRenderに登録する。", "sources": ["Docs/Implementation/ECS/Process.md", "Docs/Implementation/ECSProcess/Transform.md", "Engine/Include/ECS/ECSWorld.h", "Engine/Include/ECS/ECSProcess.h", "Engine/Include/ECS/ECSProcessExecution.h", "Engine/Source/ECS/ECSWorld.cpp", "Engine/Source/ECS/ECSProcess.cpp"] },
-    "system": { "title": "Systemの所有とDLL境界", "caption": "実線は所有、破線は非所有の接続。GameRuntimeなど未実装の予定要素は含めない。", "sources": ["Docs/Implementation/README.md", "Engine/Include/Engine.h", "Application/Include/Application.h"] },
-    "frame": { "title": "コードに記述されたフレーム進行", "caption": "固定更新は蓄積時間に応じて0回以上。通常更新ではTimeとECS phaseを進め、Render後にEndFrameを置く。実機上の成立はビルド・単体テストの結果と区別する。", "sources": ["Docs/Implementation/Engine/README.md", "Application/Source/Application.cpp", "Engine/Source/Engine.cpp"] },
+    "system": { "title": "Systemの所有とDLL境界", "caption": "実線は所有、破線はAPI接続。EngineはGameRuntimeの生成・破棄を呼び、GameRuntimeはEngineから操作テーブルを借りる。", "sources": ["Docs/Implementation/README.md", "Engine/Include/Engine.h", "Application/Include/Application.h", "Game/Include/GameRuntime.h"] },
+    "frame": { "title": "コードに記述されたフレーム進行", "caption": "固定更新は蓄積時間に応じて0回以上。GameRuntimeは対応するECS phaseの後に更新し、描画後はScriptを除去してからEntityを破棄する。", "sources": ["Docs/Implementation/Engine/README.md", "Application/Source/Application.cpp", "Engine/Source/Engine.cpp", "Game/Source/GameRuntime.cpp"] },
     "asset": { "title": "CPU登録とGPU転送", "caption": "CPU AssetのHandleが有効でもGPU転送成功とは限らない。GetはCPU実体を借用する。", "sources": ["Docs/Implementation/Asset/README.md", "Engine/Source/Asset/AssetSystem.cpp", "Engine/Source/Asset/AssetLoader.cpp"] },
     "ecs-layout": { "title": "HandleからSoA列への参照", "caption": "同じrowが同じEntityに対応する。構造変更で位置が変わるため、生ポインタを長期保持せずHandleから再取得する。", "sources": ["Docs/Implementation/ECS/README.md", "Engine/Include/ECS/Entity.h", "Engine/Source/ECS/Archetype.cpp", "Engine/Source/ECS/Chunk.cpp"] },
     "ecs-life": { "title": "Entityの生成と破棄", "caption": "破棄予約はAliveのEntityに付くbitで、独立したslot状態ではない。Process後の変更反映とEndFrameの破棄確定を区別する。", "sources": ["Docs/Implementation/ECS/README.md", "Engine/Include/ECS/Entity.h", "Engine/Source/ECS/ECSWorld.cpp"] }

@@ -2,6 +2,8 @@
 .vs/
 Build/
 /Library/
+/Engine/Include/API/Generated/ECSProcessAPI.generated.h
+/Engine/Source/API/Generated/ECSProcessAPI.generated.cpp
 
 # ThirdParty distribution libraries
 !/ThirdParty/Library/**/*.lib

@@ -1,7 +1,7 @@
 ﻿/*=============================================================================
 
  File   : TransformFacadeConsumer.cpp
- Desc   : Engine import libraryを使う外部consumerでFacadeのDLL境界を検証する
+ Desc   : Engine API 未接続時の Transform Facade の契約を検証する
 
 ------------------------------------------------------------------------------
 
@@ -33,7 +33,7 @@ int main(int count, char** arguments)
     if (transform.IsValid())
         return 1;
 
-    // SIMD引数を実際にDLLへ渡す。ECS未接続なのでSetはfalseになる
+    // API 未接続の Facade では Set は false になる
     if (transform.SetWorldMatrix(Matrix4x4_SIMD::Identity()) ||
         transform.SetLocalPosition(Vector3::Zero()) ||
         transform.SetLocalRotation(Quaternion::Identity()) ||
@@ -53,7 +53,7 @@ int main(int count, char** arguments)
         transform.GetParent().IsValid())
         return 3;
 
-    // SIMD戻り値とそのalignmentをconsumer側の数学型で読み取る
+    // 未接続時の SIMD 戻り値を consumer 側の数学型で読み取る
     const Matrix4x4_SIMD matrix = transform.GetWorldMatrix();
     for (size_t row = 0; row < 4; ++row)
         for (size_t column = 0; column < 4; ++column)
@@ -61,6 +61,6 @@ int main(int count, char** arguments)
                 return 4;
 #endif
 
-    std::cout << "Transform facade DLL consumer passed\n";
+    std::cout << "Unbound Transform facade consumer passed\n";
     return 0;
 }

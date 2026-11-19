@@ -25,4 +25,5 @@
 | `AssetLoader<MaterialShader>` | .matshを読み込み、Parser・Compilerを経てTextureを解決し登録 | [MaterialShaderLoader.cpp](../../../Engine/Source/Asset/MaterialShaderLoader.cpp) |
 | `MaterialShader` / `Material` | Shaderが共通のProperty定義とPassを持ち、Materialが型付きの値を持つ | [MaterialShaderの実装仕様](../Graphics/MaterialShader.md) |
 | `AssetSystem` | DB、Loader、Storageを所有する統括。static入口を現在instanceへ接続する | [AssetSystem.h](../../../Engine/Include/Asset/AssetSystem.h) |
-| `AssetAPI` | AssetSystemへの非所有参照を持つDLL API。未接続Load/Registerは無効Handle、Getはnullptr。Registerの所有権は失敗時も消費 | [AssetAPI.h](../../../Engine/Include/Asset/AssetAPI.h) |
+| `AssetAPI` | AssetSystem の操作を Asset 型ごとの関数ポインタとして公開する DLL API。未接続時のポインタは `nullptr` | [AssetAPI.h](../../../Engine/Include/API/AssetAPI.h) |
+| `HestiaGame::Assets` | 未接続なら `Load`／`Register` は無効 Handle、`Get` は `nullptr`。`Register` は失敗時も所有権を受け取る | [GameAssets.h](../../../Game/Include/GameAssets.h) |

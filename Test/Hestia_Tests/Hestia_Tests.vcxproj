@@ -51,6 +51,7 @@
     <ClCompile Include="Source\LogTests.cpp" />
     <ClCompile Include="Source\ECSTests.cpp" />
     <ClCompile Include="Source\TransformTests.cpp" />
+    <ClCompile Include="Source\GameRuntimeTests.cpp" />
     <ClCompile Include="Source\MathTests.cpp">
       <AdditionalIncludeDirectories>$(ProjectDir)..\..\Common\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
@@ -63,6 +64,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\Engine\Engine.vcxproj">
       <Project>{fe1d5632-593c-43bf-8047-219b71dd2c0e}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Game\Game.vcxproj">
+      <Project>{949f5289-ac37-4a66-af85-500d108f2083}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -27,11 +27,11 @@ bool Application::Initialize(int nCmdShow)
         TIMER_ALL_ACCESS
     );
 
-    if(!m_frameTimer)
+    if (m_frameTimer == nullptr || !LoadEngine())
+    {
+        Finalize();
         return false;
-
-    if(!LoadEngine())
-        return false;
+    }
 
     m_accumulatedTime = 0.0;
     m_lastFrameTime = Clock::now();
@@ -88,6 +88,17 @@ int Application::Run()
 
 void Application::Finalize()
 {
+    // Engine が Game と Graphics を終了するまで Window を維持する
+    m_running = false;
+    UnloadEngine();
+    if (m_frameTimer != nullptr)
+    {
+        CloseHandle(m_frameTimer);
+        m_frameTimer = nullptr;
+    }
+
+    if (s_instance == this)
+        s_instance = nullptr;
     m_window.Finalize();
 }
 
@@ -190,8 +201,9 @@ LRESULT Application::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
     switch (msg)
     {
     case WM_CLOSE:
-        DestroyWindow(hwnd);
-        break;
+        // Engine の終了後に Finalize が Window を破棄する
+        PostQuitMessage(0);
+        return 0;
 
     case WM_DESTROY:
         PostQuitMessage(0);

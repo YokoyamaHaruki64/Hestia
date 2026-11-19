@@ -17,6 +17,7 @@
 #include <optional>
 #include <string_view>
 
+#include "API/ECSProcessAPI.h"
 #include "ECS/ComponentRegistry.h"
 #include "ECS/ECSWorld.h"
 
@@ -47,6 +48,18 @@ namespace Hestia
         /// @brief WorldとRegistryを解放する。未初期化でも安全。
         void Finalize();
 
+        /// @brief GameRuntimeが使用するEntity操作の関数テーブルを作成する。
+        static EntityAPI CreateEntityAPI() noexcept;
+
+        /// @brief GameRuntime の接続に使う型付き Process API を借用する。
+        const ECSProcessAPI& GetProcessAPI() const noexcept { return m_processAPI; }
+
+        /// @brief 実際のActive設定変更を通知する関数を接続する。
+        /// @param context 通知関数の非所有コンテキスト
+        /// @param callback 通知関数。nullptrを指定すると接続を解除する
+        static void SetEntityActiveChangedCallback(void* context,
+            void (*callback)(void*, EntityHandle, bool)) noexcept;
+
         /// @brief 初期化中にComponent型と決定的な名前を登録する。
         /// @param name Component IDの生成に使うUTF-8名
         /// @return 登録成功時はComponentTypeId、それ以外は空
@@ -74,6 +87,10 @@ namespace Hestia
         /// @note 構造変更でポインタは無効になるため、長期保持にはHandleを使う
         static Entity* GetEntity(EntityHandle handle) noexcept;
 
+        /// @brief EntityのActive設定を変更し、変更した場合だけ通知する。
+        /// @return 設定を受理した場合はtrue、操作できないEntityはfalse
+        static bool SetActive(EntityHandle handle, bool active);
+
         /// @brief Handleに対応するComponentを借用する。
         /// @param handle 対象EntityのHandle
         /// @return Componentへの非所有ポインタ。Entity無効またはComponent不在ではnullptr
@@ -88,8 +105,9 @@ namespace Hestia
         template<auto Function>
         static void AddProcess(EntityHandle handle)
         {
-            s_instance == nullptr ?
-                Logger::Error("ECSSystem::AddProcess called while ECS is unavailable") :
+            if (s_instance == nullptr)
+                Logger::Error("ECSSystem::AddProcess called while ECS is unavailable");
+            else
                 s_instance->m_world.AddProcess(handle, ProcessKey<Function>);
         }
 
@@ -131,8 +149,23 @@ namespace Hestia
         /// @brief Initialize中に標準Componentを登録してWorldを初期化する
         bool RegisterECS();
 
+        template<class API, auto Function>
+        bool RegisterGameProcess(ECSProcessPhase phase)
+        {
+            auto& binding = m_processAPI.Get<API>();
+            if (binding.m_process.IsValid() || !m_world.RegisterProcess<Function>(phase))
+                return false;
+
+            // ECS の登録が成功してから、追加・検索に使うインデックスを公開する
+            binding.m_process = { m_world.m_processes.size() - 1 };
+            return true;
+        }
+
+        ECSProcessInvoke ResolveProcess(ProcessHandle process) const noexcept;
+
         ComponentRegistry m_registry;
         ECSWorld m_world;
+        ECSProcessAPI m_processAPI;
         bool m_isInitializing = false;
         bool m_isInitialized = false;
 

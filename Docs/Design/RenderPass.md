@@ -2,7 +2,9 @@
 ---
 Engine内部の描画段階を `Build → Sort → Record` に分け、各段階で受け渡すデータを定義する。初版は既存のForward描画をこの構成へ移し、同じスレッドとCommandListで実行する。
 
-[Build／Sort／Recordの原案](../../Reference/HestiaDesign/DirectX/MultiThreadRendering.md) ・ [Graphicsのフレーム経路](../../Reference/HestiaDesign/DevelopNotes/GraphicsFrameFlow.md) ・ [MaterialShader](./MaterialShader.md)
+ECS の `PreRender` で Transform が World 行列を確定し、MeshRenderer が `RenderData` を提出する。Graphics はそのフレームの提出列を Backend に渡す。
+
+[Graphics の実装仕様](../Implementation/Graphics/README.md) ・ [MaterialShader](./MaterialShader.md)
 
 ## IRenderPass
 ---

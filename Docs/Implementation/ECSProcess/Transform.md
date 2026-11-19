@@ -136,7 +136,7 @@ namespace HestiaGame
 
 [公開ヘッダー](../../../Engine/Include/Game/Transform.h) ・ [Facadeの実装](../../../Engine/Source/Transform/TransformFacade.cpp) ・ [TransformHierarchy](#transformhierarchy) ・ [ParentMode](#parentmode)
 
-操作メソッドには個別に `HESTIA_ENGINE_API` が付く。通常のDLL構成ではビルド側がexport、利用側がimportとなり、Test構成ではこの装飾が空になる。Handleからの構築はその時点で生存を検査しない。Facadeは生成元ECSの寿命内で使う。 [Transform.h](../../../Engine/Include/Game/Transform.h) ・ [DllAPI.h](../../../Common/Include/DllAPI.h)
+Game.dll は `World::GetProcess<Transform>(entity)` で、Engine の操作テーブルを借用する Facade を取得する。Handle からの直接構築は Engine 内と静的リンクのテストで使う。Facade の取得時は Entity の生存を検査せず、操作時に Handle を解決する。Facade は生成元 ECS の寿命内で使う。 [Transform.h](../../../Engine/Include/Game/Transform.h) ・ [World.h](../../../Game/Include/World.h)
 
 | 操作 | 読み書きする値と挙動 |
 | --- | --- |

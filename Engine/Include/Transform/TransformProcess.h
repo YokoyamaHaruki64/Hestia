@@ -17,16 +17,15 @@
 
 #include "Transform/TransformData.h"
 
-namespace HestiaGame { class Transform; }
-
 namespace Hestia
 {
     class ECSWorld;
+    class TransformAPIImpl;
 
     /// @brief 単一ECSSystemのTransformを処理する非所有の操作群
     class TransformProcess
     {
-        friend class HestiaGame::Transform;
+        friend class TransformAPIImpl;
 
     public:
         /// @brief PreRenderでdirtyな行を更新する。inactiveも対象

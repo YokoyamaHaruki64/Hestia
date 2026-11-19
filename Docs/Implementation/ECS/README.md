@@ -1,4 +1,4 @@
-﻿# ECSの処理・構造
+# ECSの処理・構造
 
 [全体索引](../README.md) / [型](Types.md) / [Process実行](Process.md) / [開発手引き](DevelopmentGuide.md)
 
@@ -10,7 +10,7 @@ EngineがECSSystemを所有し、ECSSystemがComponentRegistryと単一ECSWorld�
 
 既定Chunkサイズは16KiB。ECSSystem.InitializeはprivateのRegisterECSを呼び、Name、Tag、Layer、Transform、TransformCache、TransformHierarchyをUTF-8の型名で登録してからWorldを初期化する。登録関数を外部から渡す仕組みと、System／Worldを返すpublic Getterはない。通常のEntity操作はECSSystemのstatic APIからWorldへ委譲する。
 
-Engine内のComponentとProcessの登録はRegisterECSへ追加する。Componentを先に登録し、m_world.RegisterProcess<Function>(phase)の結果を確認する。現在は上記6 Componentが必須で、TransformProcessをPreRenderに登録する。World単体では初回のEntity生成・Run・EndFrameまで登録を受け付けるが、ECSSystemの通常APIに動的Process登録口はない。 [Transformの実装仕様](../ECSProcess/Transform.md)
+Engine 内の Component と Process の登録は `RegisterECS` へ追加する。6 Component は必須で、公開 Process の Transform と MeshRenderer はこの順で `PreRender` に登録する。登録入口は ECS 初期化時に使う。 [ECS の設計](../../Design/ECS.md) ・ [開発手引き](DevelopmentGuide.md)
 
 ## 記憶構造
 
@@ -49,7 +49,7 @@ EngineはTime更新後に各phaseを呼ぶ。FixedUpdateでは同名phase、Fram
 
 Process登録、ArchetypeのProcess接続、構造変更要求、Component構築、Process実行に例外境界がある。ECSSystem.Initialize自体はRegisterECSをtry/catchで囲まない。標準コンテナの確保例外を全APIで捕捉する設計ではなく、CreateEntityのslot予約やProcess実行外の破棄キュー確保からは例外が伝播し得る。
 
-Game向けにはTransform操作のFacadeを公開している。汎用のGame向けECS API、OnAttach／OnStart、並列ジョブ、Script、Prefabと初期構成指定の生成APIは未実装。 [Transform Facade](../ECSProcess/Transform.md#hestiagametransform) ・ [生成APIとPrefabの将来案](../../OpenDecisions.md#将来案ecsの初期構成指定とprefab復元)
+Game は `World` から Entity を操作し、Transform と MeshRenderer の Facade を取得できる。Script の `OnStart` と寿命管理は GameRuntime が担う。ECS の並列ジョブ、Prefab、初期構成指定の生成 API は将来の検討対象。 [World の設計](../../Design/GameRuntime/World.md) ・ [GameRuntime の実装仕様](../GameRuntime/README.md) ・ [生成APIとPrefabの将来案](../../OpenDecisions.md)
 
 ## 検証記録（2026-11-05）
 
@@ -60,3 +60,5 @@ Game向けにはTransform操作のFacadeを公開している。汎用のGame向
 | RunTests全体 | 80件中75件成功。Engine生成を前提とする4件がnull、LogSystemの並列出力件数1件が512対256で失敗。原因は未確定 |
 
 構築失敗テストは、移行元の値と構成を維持し、Move回数が増えないことを確認した。GPU描画・Window操作・四構成ビルドの成立はこの記録に含めない。
+
+

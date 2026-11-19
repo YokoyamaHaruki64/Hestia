@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-#include "Asset/AssetAPI.h"
+#include "API/AssetAPI.h"
 #include "Asset/AssetSystem.h"
 #include "Asset/Material.h"
 #include "Asset/MaterialShaderParser.h"
@@ -257,13 +257,15 @@ namespace
     {
         RecordProperty("target", "AssetAPI texture load, mesh registration, GraphicsSystem submit and fallback draws");
 
-        const auto textureHandle = m_assetAPI.Load<Hestia::Texture>("TextureTest");
+        const auto& textures = m_assetAPI.GetOperations<Hestia::Texture>();
+        const auto textureHandle = textures.Load("TextureTest");
         ASSERT_TRUE(textureHandle.IsValid());
-        ASSERT_NE(m_assetAPI.Get(textureHandle), nullptr);
+        ASSERT_NE(textures.Get(textureHandle), nullptr);
 
         auto plane = std::make_unique<Hestia::Mesh>(MakePlane());
-        const auto meshHandle = m_assetAPI.Register<Hestia::Mesh>("GraphicsTestPlane", plane.release());
-        const auto* mesh = m_assetAPI.Get(meshHandle);
+        const auto& meshes = m_assetAPI.GetOperations<Hestia::Mesh>();
+        const auto meshHandle = meshes.Register("GraphicsTestPlane", plane.release());
+        const auto* mesh = meshes.Get(meshHandle);
         ASSERT_NE(mesh, nullptr);
 
         // 実行時に Sprite をロードし、各フレームで同じ Material の Texture を切り替える。

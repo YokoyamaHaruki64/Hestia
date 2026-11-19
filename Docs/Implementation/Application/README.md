@@ -23,8 +23,8 @@ Initializeは1600×900のWindow、高精度Waitable Timer、Engineの順に準�
 
 ## Window Messageと終了
 
-WindowProcは接続済みEngineへ先に通知し、WM_CLOSEでDestroyWindow、WM_DESTROYでPostQuitMessageを呼び、最後にDefWindowProcへ渡す。Engine側のProcessMessageは現在空である。
+WindowProc は接続済み Engine へ先に通知する。`WM_CLOSE` は `PostQuitMessage(0)` を呼んで `0` を返す。`WM_DESTROY` も `PostQuitMessage(0)` を呼び、`DefWindowProc` へ進む。Engine 側の `ProcessMessage` の本体は空。
 
-`RequestQuit` はPostQuitMessageを呼ぶ。`UnloadEngine` にはDestroy、API参照解除、FreeLibraryの順の処理があるが、現在の `Application::Finalize` はWindow.Finalizeだけを呼び、UnloadEngineやTimerのCloseHandleは呼ばない。終了時にDLLとTimerまで明示解放されるという仕様にはしない。
+`RequestQuit` は `PostQuitMessage` を呼ぶ。`Application::Finalize` は Engine の `Destroy`、API 参照の解除、Engine.dll のアンロードを済ませ、その後に Timer を閉じ、Window を終了する。
 
-Window.FinalizeはWindowクラスの登録解除とCOMの終了を行う。Windowを閉じる経路のDestroyWindowと区別する。Editorの更新箇所はコメントだけである。
+`Window::Finalize` は HWND があれば `DestroyWindow` を呼び、Window クラスの登録解除と COM の終了を行う。Engine の終了中は Window が生存している。 [Application の終了処理](../../../Application/Source/Application.cpp) ・ [Window の終了処理](../../../Application/Source/Window.cpp)

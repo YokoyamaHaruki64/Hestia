@@ -2,7 +2,7 @@
 
 [全体索引](../README.md) / [型](Types.md)
 
-根拠: [LogSystem.cpp](../../../Engine/Source/Log/LogSystem.cpp)、[Logger.cpp](../../../Engine/Source/Log/Logger.cpp)、[LogStorage.cpp](../../../Engine/Source/Log/LogStorage.cpp)、[LogProcess.cpp](../../../Engine/Source/Log/LogProcess.cpp)、[LogAPI.cpp](../../../Engine/Source/Log/LogAPI.cpp)
+根拠: [LogSystem.cpp](../../../Engine/Source/Log/LogSystem.cpp)、[Logger.cpp](../../../Engine/Source/Log/Logger.cpp)、[LogStorage.cpp](../../../Engine/Source/Log/LogStorage.cpp)、[LogProcess.cpp](../../../Engine/Source/Log/LogProcess.cpp)、[LogAPI.cpp](../../../Engine/Source/API/LogAPI.cpp)
 
 ## 所有と受付
 

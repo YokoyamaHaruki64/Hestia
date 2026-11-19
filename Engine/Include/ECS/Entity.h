@@ -1,7 +1,7 @@
 ﻿/*=============================================================================
 
  File   : Entity.h
- Desc   : Chunk内のEntityと、外部で保持する識別Handleを定義する。
+ Desc   : Chunk内のEntityとWorld内部のSlotを定義する。
 
 ------------------------------------------------------------------------------
 
@@ -16,25 +16,11 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "Common/Include/EntityHandle.h"
+
 namespace Hestia
 {
     class ECSWorld;
-
-    /// @brief 生成元World内でEntityを識別するHandle
-    /// @note indexは30bit、generation 0は無効値とし、全世代周回後の古いHandle再一致は許容する
-    struct EntityHandle
-    {
-        uint32_t m_index = 0;
-        uint32_t m_generation = 0;
-
-        bool IsValid() const noexcept
-        {
-            // Handle内ではindexの上位2bitは使用せず、generation 0は無効値とする
-            return m_generation != 0 && (m_index & 0xc0000000u) == 0;
-        }
-
-        bool operator==(const EntityHandle&) const noexcept = default;
-    };
 
     class Entity
     {
@@ -59,7 +45,8 @@ namespace Hestia
         /// @brief Worldが破棄予約を設定したかを返す。
         bool IsDestroy() const noexcept { return (m_indexAndFlags & DESTROY_MASK) != 0; }
 
-        /// @brief active bitだけを変更する。
+        /// @brief Active bitを直接変更する。
+        /// @note Worldに所属するEntityの通常操作では通知も行うECSWorld::SetActiveを使う
         void SetActive(bool active) noexcept
         {
             if (active)

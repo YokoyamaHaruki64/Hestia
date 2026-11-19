@@ -46,6 +46,7 @@ namespace Hestia
         s_instance = this;
         m_isInitializing = true;
         m_world.m_acceptsProcessRegistration = true;
+        m_processAPI = CreateECSProcessAPI();
         bool registrationSucceeded = false;
 
         registrationSucceeded = RegisterECS();
@@ -90,6 +91,12 @@ namespace Hestia
         return false; \
     }
 
+#define REGISTER_GAME_PROCESS(API, Func, Phase) \
+    if (!RegisterGameProcess<API, Func>(Phase)) { \
+        Logger::Error("ECS: Failed to Game Process Register: " #Func); \
+        return false; \
+    }
+
         // Component登録
         REGISTER_COMPONENT(Name, "Hestia::Name");
         REGISTER_COMPONENT(Tag, "Hestia::Tag");
@@ -100,13 +107,14 @@ namespace Hestia
         REGISTER_COMPONENT(MeshRenderer, "Hestia::MeshRenderer");
 
         // PreRenderではWorld行列を更新してから描画を収集
-        REGISTER_PROCESS(&TransformProcess::Run, PreRender);
-        REGISTER_PROCESS(&MeshRendererProcess::Run, PreRender);
-        REGISTER_PROCESS(&MoveTransform, Update);
+        REGISTER_GAME_PROCESS(TransformAPI, &TransformProcess::Run, PreRender);
+        REGISTER_GAME_PROCESS(MeshRendererAPI, &MeshRendererProcess::Run, PreRender);
+        // REGISTER_PROCESS(&MoveTransform, Update);
 
         // マクロ解除
 #undef REGISTER_COMPONENT
 #undef REGISTER_PROCESS
+#undef REGISTER_GAME_PROCESS
 
         return true;
     }
@@ -122,12 +130,23 @@ namespace Hestia
 
         m_isInitializing = false;
         m_isInitialized = false;
+        m_processAPI = {};
         // ArchetypeのLayoutがRegistry情報を参照するためWorldを先に解放する
         m_world.Finalize();
         m_registry.Finalize();
 
         if (s_instance == this)
             s_instance = nullptr;
+    }
+
+    void ECSSystem::SetEntityActiveChangedCallback(void* context,
+        void (*callback)(void*, EntityHandle, bool)) noexcept
+    {
+        if (s_instance == nullptr)
+            return;
+
+        s_instance->m_world.m_entityActiveChangedContext = context;
+        s_instance->m_world.m_entityActiveChanged = callback;
     }
 
     EntityHandle ECSSystem::CreateEntity()
@@ -160,6 +179,11 @@ namespace Hestia
             return nullptr;
         }
         return s_instance->m_world.GetEntity(handle);
+    }
+
+    bool ECSSystem::SetActive(EntityHandle handle, bool active)
+    {
+        return s_instance != nullptr && s_instance->m_world.SetActive(handle, active);
     }
 
     void ECSSystem::RunImpl(ECSProcessPhase phase)

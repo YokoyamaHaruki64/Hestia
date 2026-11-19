@@ -1,339 +1,376 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Include">
+    <Filter Include="Shader">
+      <UniqueIdentifier>{c55028f7-d8ca-4d4c-b230-209de01120a8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Bootstrap">
+      <UniqueIdentifier>{4943c812-efde-4993-a999-04cff97b40c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Include">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Include\Log">
+    <Filter Include="_Include\Log">
       <UniqueIdentifier>{C97701DB-AB75-4B98-89F2-84A79C867021}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Time">
+    <Filter Include="_Include\Time">
       <UniqueIdentifier>{4844d9e7-f340-4bfc-b483-629e01eabdb6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source">
+    <Filter Include="_Include\Graphics">
+      <UniqueIdentifier>{9d932c7d-b547-4f94-bd3c-74958c0e9867}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Include\Asset">
+      <UniqueIdentifier>{254fd7f4-31a3-43df-9aa6-dad5d3dc522b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Include\ECS">
+      <UniqueIdentifier>{8fae9e19-035f-4e76-a90c-48ea0918ce21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Include\Transform">
+      <UniqueIdentifier>{75e0a098-e072-4826-91ab-9d48865b407c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Include\Game">
+      <UniqueIdentifier>{d8d63ad3-8e26-48a3-9eb5-4c75b5c10ef0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Include\API">
+      <UniqueIdentifier>{bb91ea4b-af02-48e7-908c-ee441979142a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Source">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Source\Log">
+    <Filter Include="_Source\Log">
       <UniqueIdentifier>{9151D6DD-A172-49E4-B0DA-8626A6F58010}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Time">
+    <Filter Include="_Source\Time">
       <UniqueIdentifier>{6d3c2107-ca89-46cb-be45-d0d363db06d5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Graphics">
-      <UniqueIdentifier>{9d932c7d-b547-4f94-bd3c-74958c0e9867}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Include\Asset">
-      <UniqueIdentifier>{254fd7f4-31a3-43df-9aa6-dad5d3dc522b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Include\ECS">
-      <UniqueIdentifier>{8fae9e19-035f-4e76-a90c-48ea0918ce21}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Graphics">
+    <Filter Include="_Source\Graphics">
       <UniqueIdentifier>{fe012d92-e77d-4e08-a76b-29a92e6ea7b2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Asset">
+    <Filter Include="_Source\Asset">
       <UniqueIdentifier>{d52a25a3-2639-4771-a4e5-e7639cf60e2b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\ECS">
+    <Filter Include="_Source\ECS">
       <UniqueIdentifier>{3a5bca59-8a8c-44eb-a22e-ae4cfd0a144c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Core">
+    <Filter Include="_Source\Core">
       <UniqueIdentifier>{8d41f9e1-c7b0-4f3d-becf-cad61805212a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shader">
-      <UniqueIdentifier>{c55028f7-d8ca-4d4c-b230-209de01120a8}</UniqueIdentifier>
+    <Filter Include="_Source\Transform">
+      <UniqueIdentifier>{1fba6bd2-452e-4d5e-9035-97965d0a1671}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Source\API">
+      <UniqueIdentifier>{8f105040-ee13-4ea6-a432-e805b514ea2c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Log\LogStorage.cpp">
-      <Filter>Source\Log</Filter>
+      <Filter>_Source\Log</Filter>
     </ClCompile>
     <ClCompile Include="Source\Log\Logger.cpp">
-      <Filter>Source\Log</Filter>
+      <Filter>_Source\Log</Filter>
     </ClCompile>
     <ClCompile Include="Source\Log\LogProcess.cpp">
-      <Filter>Source\Log</Filter>
+      <Filter>_Source\Log</Filter>
     </ClCompile>
     <ClCompile Include="Source\Log\LogSystem.cpp">
-      <Filter>Source\Log</Filter>
+      <Filter>_Source\Log</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Log\LogAPI.cpp">
-      <Filter>Source\Log</Filter>
+    <ClCompile Include="Source\API\LogAPI.cpp">
+      <Filter>_Source\API</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Time\TimeAPI.cpp">
-      <Filter>Source\Time</Filter>
+    <ClCompile Include="Source\API\TimeAPI.cpp">
+      <Filter>_Source\API</Filter>
     </ClCompile>
     <ClCompile Include="Source\Time\TimeSystem.cpp">
-      <Filter>Source\Time</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Asset\AssetType.cpp">
-      <Filter>Source\Asset</Filter>
+      <Filter>_Source\Time</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\Material.cpp">
-      <Filter>Source\Asset</Filter>
+      <Filter>_Source\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\MaterialShader.cpp">
-      <Filter>Source\Asset</Filter>
+      <Filter>_Source\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\MaterialShaderLoader.cpp">
-      <Filter>Source\Asset</Filter>
+      <Filter>_Source\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\MaterialShaderParser.cpp">
-      <Filter>Source\Asset</Filter>
+      <Filter>_Source\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\AssetDB.cpp">
-      <Filter>Source\Asset</Filter>
+      <Filter>_Source\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\AssetLoader.cpp">
-      <Filter>Source\Asset</Filter>
+      <Filter>_Source\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\AssetSystem.cpp">
-      <Filter>Source\Asset</Filter>
+      <Filter>_Source\Asset</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Asset\AssetAPI.cpp">
-      <Filter>Source\Asset</Filter>
+    <ClCompile Include="Source\API\AssetAPI.cpp">
+      <Filter>_Source\API</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Device.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Descriptors.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Presentation.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Pipelines.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Resources.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Frames.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\ForwardRenderPass.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DX12Backend.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DX12MaterialPipeline.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\DXMaterialShaderCompiler.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Graphics\MeshRenderer.cpp">
-      <Filter>Source\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\DllMain.cpp">
-      <Filter>Source\Core</Filter>
+      <Filter>_Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine.cpp">
-      <Filter>Source\Core</Filter>
+      <Filter>_Source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="Source\EngineAPI.cpp">
-      <Filter>Source\Core</Filter>
+    <ClCompile Include="Source\API\EngineAPI.cpp">
+      <Filter>_Source\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\API\EntityAPI.cpp">
+      <Filter>_Source\API</Filter>
     </ClCompile>
     <ClCompile Include="Source\ECS\ComponentRegistry.cpp">
-      <Filter>Source\ECS</Filter>
+      <Filter>_Source\ECS</Filter>
     </ClCompile>
     <ClCompile Include="Source\ECS\Entity.cpp">
-      <Filter>Source\ECS</Filter>
+      <Filter>_Source\ECS</Filter>
     </ClCompile>
     <ClCompile Include="Source\ECS\Archetype.cpp">
-      <Filter>Source\ECS</Filter>
+      <Filter>_Source\ECS</Filter>
     </ClCompile>
     <ClCompile Include="Source\ECS\Chunk.cpp">
-      <Filter>Source\ECS</Filter>
+      <Filter>_Source\ECS</Filter>
     </ClCompile>
     <ClCompile Include="Source\ECS\ECSProcess.cpp">
-      <Filter>Source\ECS</Filter>
+      <Filter>_Source\ECS</Filter>
     </ClCompile>
     <ClCompile Include="Source\ECS\ECSWorld.cpp">
-      <Filter>Source\ECS</Filter>
+      <Filter>_Source\ECS</Filter>
     </ClCompile>
     <ClCompile Include="Source\ECS\ECSSystem.cpp">
-      <Filter>Source\ECS</Filter>
+      <Filter>_Source\ECS</Filter>
     </ClCompile>
     <ClCompile Include="Source\Pch.cpp">
-      <Filter>Source\Core</Filter>
+      <Filter>Bootstrap</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\DllMain.cpp">
+      <Filter>Bootstrap</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Engine.h">
-      <Filter>Include</Filter>
+      <Filter>_Include</Filter>
     </ClInclude>
-    <ClInclude Include="Include\EngineAPI.h">
-      <Filter>Include</Filter>
+    <ClInclude Include="Include\API\EngineAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\EntityAPI.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\ComponentRegistry.h">
-      <Filter>Include\ECS</Filter>
+      <Filter>_Include\ECS</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\Component.h">
-      <Filter>Include\ECS</Filter>
+      <Filter>_Include\ECS</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\Entity.h">
-      <Filter>Include\ECS</Filter>
+      <Filter>_Include\ECS</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\Archetype.h">
-      <Filter>Include\ECS</Filter>
+      <Filter>_Include\ECS</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\Chunk.h">
-      <Filter>Include\ECS</Filter>
+      <Filter>_Include\ECS</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\ECSProcess.h">
-      <Filter>Include\ECS</Filter>
+      <Filter>_Include\ECS</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\ECSProcessExecution.h">
-      <Filter>Include\ECS</Filter>
+      <Filter>_Include\ECS</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\ECSWorld.h">
-      <Filter>Include\ECS</Filter>
+      <Filter>_Include\ECS</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\ECSSystem.h">
-      <Filter>Include\ECS</Filter>
+      <Filter>_Include\ECS</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\LogData.h">
-      <Filter>Include\Log</Filter>
+      <Filter>_Include\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\LogStorage.h">
-      <Filter>Include\Log</Filter>
+      <Filter>_Include\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\Logger.h">
-      <Filter>Include\Log</Filter>
+      <Filter>_Include\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\LogProcess.h">
-      <Filter>Include\Log</Filter>
+      <Filter>_Include\Log</Filter>
     </ClInclude>
     <ClInclude Include="Include\Log\LogSystem.h">
-      <Filter>Include\Log</Filter>
+      <Filter>_Include\Log</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Log\LogAPI.h">
-      <Filter>Include\Log</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\pch.h">
-      <Filter>Include</Filter>
+    <ClInclude Include="Include\API\LogAPI.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
     <ClInclude Include="Include\Time\TimeSystem.h">
-      <Filter>Include\Time</Filter>
+      <Filter>_Include\Time</Filter>
     </ClInclude>
     <ClInclude Include="Include\Time\TimeData.h">
-      <Filter>Include\Time</Filter>
+      <Filter>_Include\Time</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Time\TimeAPI.h">
-      <Filter>Include\Time</Filter>
+    <ClInclude Include="Include\API\TimeAPI.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\AssetHandle.h">
-      <Filter>Include\Asset</Filter>
+      <Filter>_Include\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\AssetType.h">
-      <Filter>Include\Asset</Filter>
+      <Filter>_Include\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\Material.h">
-      <Filter>Include\Asset</Filter>
+      <Filter>_Include\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\MaterialProperty.h">
-      <Filter>Include\Asset</Filter>
+      <Filter>_Include\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\MaterialShader.h">
-      <Filter>Include\Asset</Filter>
+      <Filter>_Include\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\MaterialShaderParser.h">
-      <Filter>Include\Asset</Filter>
+      <Filter>_Include\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\AssetDB.h">
-      <Filter>Include\Asset</Filter>
+      <Filter>_Include\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\AssetStorage.h">
-      <Filter>Include\Asset</Filter>
+      <Filter>_Include\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\AssetLoader.h">
-      <Filter>Include\Asset</Filter>
+      <Filter>_Include\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\AssetSystem.h">
-      <Filter>Include\Asset</Filter>
+      <Filter>_Include\Asset</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Asset\AssetAPI.h">
-      <Filter>Include\Asset</Filter>
+    <ClInclude Include="Include\API\AssetAPI.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Support.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Device.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Descriptors.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Presentation.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Pipelines.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Resources.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Frames.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\IRenderPass.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\ForwardRenderPass.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Backend.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\GraphicsSystem.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\MeshRenderer.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Object.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\DXMaterialShaderCompiler.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Include\Graphics\GPUResourceStorage.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>_Include\Graphics</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="Include\Transform">
-      <UniqueIdentifier>{75e0a098-e072-4826-91ab-9d48865b407c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Include\Game">
-      <UniqueIdentifier>{d8d63ad3-8e26-48a3-9eb5-4c75b5c10ef0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Transform">
-      <UniqueIdentifier>{1fba6bd2-452e-4d5e-9035-97965d0a1671}</UniqueIdentifier>
-    </Filter>
+    <ClInclude Include="Include\pch.h">
+      <Filter>Bootstrap</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Transform\TransformData.h">
-      <Filter>Include\Transform</Filter>
+      <Filter>_Include\Transform</Filter>
     </ClInclude>
     <ClInclude Include="Include\Transform\TransformProcess.h">
-      <Filter>Include\Transform</Filter>
+      <Filter>_Include\Transform</Filter>
     </ClInclude>
     <ClInclude Include="Include\Game\Transform.h">
-      <Filter>Include\Game</Filter>
+      <Filter>_Include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\GameEngineAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\ECSProcessAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\ECSProcess\TransformAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\ECSProcess\MeshRendererAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Game\MeshRenderer.h">
+      <Filter>_Include\Game</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\Generated\ECSProcessAPI.generated.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
     <ClCompile Include="Source\Transform\TransformProcess.cpp">
-      <Filter>Source\Transform</Filter>
+      <Filter>_Source\Transform</Filter>
     </ClCompile>
     <ClCompile Include="Source\Transform\TransformFacade.cpp">
-      <Filter>Source\Transform</Filter>
+      <Filter>_Source\Transform</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\API\ECSProcess\TransformAPI.cpp">
+      <Filter>_Source\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\API\ECSProcess\MeshRendererAPI.cpp">
+      <Filter>_Source\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\API\Generated\ECSProcessAPI.generated.cpp">
+      <Filter>_Source\API</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

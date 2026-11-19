@@ -11,7 +11,7 @@
 =============================================================================*/
 
 #include "pch.h"
-#include "Time/TimeAPI.h"
+#include "API/TimeAPI.h"
 #include "Time/TimeSystem.h"
 
 namespace Hestia
@@ -22,6 +22,10 @@ namespace Hestia
 
         m_system = system;
         m_data = &system->GetData();
+        m_setTimeScale = [](TimeSystem* target, float scale)
+        {
+            target->SetTimeScale(scale);
+        };
     }
 
     void TimeAPI::Finalize()
@@ -29,11 +33,6 @@ namespace Hestia
         assert(m_system != nullptr);
         m_system = nullptr;
         m_data = nullptr;
-    }
-
-    void TimeAPI::SetTimeScale(float scale)
-    {
-        assert(m_system != nullptr);
-        m_system->SetTimeScale(scale);
+        m_setTimeScale = nullptr;
     }
 }

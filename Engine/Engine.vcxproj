@@ -25,7 +25,8 @@
   <ItemGroup>
     <ClCompile Include="Source\DllMain.cpp" />
     <ClCompile Include="Source\Engine.cpp" />
-    <ClCompile Include="Source\EngineAPI.cpp" />
+    <ClCompile Include="Source\API\EngineAPI.cpp" />
+    <ClCompile Include="Source\API\EntityAPI.cpp" />
     <ClCompile Include="Source\ECS\ComponentRegistry.cpp" />
     <ClCompile Include="Source\ECS\Entity.cpp" />
     <ClCompile Include="Source\ECS\Archetype.cpp" />
@@ -35,7 +36,9 @@
     <ClCompile Include="Source\ECS\ECSSystem.cpp" />
     <ClCompile Include="Source\Transform\TransformProcess.cpp" />
     <ClCompile Include="Source\Transform\TransformFacade.cpp" />
-    <ClCompile Include="Source\Asset\AssetType.cpp" />
+    <ClCompile Include="Source\API\ECSProcess\TransformAPI.cpp" />
+    <ClCompile Include="Source\API\ECSProcess\MeshRendererAPI.cpp" />
+    <ClCompile Include="Source\API\Generated\ECSProcessAPI.generated.cpp" />
     <ClCompile Include="Source\Asset\Material.cpp" />
     <ClCompile Include="Source\Asset\MaterialShader.cpp" />
     <ClCompile Include="Source\Asset\MaterialShaderLoader.cpp" />
@@ -43,7 +46,7 @@
     <ClCompile Include="Source\Asset\AssetDB.cpp" />
     <ClCompile Include="Source\Asset\AssetLoader.cpp" />
     <ClCompile Include="Source\Asset\AssetSystem.cpp" />
-    <ClCompile Include="Source\Asset\AssetAPI.cpp" />
+    <ClCompile Include="Source\API\AssetAPI.cpp" />
     <ClCompile Include="Source\Graphics\DX12Device.cpp" />
     <ClCompile Include="Source\Graphics\DX12Descriptors.cpp" />
     <ClCompile Include="Source\Graphics\DX12Presentation.cpp" />
@@ -57,12 +60,12 @@
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp" />
     <ClCompile Include="Source\Graphics\MeshRenderer.cpp" />
     <ClCompile Include="Source\Time\TimeSystem.cpp" />
-    <ClCompile Include="Source\Time\TimeAPI.cpp" />
+    <ClCompile Include="Source\API\TimeAPI.cpp" />
     <ClCompile Include="Source\Log\LogStorage.cpp" />
     <ClCompile Include="Source\Log\Logger.cpp" />
     <ClCompile Include="Source\Log\LogProcess.cpp" />
     <ClCompile Include="Source\Log\LogSystem.cpp" />
-    <ClCompile Include="Source\Log\LogAPI.cpp" />
+    <ClCompile Include="Source\API\LogAPI.cpp" />
     <ClCompile Include="Source\Pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Create</PrecompiledHeader>
@@ -73,7 +76,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Engine.h" />
-    <ClInclude Include="Include\EngineAPI.h" />
+    <ClInclude Include="Include\API\EngineAPI.h" />
+    <ClInclude Include="Include\API\EntityAPI.h" />
     <ClInclude Include="Include\ECS\ComponentRegistry.h" />
     <ClInclude Include="Include\ECS\Component.h" />
     <ClInclude Include="Include\ECS\Entity.h" />
@@ -86,6 +90,12 @@
     <ClInclude Include="Include\Transform\TransformData.h" />
     <ClInclude Include="Include\Transform\TransformProcess.h" />
     <ClInclude Include="Include\Game\Transform.h" />
+    <ClInclude Include="Include\API\GameEngineAPI.h" />
+    <ClInclude Include="Include\API\ECSProcessAPI.h" />
+    <ClInclude Include="Include\API\ECSProcess\TransformAPI.h" />
+    <ClInclude Include="Include\API\ECSProcess\MeshRendererAPI.h" />
+    <ClInclude Include="Include\Game\MeshRenderer.h" />
+    <ClInclude Include="Include\API\Generated\ECSProcessAPI.generated.h" />
     <ClInclude Include="Include\Asset\AssetHandle.h" />
     <ClInclude Include="Include\Asset\AssetType.h" />
     <ClInclude Include="Include\Asset\Material.h" />
@@ -96,7 +106,7 @@
     <ClInclude Include="Include\Asset\AssetStorage.h" />
     <ClInclude Include="Include\Asset\AssetLoader.h" />
     <ClInclude Include="Include\Asset\AssetSystem.h" />
-    <ClInclude Include="Include\Asset\AssetAPI.h" />
+    <ClInclude Include="Include\API\AssetAPI.h" />
     <ClInclude Include="Include\Graphics\DX12Support.h" />
     <ClInclude Include="Include\Graphics\DX12Device.h" />
     <ClInclude Include="Include\Graphics\DX12Descriptors.h" />
@@ -114,19 +124,31 @@
     <ClInclude Include="Include\Graphics\GPUResourceStorage.h" />
     <ClInclude Include="Include\Time\TimeData.h" />
     <ClInclude Include="Include\Time\TimeSystem.h" />
-    <ClInclude Include="Include\Time\TimeAPI.h" />
+    <ClInclude Include="Include\API\TimeAPI.h" />
     <ClInclude Include="Include\Log\LogData.h" />
     <ClInclude Include="Include\Log\LogStorage.h" />
     <ClInclude Include="Include\Log\Logger.h" />
     <ClInclude Include="Include\Log\LogProcess.h" />
     <ClInclude Include="Include\Log\LogSystem.h" />
-    <ClInclude Include="Include\Log\LogAPI.h" />
+    <ClInclude Include="Include\API\LogAPI.h" />
     <ClInclude Include="Include\pch.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Assets\Shaders\Common.hlsl" />
     <None Include="..\Assets\Shaders\MatShaders\Sprite.matsh" />
     <None Include="..\Assets\Shaders\MatShaders\Unlit_Inst.matsh" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Common\Common.vcxproj">
+      <Project>{1cad1a6f-c175-4541-be2c-a87882b3a27d}</Project>
+      <SetConfiguration Condition="'$(Configuration)' == 'Debug_Editor' Or '$(Configuration)' == 'Debug_Game' Or '$(Configuration)' == 'Test'">Configuration=Debug</SetConfiguration>
+      <SetConfiguration Condition="'$(Configuration)' == 'Release_Editor' Or '$(Configuration)' == 'Release_Game'">Configuration=Release</SetConfiguration>
+    </ProjectReference>
+    <ProjectReference Include="..\Game\Game.vcxproj">
+      <Project>{949f5289-ac37-4a66-af85-500d108f2083}</Project>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -278,6 +300,11 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>HESTIA_ENGINE_INTERNAL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

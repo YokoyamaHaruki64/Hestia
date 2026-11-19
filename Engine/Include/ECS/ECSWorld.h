@@ -19,11 +19,13 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "API/EntityAPI.h"
 #include "ECS/Archetype.h"
 #include "ECS/ECSProcess.h"
 #include "ECS/ECSProcessExecution.h"
@@ -113,6 +115,10 @@ namespace Hestia
         Entity* GetEntity(EntityHandle handle) noexcept;
         const Entity* GetEntity(EntityHandle handle) const noexcept;
 
+        /// @brief 生存中のEntityのActive設定を更新し、設定が変わった場合は通知する。
+        /// @return 設定を受理した場合はtrue、生成待ち・破棄予約済み・無効Handleはfalse
+        bool SetActive(EntityHandle handle, bool active);
+
         /// @brief Componentへの非所有ポインタを取得する。
         /// @param handle 対象EntityのHandle
         /// @return Componentへの非所有ポインタ。無効Handle・生成待ち・Component不在・構造変更中はnullptr
@@ -140,7 +146,8 @@ namespace Hestia
         /// @param handle 対象EntityのHandle
         /// @param process 登録済みProcessの共通入口
         /// @note 既存値を維持し、Process実行中は現在のProcess完了後に反映する
-        void AddProcess(EntityHandle handle, ECSProcessInvoke process);
+        /// @return 要求を受理した場合はtrue
+        bool AddProcess(EntityHandle handle, ECSProcessInvoke process);
 
         /// @brief Process固有Componentを構成から除く。
         /// @param handle 対象EntityのHandle
@@ -173,6 +180,14 @@ namespace Hestia
 
         EntitySlot* FindSlot(EntityHandle handle) noexcept;                // 指定Handleに対応するSlotを返す。無効Handleはnullptr
         const EntitySlot* FindSlot(EntityHandle handle) const noexcept;    // 指定Handleに対応するSlotを返す。無効Handleはnullptr
+
+        bool SetName(EntityHandle handle, std::string_view name);
+        bool SetTag(EntityHandle handle, uint32_t tag) noexcept;
+        EntityHandle FindFirstEntityByName(std::string_view name) const noexcept;
+        EntitySearchResult FindEntitiesByTag(uint32_t tag);
+        EntitySearchResult FindEntitiesWithProcess(ECSProcessInvoke process);
+        void ClearEntitySearchResults() noexcept { m_searchResults.clear(); }
+        bool TryGetPendingDestroy(size_t index, EntityHandle& handle) const noexcept;
 
         Archetype* GetOrCreateArchetype(ArchetypeSignature signature);     // Component型IDの集合をキーにArchetypeを検索し、未登録なら新規作成する
 
@@ -210,6 +225,10 @@ namespace Hestia
 
         std::vector<ChangeRequest> m_pendingChanges;    // 保留中の構造変更Request
         std::vector<EntityHandle> m_pendingDestroy;     // 保留中の破棄予約済みEntity
+        std::vector<EntityHandle> m_searchResults;      // Game に一時貸し出しする検索結果
+
+        void* m_entityActiveChangedContext = nullptr;
+        void (*m_entityActiveChanged)(void*, EntityHandle, bool) = nullptr;
 
         bool m_isInitialized = false;
         bool m_acceptsProcessRegistration = false;
