@@ -17,6 +17,9 @@
     <ClCompile Include="Source\DllMain.cpp">
       <Filter>Bootstrap</Filter>
     </ClCompile>
+    <ClCompile Include="Source\GameEntry.cpp">
+      <Filter>Bootstrap</Filter>
+    </ClCompile>
     <ClCompile Include="Source\GameRuntime.cpp">
       <Filter>_Source</Filter>
     </ClCompile>

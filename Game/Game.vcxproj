@@ -24,6 +24,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\DllMain.cpp" />
+    <ClCompile Include="Source\GameEntry.cpp" />
     <ClCompile Include="Source\GameRuntime.cpp" />
     <ClCompile Include="Source\World.cpp" />
     <ClCompile Include="Source\Pch.cpp">

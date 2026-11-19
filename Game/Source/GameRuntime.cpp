@@ -147,24 +147,3 @@ namespace HestiaGame::Detail
     }
 
 }
-
-extern "C" HESTIA_GAME_API const Hestia::GameRuntimeAPI* GetGameRuntimeAPI()
-{
-    using HestiaGame::Detail::GameRuntime;
-    using HestiaGame::Detail::ScriptPhase;
-
-    static const Hestia::GameRuntimeAPI api{
-        .Create = [](const Hestia::GameEngineAPI* engineAPI) -> void* { return GameRuntime::Create(engineAPI); },
-        .Destroy = [](void* handle)
-        {
-            auto* runtime = static_cast<GameRuntime*>(handle);
-            runtime->Finalize();
-            delete runtime;
-        },
-        .FixedUpdate = [](void* handle) { static_cast<GameRuntime*>(handle)->Run(ScriptPhase::FixedUpdate); },
-        .Update = [](void* handle) { static_cast<GameRuntime*>(handle)->Run(ScriptPhase::Update); },
-        .LateUpdate = [](void* handle) { static_cast<GameRuntime*>(handle)->Run(ScriptPhase::LateUpdate); },
-        .EndFrame = [](void* handle) { static_cast<GameRuntime*>(handle)->EndFrame(); },
-    };
-    return &api;
-}
