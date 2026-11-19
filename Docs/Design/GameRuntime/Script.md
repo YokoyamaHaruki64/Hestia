@@ -1,13 +1,13 @@
 ﻿# Sparse Script
 ---
-通常の C++ 型で書いた Script を Entity に関連付け、GameRuntime が Game.dll 内で所有・実行する。初版は `.h/.cpp` と明示的な型登録で構成する。`.cscript` とコード生成は、手書きの型登録を置き換える段階で扱う。
+通常の C++ 型で書いた Script を Entity に関連付け、GameRuntime が Game.dll 内で所有・実行する。初版は `.h/.cpp` と手書きの Setup で構成する。将来はゲームロジックを `.cppsc` にまとめ、Script の C++ ヘッダー・ソースと Setup の実装を同じ処理で生成する。 [C++ Script のコード生成](CppScript.md)
 
 [Game.dll の境界](./GameDLL.md) ・ [World](./World.md) ・ [GameRuntime の実装仕様](../../Implementation/GameRuntime/README.md)
 
 ## 型登録と所有
 ---
 
-Script は具象型として書く。`World::RegisterScript<T>()` は GameRuntime 初期化時の型登録中だけ受け付け、その後に初期配置を行う。Storage は `requires` で `script.Update(self)` の式が有効かをコンパイル時に確認する。各コールバックは省略でき、呼び出し結果は使わない。`self` は所属 Entity の Handle で、Script は `World` から Facade や Script を取得できる。時間は `HestiaGame::Time` から取得する。
+Script は具象型として Game プロジェクトに置く。Game の Setup は型登録で `World::RegisterScript<T>()` を呼び、初期配置で `World::AddScript<T>()` を呼ぶ。GameCore は GameRuntime 初期化時の型登録中だけ登録を受け付け、登録を終えてから初期配置を呼ぶ。Storage は `requires` で `script.Update(self)` の式が有効かをコンパイル時に確認する。各コールバックは省略でき、呼び出し結果は使わない。`self` は所属 Entity の Handle で、Script は `World` から Facade や Script を取得できる。時間は `HestiaGame::Time` から取得する。
 
 GameRuntime は `typeid(T)` をキーに登録済み Storage を引き、更新時は登録順に Storage を呼ぶ。`IScriptStorage` による仮想呼び出しは Storage 単位で行い、ページ走査では `T` のメソッドを直接呼ぶ。Script 本体は Game.dll が所有し、Engine は phase 単位で GameRuntime を呼ぶ。
 

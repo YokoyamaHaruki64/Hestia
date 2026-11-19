@@ -1,10 +1,11 @@
-# GameRuntime・World・Script の型
+﻿# GameRuntime・World・Script の型
 
 [処理・構造](README.md) / [Process の登録と公開](../ECS/DevelopmentGuide.md#公開processのapiとfacade)
 
 | 型・入口 | 所有と操作 | 定義 |
 | --- | --- | --- |
 | `GameRuntimeAPI` | Game 側が持つ関数テーブル。`Create`、`Destroy`、`FixedUpdate`、`Update`、`LateUpdate`、`EndFrame` を Engine が呼ぶ | [GameRuntimeAPI.h](../../../Common/Include/GameRuntimeAPI.h) |
+| `HestiaGame::Setup` | Game が実装する初期化の入口。GameCore が型登録の `RegisterScripts` と初期配置の `SetupScene` を順に呼ぶ | [GameSetup.h](../../../Game/Include/GameSetup.h) |
 | `GameEngineAPI` | Engine が所有する `TimeAPI`、`EntityAPI`、`ECSProcessAPI`、`LogAPI`、`AssetAPI` への非所有ポインタをまとめる | [GameEngineAPI.h](../../../Engine/Include/API/GameEngineAPI.h) |
 | `EntityHandle` | Entity の Index と Generation を値で渡す。操作ごとに Engine 内で解決する | [EntityHandle.h](../../../Common/Include/EntityHandle.h) |
 | `EntityAPI` | Entity の生成・破棄、Active、名前、タグ、検索、Process の追加・検索、破棄予約の読み取り、Active 通知の登録を公開する | [EntityAPI.h](../../../Engine/Include/API/EntityAPI.h) |

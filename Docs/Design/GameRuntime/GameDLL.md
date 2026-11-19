@@ -4,6 +4,16 @@ Hestia の起動経路に `Game.dll` を加え、通常の C++ `.h/.cpp` で書�
 
 [全体構造](../../Architecture.md) ・ [Script の設計](./Script.md) ・ [World](./World.md) ・ [Engine と Game の API 構成](./APIArchitecture.md)
 
+## GameCore と Game の分担
+---
+
+| プロジェクト | 責務 | 成果物 |
+| --- | --- | --- |
+| GameCore | Engine との接続、DLL の入口、GameRuntime、Script の Storage、World などの共通 Facade を提供する | 静的ライブラリ `GameCore.lib` |
+| Game | 具象 Script と、ゲーム固有の型登録・初期配置を定義する | `GameCore.lib` を組み込んだ `Game.dll` |
+
+GameCore から Game のセットアップを呼ぶ接続点は、型登録の `RegisterScripts()` と初期配置の `SetupScene()` とする。GameCore が Facade の接続、型登録、初期配置、保留分の反映の順を決める。具象 Script を扱う登録・追加のテンプレートは Game のコードから使えるようにする。将来は接続点を維持し、`.cppsc` から Script の C++ コードを生成する処理で Setup の実装も生成する。 [Script の型登録と所有](./Script.md#型登録と所有) ・ [C++ Script のコード生成](CppScript.md)
+
 ## DLL 境界と所有
 ---
 
@@ -13,7 +23,7 @@ Hestia の起動経路に `Game.dll` を加え、通常の C++ `.h/.cpp` で書�
 | Engine → Game | `GetGameRuntimeAPI` を動的に取得 | Engine が `Game.dll` をロードし、DLL 内の関数テーブルを借用する。GameRuntime の実体は Game.dll 内で生成・破棄する |
 | Game → Engine | `Create` に渡される `GameEngineAPI` | Engine が `GameEngineAPI` と各 Boundary API を所有し、GameRuntime が利用期間中だけ参照する |
 
-`GetGameRuntimeAPI` は `extern "C"` と `HESTIA_GAME_API` で公開し、Game.dll 内の `static const GameRuntimeAPI` を返す。Engine は GameRuntime の実体を `void*` として保持し、更新と破棄のたびに関数テーブルへ渡す。共有する境界型は `Hestia` に置き、GameRuntime の型定義は Game プロジェクト内に置く。
+`GetGameRuntimeAPI` は `extern "C"` と `HESTIA_GAME_API` で公開し、Game.dll 内の `static const GameRuntimeAPI` を返す。Engine は GameRuntime の実体を `void*` として保持し、更新と破棄のたびに関数テーブルへ渡す。共有する境界型は `Hestia` に置き、GameRuntime の型定義は GameCore に置く。
 
 ```cpp
 namespace Hestia
@@ -47,7 +57,7 @@ namespace Hestia
 extern "C" HESTIA_GAME_API const Hestia::GameRuntimeAPI* GetGameRuntimeAPI();
 ```
 
-Game プロジェクトは共有 Header と、Engine が渡すデータおよび関数ポインタを使う。`Engine.lib` は Game のリンク入力に含めない。Game に許可する操作は `GameEngineAPI` からたどれる API に追加する。App 向けの入口は既存の `GetEngineAPI` を使う。 [現行の EngineAPI](../../../Engine/Include/API/EngineAPI.h)
+GameCore と Game は共有 Header と、Engine が渡すデータおよび関数ポインタを使う。`Engine.lib` は Game のリンク入力に含めない。Game に許可する操作は `GameEngineAPI` からたどれる API に追加する。App 向けの入口は既存の `GetEngineAPI` を使う。 [現行の EngineAPI](../../../Engine/Include/API/EngineAPI.h)
 
 `EntityAPI` は Game 側の Entity 操作と、Script の実行対象を判定するための Entity の状態、フレーム末尾で処理する破棄予約を `EntityHandle` 経由で扱う。GameRuntime は `EntityAPI` を通じて Active 設定の変更通知を購読する。`World` はこれらの Engine 側 API と、GameRuntime が所有する Script の操作をまとめて公開する。 [Entity の受け渡し](./World.md#entity-の受け渡し) ・ [Script と Entity の寿命](./Script.md#entity-との寿命の同期)
 
@@ -77,10 +87,10 @@ Editor・Game の両構成で `Game.dll` を必須とする。DLL のロード�
 ## ビルドと初版の確認
 ---
 
-Editor・Game 構成では同じ出力先に App、Engine.dll、Game.dll を揃える。Engine から Game へのプロジェクト参照はビルド順に使う。Engine と Game は `Common.lib` を利用でき、Game と Engine の間は実行時に接続する。`Test` 構成はテスト exe が静的 `Game.lib` をリンクし、同じ `GetGameRuntimeAPI` を直接呼ぶ。DXC などの外部ランタイム依存は別途配置する。
+Editor・Game 構成では同じ出力先に App、Engine.dll、Game.dll を揃える。`GameCore.lib` と `Common.lib` はビルド時に使う。Engine から Game へのプロジェクト参照はビルド順に使い、DLL 間は実行時に接続する。`Test` 構成は GameCore を含む静的 `Game.lib` をテスト exe にリンクし、同じ `GetGameRuntimeAPI` を直接呼ぶ。DXC などの外部ランタイム依存は別途配置する。
 
 - Editor・Game 構成で App から起動し、GameRuntime の初期化、通常更新、LateUpdate、固定更新、フレーム末尾の処理と終了を確認する。各更新で対応する `HestiaGame::Time` の値を取得する。
 - Game のリンク入力と Game.dll のインポートを確認し、`Engine.lib` が不要で、`Engine.dll` への静的インポートがないことを確認する。
 - `Game.dll` が未配置の場合は、Editor・Game の両構成で原因をログから確認でき、起動に失敗することを確認する。
 
-既存の立方体ベンチマークは Engine 側で維持する。Game 側の動作は、`World` と Facade を使って立方体を生成・操作・破棄する経路で確認する。 [最初のプレイアブルでの確認](./World.md#最初のプレイアブルでの確認)
+立方体ベンチマークの配置と描画は Engine 側で行い、Game の Script が `World` から対象を見つけて Transform Facade で回転させる。生成・破棄まで含めた Game 側の動作は、最初のプレイアブルで確認する。 [最初のプレイアブルでの確認](./World.md#最初のプレイアブルでの確認)

@@ -1,4 +1,4 @@
-# 未決事項
+﻿# 未決事項
 
 実装に着手する前に、決定内容を `Docs/Design/` の正本へ反映する。
 
@@ -10,7 +10,7 @@
 | Asset の拡張 | Game からの Material 作成・名前解決、個別アンロード時の Handle と CPU／GPU 資源の寿命を決める |
 | 描画の拡張 | RenderGraph、描画スレッド、Record の分割を機能要件と計測結果から決める。初期 Pass は [RenderPass](Design/RenderPass.md) に定める |
 | Transform の並列化 | 更新起点、親子間の順序、書き込みと描画参照の同期点を決める。現行設計は [Transform](Design/Transform.md) に定める |
-| Script の開発経路 | Game の型登録・初期配置の接続とコード生成の必要性を決める |
+| C++ Script のコード生成 | [コード生成の設計](Design/GameRuntime/CppScript.md)に沿って、初期配置データの形式と指定方法、ビルドでの生成タイミングを決める |
 | DLL の独立配布 | 別バージョンを接続する必要が生じた時点で ABI の検査と互換範囲を定める |
 
 ## 将来案：ECS 初期構成と Prefab

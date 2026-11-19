@@ -1,6 +1,15 @@
-# GameRuntime の処理・構造
+﻿# GameRuntime の処理・構造
 
 [全体索引](../README.md) / [型と API](Types.md) / [Process の登録と公開](../ECS/DevelopmentGuide.md#公開processのapiとfacade)
+
+## プロジェクトとリンク
+
+| プロジェクト | コンパイルする内容 | 出力 |
+| --- | --- | --- |
+| GameCore | DLL 入口、GameRuntime、World などの共通部分 | `Build/lib/x64/<構成>/GameCore.lib`。Test では `Test/Build/lib/x64/Test/GameCore.lib` |
+| Game | 現在は回転 Script を使う `GameSetup.cpp`。GameCore と Common を参照する | `Build/bin/x64/<構成>/Game.dll`。Test では GameCore の内容を含む `Test/Build/lib/x64/Test/Game.lib` |
+
+Editor・Game 構成では Game のリンク時に `GetGameRuntimeAPI` を参照させ、入口を含むオブジェクトを `GameCore.lib` から取り込む。実行時は App と同じ場所に Engine.dll・Game.dll を置く。Engine の Game への参照はビルド順を指定する。 [GameCore.vcxproj](../../../Game/GameCore.vcxproj) ・ [Game.vcxproj](../../../Game/Game.vcxproj) ・ [Engine.vcxproj](../../../Engine/Engine.vcxproj)
 
 ## DLL 接続と初期化
 
@@ -8,7 +17,13 @@ Editor・Game 構成では、Engine が App と同じディレクトリの `Game
 
 `Create` は `GameEngineAPI` と Time・Entity・ECSProcess のポインタ、および EntityAPI の必須関数を確認する。同じ Game 側で Runtime がすでに接続済みの場合も `nullptr` を返す。生成後は `World`、`Time`、`Logger`、`Assets` を接続し、ECS の Active 変更通知を購読する。Game で借りる API の寿命は Engine が管理する。 [GameRuntime の生成](../../../Game/Source/GameRuntime.cpp) ・ [GameEngineAPI](../../../Engine/Include/API/GameEngineAPI.h)
 
-内部の `GameRuntime::Create` は型登録と初期配置の関数を受け取れる。型登録中だけ `World::RegisterScript<T>()` を許可し、登録が済んだら初期配置を実行する。初期配置で追加した Script は最初のフレームより前に Storage に反映する。現在の DLL 公開入口はこれらの関数を省略して空の Runtime を生成し、スモーク用 DLL は内部入口に登録と初期配置を渡して動作を検証する。 [型登録](../../../Game/Include/GameRuntime.h) ・ [DLL 公開入口](../../../Game/Source/GameRuntime.cpp) ・ [スモーク用 Script](../../../Test/Smoke/GameCoreSmokeProbe.cpp)
+1. GameCore の DLL 入口は `GameRuntime::Create` に `HestiaGame::Setup::RegisterScripts` を渡す。GameRuntime はこの呼び出し中だけ `World::RegisterScript<T>()` を受け付ける。
+2. Runtime の生成成功後、DLL 入口は `HestiaGame::Setup::SetupScene` を呼ぶ。Setup は渡された反映コールバックを初期配置の途中で呼べる。初期配置が失敗した場合は Runtime を終了・破棄して `nullptr` を返す。
+3. 初期配置が完了すると DLL 入口が `EndFrame` を呼び、最初のフレームまでに残りの Script を Storage に反映する。
+
+現在の手書き Setup は `RotateTransformScript` を登録し、Engine が先に作った立方体の Entity を `World::FindEntitiesWithProcess<Transform>()` で取得して関連付ける。保留中の Script の重複探索が積み上がるため、256件ごとに反映する。各 Script は `OnStart` で保持した Transform Facade を使い、毎 `Update` で Z 軸まわりに 0.01 ラジアンの回転を合成する。Engine の `MoveTransform` 登録はコメントアウトしている。 [DLL 公開入口](../../../Game/Source/GameEntry.cpp) ・ [Setup の契約](../../../Game/Include/GameSetup.h) ・ [初期配置](../../../Game/Scripts/GameSetup.cpp) ・ [回転 Script](../../../Game/Scripts/RotateTransformScript.h) ・ [ECS の登録](../../../Engine/Source/ECS/ECSSystem.cpp)
+
+内部の `GameRuntime::Create` には型登録と初期配置の両方を渡すこともできる。スモーク用 DLL は公開テーブルの `Create` を差し替え、この内部入口で専用 Script を初期配置する。 [GameRuntime.h](../../../Game/Include/GameRuntime.h) ・ [スモーク用 Script](../../../Test/Smoke/GameCoreSmokeProbe.cpp)
 
 ## Script の登録と実行
 

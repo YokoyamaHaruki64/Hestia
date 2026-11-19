@@ -1,4 +1,4 @@
-# Hestia の全体設計
+﻿# Hestia の全体設計
 
 ## 責務と所有
 
@@ -14,7 +14,7 @@ Engine は `ApplicationAPI` を値で保持する。Window の HWND は必要時
 
 Application は `GetEngineAPI`、Engine は `GetGameRuntimeAPI` を動的に取得する。GameRuntime の生成時に Engine が `GameEngineAPI` を渡す。Game は Time、Entity、公開 Process、Log、Asset の API を借り、`HestiaGame` Facade から利用する。System 実体と Entity の解決は Engine が所有する。
 
-Editor・Game 構成では App、Engine.dll、Game.dll を同じ出力先に置く。Game は Engine.lib に、Engine は Game.lib にリンクしない。両 DLL は Common.lib を利用する。Test 構成ではテスト exe が静的 Game.lib をリンクし、同じ Runtime API を直接呼ぶ。共有境界型は `Hestia`、Script 用 Facade は `HestiaGame` に置く。 [Game.dll](Design/GameRuntime/GameDLL.md) ・ [API 構成](Design/GameRuntime/APIArchitecture.md)
+Editor・Game 構成では App、Engine.dll、Game.dll を同じ出力先に置く。Game は Engine.lib に、Engine は Game.lib にリンクしない。両 DLL は Common.lib を利用する。Game は共通 Runtime を静的 GameCore.lib として取り込み、具象 Script と Setup を加えて Game.dll を生成する。Test 構成ではテスト exe が GameCore を含む静的 Game.lib をリンクし、同じ Runtime API を直接呼ぶ。共有境界型は `Hestia`、Script 用 Facade は `HestiaGame` に置く。 [Game.dll](Design/GameRuntime/GameDLL.md) ・ [API 構成](Design/GameRuntime/APIArchitecture.md)
 
 ## System の分担
 
