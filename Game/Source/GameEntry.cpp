@@ -1,7 +1,7 @@
 ﻿/*=============================================================================
 
  File   : GameEntry.cpp
- Desc   : Game.dll の公開入口とデバッグシーンの Script 初期配置を定義する。
+ Desc   : Game.dll の公開入口と GameRuntime の起動・終了を定義する。
 
 ------------------------------------------------------------------------------
 
@@ -13,55 +13,7 @@
 #include "pch.h"
 
 #include "GameRuntime.h"
-#include "World.h"
-
-namespace
-{
-    const Quaternion ROTATION_PER_UPDATE = Quaternion::EulerToQuat({ 0.0f, 0.0f, 0.01f });
-
-    class RotateTransformScript
-    {
-    public:
-        void OnStart(Hestia::EntityHandle self)
-        {
-            // Facade を保持して毎フレームの取得を省く
-            m_transform = HestiaGame::World::GetProcess<HestiaGame::Transform>(self);
-        }
-
-        void Update(Hestia::EntityHandle)
-        {
-            // MoveTransform と同じ順序で Z 軸の回転を合成する
-            m_transform.SetLocalRotation(ROTATION_PER_UPDATE * m_transform.GetLocalRotation());
-        }
-
-    private:
-        HestiaGame::Transform m_transform;
-    };
-
-    bool RegisterGameScripts()
-    {
-        return HestiaGame::World::RegisterScript<RotateTransformScript>();
-    }
-
-    bool AttachRotationScripts(HestiaGame::Detail::GameRuntime& runtime)
-    {
-        // 一括追加では保留中の Script の重複探索が積み上がるため、小分けに反映する
-        constexpr std::size_t batchSize = 256;
-        std::size_t attachedCount = 0;
-        for (const auto entity : HestiaGame::World::FindEntitiesWithProcess<HestiaGame::Transform>())
-        {
-            if (!HestiaGame::World::AddScript<RotateTransformScript>(entity))
-                return false;
-
-            if (++attachedCount % batchSize == 0)
-                runtime.EndFrame();
-        }
-
-        // 最後の端数も最初の Update より前に配置する
-        runtime.EndFrame();
-        return true;
-    }
-}
+#include "GameSetup.h"
 
 extern "C" HESTIA_GAME_API const Hestia::GameRuntimeAPI* GetGameRuntimeAPI()
 {
@@ -71,17 +23,19 @@ extern "C" HESTIA_GAME_API const Hestia::GameRuntimeAPI* GetGameRuntimeAPI()
     static const Hestia::GameRuntimeAPI api{
         .Create = [](const Hestia::GameEngineAPI* engineAPI) -> void*
         {
-            auto* runtime = GameRuntime::Create(engineAPI, &RegisterGameScripts);
+            auto* runtime = GameRuntime::Create(engineAPI, &HestiaGame::Setup::RegisterScripts);
             if (runtime == nullptr)
                 return nullptr;
 
             // 初期配置に失敗した場合は、追加済みの Script を含めて解放する
-            if (!AttachRotationScripts(*runtime))
+            if (!HestiaGame::Setup::SetupScene([runtime] { runtime->EndFrame(); }))
             {
                 runtime->Finalize();
                 delete runtime;
                 return nullptr;
             }
+            // 最後に追加した分も最初のフレームより前に反映する
+            runtime->EndFrame();
             return runtime;
         },
         .Destroy = [](void* handle)

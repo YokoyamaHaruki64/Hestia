@@ -1,59 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Bootstrap">
-      <UniqueIdentifier>{5166d405-78a9-4217-b545-5174bab7e8ce}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="_Include">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
-    <Filter Include="_Source">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="Scripts">
+      <UniqueIdentifier>{DA73E38F-E0B0-4656-BD86-A095EFF68A47}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\DllMain.cpp">
-      <Filter>Bootstrap</Filter>
+    <ClCompile Include="Scripts\GameSetup.cpp">
+      <Filter>Scripts</Filter>
     </ClCompile>
-    <ClCompile Include="Source\GameEntry.cpp">
-      <Filter>Bootstrap</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\GameRuntime.cpp">
-      <Filter>_Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\World.cpp">
-      <Filter>_Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Pch.cpp">
-      <Filter>Bootstrap</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Include\pch.h">
-      <Filter>Bootstrap</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\GameRuntime.h">
-      <Filter>_Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\ScriptRef.h">
-      <Filter>_Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\ScriptStorage.h">
-      <Filter>_Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\GameTime.h">
-      <Filter>_Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\GameLogger.h">
-      <Filter>_Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\GameAssets.h">
-      <Filter>_Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\World.h">
-      <Filter>_Include</Filter>
+    <ClInclude Include="Scripts\RotateTransformScript.h">
+      <Filter>Scripts</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -23,29 +23,18 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\DllMain.cpp" />
-    <ClCompile Include="Source\GameEntry.cpp" />
-    <ClCompile Include="Source\GameRuntime.cpp" />
-    <ClCompile Include="Source\World.cpp" />
-    <ClCompile Include="Source\Pch.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_Editor|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Test|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release_Game|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_Editor|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug_Game|x64'">Create</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="Scripts\GameSetup.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Include\pch.h" />
-    <ClInclude Include="Include\GameRuntime.h" />
-    <ClInclude Include="Include\ScriptRef.h" />
-    <ClInclude Include="Include\ScriptStorage.h" />
-    <ClInclude Include="Include\GameTime.h" />
-    <ClInclude Include="Include\GameLogger.h" />
-    <ClInclude Include="Include\GameAssets.h" />
-    <ClInclude Include="Include\World.h" />
+    <ClInclude Include="Scripts\RotateTransformScript.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="GameCore.vcxproj">
+      <Project>{60BA309A-8AB3-44A8-9960-4F137CED39D2}</Project>
+      <!-- Test の Game.lib を単体でリンクできるよう GameCore.lib の内容を取り込む -->
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
     <ProjectReference Include="..\Common\Common.vcxproj">
       <Project>{1cad1a6f-c175-4541-be2c-a87882b3a27d}</Project>
       <SetConfiguration Condition="'$(Configuration)' == 'Debug_Editor' Or '$(Configuration)' == 'Debug_Game' Or '$(Configuration)' == 'Test'">Configuration=Debug</SetConfiguration>
@@ -139,8 +128,7 @@
       <PreprocessorDefinitions>_DEBUG;HESTIA_TEST;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -158,8 +146,7 @@
       <PreprocessorDefinitions>_DEBUG;HESTIA_GAME_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -177,8 +164,7 @@
       <PreprocessorDefinitions>_DEBUG;HESTIA_GAME_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -198,8 +184,7 @@
       <PreprocessorDefinitions>NDEBUG;HESTIA_GAME_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -219,8 +204,7 @@
       <PreprocessorDefinitions>NDEBUG;HESTIA_GAME_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp23</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -230,6 +214,11 @@
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'!='Test'">
+    <Link>
+      <ForceSymbolReferences>GetGameRuntimeAPI;%(ForceSymbolReferences)</ForceSymbolReferences>
+    </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

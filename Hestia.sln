@@ -23,6 +23,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Common", "Common\Common.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game", "Game\Game.vcxproj", "{949F5289-AC37-4A66-AF85-500D108F2083}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GameCore", "Game\GameCore.vcxproj", "{60BA309A-8AB3-44A8-9960-4F137CED39D2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug_Editor|x64 = Debug_Editor|x64
@@ -78,6 +80,16 @@ Global
 		{949F5289-AC37-4A66-AF85-500D108F2083}.Release_Game|x64.Build.0 = Release_Game|x64
 		{949F5289-AC37-4A66-AF85-500D108F2083}.Test|x64.ActiveCfg = Test|x64
 		{949F5289-AC37-4A66-AF85-500D108F2083}.Test|x64.Build.0 = Test|x64
+		{60BA309A-8AB3-44A8-9960-4F137CED39D2}.Debug_Editor|x64.ActiveCfg = Debug_Editor|x64
+		{60BA309A-8AB3-44A8-9960-4F137CED39D2}.Debug_Editor|x64.Build.0 = Debug_Editor|x64
+		{60BA309A-8AB3-44A8-9960-4F137CED39D2}.Debug_Game|x64.ActiveCfg = Debug_Game|x64
+		{60BA309A-8AB3-44A8-9960-4F137CED39D2}.Debug_Game|x64.Build.0 = Debug_Game|x64
+		{60BA309A-8AB3-44A8-9960-4F137CED39D2}.Release_Editor|x64.ActiveCfg = Release_Editor|x64
+		{60BA309A-8AB3-44A8-9960-4F137CED39D2}.Release_Editor|x64.Build.0 = Release_Editor|x64
+		{60BA309A-8AB3-44A8-9960-4F137CED39D2}.Release_Game|x64.ActiveCfg = Release_Game|x64
+		{60BA309A-8AB3-44A8-9960-4F137CED39D2}.Release_Game|x64.Build.0 = Release_Game|x64
+		{60BA309A-8AB3-44A8-9960-4F137CED39D2}.Test|x64.ActiveCfg = Test|x64
+		{60BA309A-8AB3-44A8-9960-4F137CED39D2}.Test|x64.Build.0 = Test|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
