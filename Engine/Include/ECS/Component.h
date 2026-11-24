@@ -16,11 +16,17 @@
 #include <cstdint>
 #include <string>
 
+#include "Serialize/SerializeFields.h"
+
 namespace Hestia
 {
     struct Name
     {
         std::string m_value;
+
+        SERIALIZE_FIELDS(
+            ("value", &Name::m_value)
+        )
     };
 
     struct Tag

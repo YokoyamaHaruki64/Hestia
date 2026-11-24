@@ -26,13 +26,17 @@ namespace Hestia
         }
 
         // 共有ヘッダーから Engine 内の AssetSystem を呼ぶための入口を設定する
-        m_mesh = { &AssetSystem::Load<Mesh>, &AssetSystem::Get<Mesh>, &AssetSystem::Register<Mesh> };
-        m_texture = { &AssetSystem::Load<Texture>, &AssetSystem::Get<Texture>, &AssetSystem::Register<Texture> };
+        m_mesh = { &AssetSystem::Load<Mesh>, &AssetSystem::Get<Mesh>,
+            &AssetSystem::Register<Mesh>, &AssetSystem::Load<Mesh> };
+        m_texture = { &AssetSystem::Load<Texture>, &AssetSystem::Get<Texture>,
+            &AssetSystem::Register<Texture>, &AssetSystem::Load<Texture> };
+        m_prefab = { &AssetSystem::Load<Prefab>, &AssetSystem::Get<Prefab>, nullptr, &AssetSystem::Load<Prefab> };
     }
 
     void AssetAPI::Finalize()
     {
         m_mesh = {};
         m_texture = {};
+        m_prefab = {};
     }
 }

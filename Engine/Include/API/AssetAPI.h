@@ -39,28 +39,33 @@ namespace Hestia
         template<class T>
         struct Operations
         {
-            /// @brief ASCII 英字の大小を区別せず名前でロードする。失敗時は無効 Handle。
-            AssetHandle<T> (*Load)(std::string_view name) = nullptr;
+            /// @brief 相対パスまたは組み込み名でロードする。失敗時は無効Handle
+            AssetHandle<T> (*Load)(std::string_view path) = nullptr;
             /// @brief Handle に対応する Asset を借用する。不一致時は nullptr。
             T* (*Get)(AssetHandle<T> handle) = nullptr;
             /// @brief 名前 Cache に登録する。失敗時も Asset の所有権を受け取る。
             AssetHandle<T> (*Register)(std::string_view name, T* asset) = nullptr;
+            /// @brief 永続参照でロードする。失敗時は無効Handle
+            AssetHandle<T> (*LoadByReference)(const AssetRef& ref) = nullptr;
         };
 
         /// @brief 指定された Asset 型の関数テーブルを返す。
         template<class T>
         const Operations<T>& GetOperations() const noexcept
         {
-            static_assert(std::is_same_v<T, Mesh> || std::is_same_v<T, Texture>);
+            static_assert(std::is_same_v<T, Mesh> || std::is_same_v<T, Texture> || std::is_same_v<T, Prefab>);
             if constexpr (std::is_same_v<T, Mesh>)
                 return m_mesh;
-            else
+            else if constexpr (std::is_same_v<T, Texture>)
                 return m_texture;
+            else
+                return m_prefab;
         }
 
     private:
         Operations<Mesh> m_mesh;
         Operations<Texture> m_texture;
+        Operations<Prefab> m_prefab;
     };
 }
 

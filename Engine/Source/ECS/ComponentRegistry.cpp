@@ -30,6 +30,12 @@ namespace Hestia
         return &it->second;
     }
 
+    const ComponentInfo* ComponentRegistry::FindInfo(std::string_view name) const
+    {
+        const auto* info = GetInfo(HashName(name));
+        return info != nullptr && info->name == name ? info : nullptr;
+    }
+
     void ComponentRegistry::Finalize()
     {
         m_typeIds.clear();

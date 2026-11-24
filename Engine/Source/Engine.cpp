@@ -171,26 +171,8 @@ namespace Hestia
 
     bool Engine::CreateDebugScene()
     {
-        // 全インスタンスが共有する、8頂点と36インデックスの立方体を登録
-        auto mesh = std::make_unique<Mesh>();
-        mesh->m_positions = {
-            { { -0.5f, -0.5f, -0.5f } }, { {  0.5f, -0.5f, -0.5f } },
-            { {  0.5f,  0.5f, -0.5f } }, { { -0.5f,  0.5f, -0.5f } },
-            { { -0.5f, -0.5f,  0.5f } }, { {  0.5f, -0.5f,  0.5f } },
-            { {  0.5f,  0.5f,  0.5f } }, { { -0.5f,  0.5f,  0.5f } },
-        };
-        mesh->m_indices = {
-            0, 2, 1, 0, 3, 2,   4, 5, 6, 4, 6, 7,
-            0, 4, 7, 0, 7, 3,   1, 2, 6, 1, 6, 5,
-            0, 1, 5, 0, 5, 4,   3, 7, 6, 3, 6, 2,
-        };
-
-        const auto* debugMesh = AssetSystem::Get(AssetSystem::Register<Mesh>("DebugCube", mesh.release()));
-        if (!debugMesh)
-            return false;
-
         // 全立方体で同じインスタンス描画用Materialを共有
-        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Unlit_Inst"));
+        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Shaders/MatShaders/Unlit_Inst.matsh"));
         if (!shader || !shader->IsInstancing())
             return false;
 
@@ -233,7 +215,7 @@ namespace Hestia
             const int column = index % columns;
             const int row = index / columns % rows;
             const int layer = index / (columns * rows);
-            renderer->m_mesh = debugMesh;
+            renderer->m_mesh = AssetSystem::Get(AssetSystem::Load<Mesh>("Cube"));
             renderer->m_materials = { debugMaterial };
             renderer->m_instanceColor = colors[(column / 5 + row / 5 + layer / 5) % std::size(colors)];
 

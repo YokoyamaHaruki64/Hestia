@@ -32,6 +32,28 @@ namespace Hestia
         }
     }
 
+    AssetRef MeshRenderer::GetMeshReference(EntityHandle entity)
+    {
+        const auto* renderer = ResolveMeshRenderer(entity);
+        return renderer != nullptr && renderer->m_mesh != nullptr
+            ? AssetSystem::GetReference(renderer->m_mesh->m_handle) : AssetRef{};
+    }
+
+    bool MeshRenderer::SetMeshReference(EntityHandle entity, const AssetRef& ref)
+    {
+        auto* renderer = ResolveMeshRenderer(entity);
+        if (renderer == nullptr)
+            return false;
+
+        // 参照が未設定なら解除し、解決失敗なら現在のMeshを保つ
+        const auto* mesh = ref.m_guid ? AssetSystem::Get(AssetSystem::Load<Mesh>(ref)) : nullptr;
+        if (ref.m_guid && mesh == nullptr)
+            return false;
+
+        renderer->m_mesh = mesh;
+        return true;
+    }
+
     MeshRendererAPI MeshRendererAPIImpl::CreateAPI() noexcept
     {
         return {

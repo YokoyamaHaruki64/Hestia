@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <span>
 #include <string_view>
 
 #include "API/ECSProcessAPI.h"
@@ -23,6 +24,7 @@
 
 namespace Hestia
 {
+    struct Prefab;
     struct ECSSettings
     {
         size_t m_chunkByteSize = 16 * 1024; // 16KB
@@ -76,6 +78,11 @@ namespace Hestia
         /// @return 成功時はEntityHandle、失敗時は無効Handle
         static EntityHandle CreateEntity();
 
+        /// @brief 必須型を含む指定構成でEntityを生成または予約する
+        /// @param componentTypes 必須型を含むすべての登録済みComponent型ID
+        /// @return 成功時はEntityHandle、失敗時は無効Handle
+        static EntityHandle CreateEntity(std::span<const ComponentTypeId> componentTypes);
+
         /// @brief Entityを生成取消または破棄予約する。
         /// @param handle 対象EntityのHandle
         /// @note Transformの子孫も同時に破棄予約する。実体の解放はEndFrame
@@ -86,6 +93,26 @@ namespace Hestia
         /// @return 生存中Entityへの非所有ポインタ。無効Handle・生成待ちではnullptr
         /// @note 構造変更でポインタは無効になるため、長期保持にはHandleを使う
         static Entity* GetEntity(EntityHandle handle) noexcept;
+
+        /// @brief 生存中のEntityからComponent構成と保存フィールドを取得する
+        /// @param handle 現在のWorld内の対象Entity
+        /// @return 取得したスナップショット。対象が無効か参照できない場合は空
+        static std::optional<SerializedEntity> SerializeEntity(EntityHandle handle);
+
+        /// @brief ルートと子孫のスナップショットを取得する。失敗時は空
+        static std::optional<SerializedEntity> SaveEntity(EntityHandle root);
+
+        /// @brief YAML入出力で参照する登録情報を借用する。ECS未初期化時はnullptr
+        static const ComponentRegistry* GetRegistry() noexcept;
+
+        /// @brief Prefabを即時展開し、ルートHandleを返す。失敗時は無効Handle
+        static EntityHandle Instantiate(const Prefab& prefab);
+        static EntityHandle Instantiate(AssetHandle<Prefab> handle);
+        /// @brief 展開するルートのLocal TRSを指定する
+        static EntityHandle Instantiate(const Prefab& prefab,
+            const Vector3& position, const Quaternion& rotation, const Vector3& scale);
+        static EntityHandle Instantiate(AssetHandle<Prefab> handle,
+            const Vector3& position, const Quaternion& rotation, const Vector3& scale);
 
         /// @brief EntityのActive設定を変更し、変更した場合だけ通知する。
         /// @return 設定を受理した場合はtrue、操作できないEntityはfalse
@@ -146,6 +173,11 @@ namespace Hestia
         void EndFrameImpl();
 
     private:
+        EntityHandle InstantiateImpl(const Prefab& prefab,
+            const Vector3* position, const Quaternion* rotation, const Vector3* scale);
+        EntityHandle InstantiateNode(const SerializedEntity& source, EntityHandle parent,
+            const Vector3* position = nullptr, const Quaternion* rotation = nullptr, const Vector3* scale = nullptr);
+        EntityHandle FailPrefabNode(EntityHandle handle, std::string_view reason);
         /// @brief Initialize中に標準Componentを登録してWorldを初期化する
         bool RegisterECS();
 

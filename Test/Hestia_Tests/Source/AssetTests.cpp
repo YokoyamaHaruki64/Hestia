@@ -14,13 +14,13 @@
 
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -28,13 +28,101 @@
 #include "Asset/AssetLoader.h"
 #include "Asset/AssetStorage.h"
 #include "Asset/AssetSystem.h"
+#include "ECS/Component.h"
+#include "ECS/ECSSystem.h"
 #include "Graphics/GraphicsSystem.h"
+#include "Graphics/MeshRenderer.h"
 #include "Log/Logger.h"
 #include "Log/LogStorage.h"
 #include "Game/Include/GameAssets.h"
+#include "Serialize/EntityYamlWriter.h"
+#include "Transform/TransformData.h"
+#include "Transform/TransformProcess.h"
 
 namespace
 {
+    void WriteAssetFile(const std::filesystem::path& path, std::string_view source)
+    {
+        std::ofstream file(path, std::ios::binary | std::ios::trunc);
+        file << source;
+        file.close();
+        ASSERT_TRUE(file.good());
+    }
+
+    TEST(Prefab, SavesLoadsAndInstantiatesIndependentHierarchies)
+    {
+        using namespace Hestia;
+        const auto directory = std::filesystem::temp_directory_path() /
+            ("HestiaPrefab-" + std::to_string(GetCurrentProcessId()));
+        std::filesystem::create_directory(directory);
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(directory / "Triangle.obj",
+            "o Triangle\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"));
+
+        GraphicsSystem graphics;
+        AssetSystem assets;
+        ECSSystem ecs;
+        ASSERT_TRUE(ecs.Initialize());
+        ASSERT_TRUE(assets.Initialize(&graphics, directory));
+        const auto model = AssetSystem::Load<Prefab>("Triangle.obj");
+        const auto root = ECSSystem::Instantiate(model);
+        ASSERT_TRUE(root.IsValid());
+        const auto& children = ECSSystem::GetComponent<TransformHierarchy>(root)->m_children;
+        ASSERT_EQ(children.size(), 1u);
+        const auto child = children.front();
+        const auto* renderer = ECSSystem::GetComponent<MeshRenderer>(child);
+        ASSERT_TRUE(renderer && renderer->m_mesh);
+        const auto meshRef = AssetSystem::GetReference(renderer->m_mesh->m_handle);
+        ASSERT_TRUE(static_cast<bool>(meshRef.m_guid));
+        ECSSystem::GetComponent<Name>(child)->m_value = "Saved Triangle";
+        ASSERT_TRUE(TransformProcess::SetLocalTRS(*ECSSystem::GetComponent<Transform>(child),
+            *ECSSystem::GetComponent<TransformHierarchy>(child), Vector3(4, 5, 6),
+            Quaternion::Identity(), Vector3::One()));
+
+        const auto snapshot = ECSSystem::SaveEntity(root);
+        ASSERT_TRUE(snapshot);
+        ASSERT_TRUE(EntityYamlWriter::Save(*snapshot, "Saved", directory / "Saved.prefab"));
+        ECSSystem::DestroyEntity(root);
+        ECSSystem::EndFrame();
+        assets.Finalize();
+        ASSERT_TRUE(assets.Initialize(&graphics, directory));
+
+        const auto handle = AssetSystem::Load<Prefab>("Saved.prefab");
+        const auto* prefab = AssetSystem::Get(handle);
+        ASSERT_NE(prefab, nullptr);
+        EXPECT_EQ(prefab->m_name, "Saved");
+        const auto first = ECSSystem::Instantiate(*prefab);
+        const auto second = ECSSystem::Instantiate(handle, Vector3(1, 2, 3),
+            Quaternion(0, 1, 0, 0), Vector3(2, 2, 2));
+        ASSERT_TRUE(first.IsValid() && second.IsValid());
+        EXPECT_NE(first, second);
+        const auto& firstChildren = ECSSystem::GetComponent<TransformHierarchy>(first)->m_children;
+        const auto& secondChildren = ECSSystem::GetComponent<TransformHierarchy>(second)->m_children;
+        ASSERT_EQ(firstChildren.size(), 1u);
+        ASSERT_EQ(secondChildren.size(), 1u);
+        EXPECT_NE(firstChildren.front(), secondChildren.front());
+        for (const auto instance : { first, second })
+        {
+            const auto restored = ECSSystem::GetComponent<TransformHierarchy>(instance)->m_children.front();
+            EXPECT_EQ(ECSSystem::GetComponent<TransformHierarchy>(restored)->m_parent, instance);
+            EXPECT_EQ(ECSSystem::GetComponent<Name>(restored)->m_value, "Saved Triangle");
+            EXPECT_FLOAT_EQ(ECSSystem::GetComponent<Transform>(restored)->m_localPosition.x, 4.0f);
+            const auto* restoredRenderer = ECSSystem::GetComponent<MeshRenderer>(restored);
+            ASSERT_TRUE(restoredRenderer && restoredRenderer->m_mesh);
+            EXPECT_EQ(AssetSystem::GetReference(restoredRenderer->m_mesh->m_handle), meshRef);
+        }
+        EXPECT_FLOAT_EQ(ECSSystem::GetComponent<Transform>(first)->m_localPosition.x, 0.0f);
+        const auto* overrideTransform = ECSSystem::GetComponent<Transform>(second);
+        EXPECT_FLOAT_EQ(overrideTransform->m_localPosition.x, 1.0f);
+        EXPECT_FLOAT_EQ(overrideTransform->m_localRotation.y, 1.0f);
+        EXPECT_FLOAT_EQ(overrideTransform->m_localScale.x, 2.0f);
+
+        std::filesystem::remove(directory / "Saved.prefab.meta");
+        std::filesystem::remove(directory / "Saved.prefab");
+        std::filesystem::remove(directory / "Triangle.obj.meta");
+        std::filesystem::remove(directory / "Triangle.obj");
+        std::filesystem::remove(directory);
+    }
+
     Hestia::Mesh MakeValidMesh()
     {
         Hestia::Mesh mesh;
@@ -127,43 +215,62 @@ namespace
         EXPECT_FALSE(mesh.IsValid());
     }
 
-    TEST(AssetDB, NormalizesAsciiNamesAndSupportsBothInitialTypes)
+    TEST(AssetDB, GeneratesMetadataAndFindsTheSameAssetByPathAndGuid)
     {
+        const auto root = std::filesystem::temp_directory_path()
+            / ("HestiaAssetDB-Generate-" + std::to_string(GetCurrentProcessId()));
+        std::filesystem::create_directory(root);
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "One.PNG", ""));
+
         Hestia::AssetDB db;
-        Hestia::AssetDB::EntryMap entries;
-        entries.emplace("MeshOne", Hestia::AssetInfo{
-            Hestia::AssetType::Mesh, "Meshes/one.mesh" });
-        entries.emplace("TextureOne", Hestia::AssetInfo{
-            Hestia::AssetType::Texture, "Textures/one.png" });
+        ASSERT_TRUE(db.Initialize(root));
+        EXPECT_TRUE(std::filesystem::exists(root / "One.PNG.meta"));
+        const auto* texture = db.FindByPath("one.png");
+        ASSERT_NE(texture, nullptr);
+        EXPECT_EQ(texture->m_type, Hestia::AssetType::Texture);
+        EXPECT_EQ(texture->m_path, "One.PNG");
+        const auto guid = texture->m_guid;
+        EXPECT_EQ(db.FindByGuid(guid), texture);
 
-        ASSERT_TRUE(db.Initialize(std::move(entries)));
+        ASSERT_TRUE(db.Initialize(root));
+        EXPECT_EQ(db.FindByPath("One.PNG"), db.FindByGuid(guid));
+        EXPECT_NE(db.FindByGuid(guid), nullptr);
+        EXPECT_EQ(db.FindByPath("missing.png"), nullptr);
 
-        const Hestia::AssetInfo* meshInfo = db.Find("mEsHoNe");
-        ASSERT_NE(meshInfo, nullptr);
-        EXPECT_EQ(meshInfo->m_type, Hestia::AssetType::Mesh);
-        EXPECT_EQ(meshInfo->m_path, "Meshes/one.mesh");
-
-        const Hestia::AssetInfo* textureInfo = db.Find("textureONE");
-        ASSERT_NE(textureInfo, nullptr);
-        EXPECT_EQ(textureInfo->m_type, Hestia::AssetType::Texture);
-        EXPECT_TRUE(db.Contains("TextureOne"));
+        std::filesystem::remove(root / "One.PNG.meta");
+        std::filesystem::remove(root / "One.PNG");
+        std::filesystem::remove(root);
     }
 
-    TEST(AssetDB, RejectsEmptyAndAsciiCaseCollidingNames)
+    TEST(AssetDB, RejectsInvalidMetadataAndDuplicateGuids)
     {
-        Hestia::AssetDB emptyNameDb;
-        Hestia::AssetDB::EntryMap emptyNameEntries;
-        emptyNameEntries.emplace("", Hestia::AssetInfo{
-            Hestia::AssetType::Mesh, "Meshes/one.mesh" });
-        EXPECT_FALSE(emptyNameDb.Initialize(std::move(emptyNameEntries)));
+        const auto root = std::filesystem::temp_directory_path()
+            / ("HestiaAssetDB-Invalid-" + std::to_string(GetCurrentProcessId()));
+        std::filesystem::create_directory(root);
+        constexpr std::string_view validMeta =
+            "type: Texture\nguid: 2db48ec9-7a6f-49a2-8c79-73639d0a8572\n";
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "One.png", ""));
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "One.png.meta", validMeta));
 
-        Hestia::AssetDB collisionDb;
-        Hestia::AssetDB::EntryMap collisionEntries;
-        collisionEntries.emplace("TextureOne", Hestia::AssetInfo{
-            Hestia::AssetType::Texture, "Textures/one.png" });
-        collisionEntries.emplace("textureone", Hestia::AssetInfo{
-            Hestia::AssetType::Texture, "Textures/two.png" });
-        EXPECT_FALSE(collisionDb.Initialize(std::move(collisionEntries)));
+        Hestia::AssetDB db;
+        ASSERT_TRUE(db.Initialize(root));
+        const auto* existing = db.FindByPath("One.png");
+        ASSERT_NE(existing, nullptr);
+
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "Two.png", ""));
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "Two.png.meta", validMeta));
+        EXPECT_FALSE(db.Initialize(root));
+        EXPECT_EQ(db.FindByPath("One.png"), existing);
+
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "Two.png.meta", "type: [\n"));
+        EXPECT_FALSE(db.Initialize(root));
+        EXPECT_EQ(db.FindByPath("Two.png"), nullptr);
+
+        std::filesystem::remove(root / "Two.png.meta");
+        std::filesystem::remove(root / "Two.png");
+        std::filesystem::remove(root / "One.png.meta");
+        std::filesystem::remove(root / "One.png");
+        std::filesystem::remove(root);
     }
 
     TEST(AssetStorage, ReturnsStableBorrowedAddressAndChecksGeneration)
@@ -241,7 +348,7 @@ namespace
         ASSERT_TRUE(system.Initialize(&graphics));
 
         EXPECT_FALSE(Hestia::AssetSystem::Register<Hestia::Mesh>(
-            "texturetest", new Hestia::Mesh(MakeValidMesh())).IsValid());
+            "Shaders/MatShaders/Unlit.matsh", new Hestia::Mesh(MakeValidMesh())).IsValid());
         EXPECT_FALSE(Hestia::AssetSystem::Register<Hestia::Texture>(
             "ManualTexture", new Hestia::Texture()).IsValid());
         EXPECT_FALSE(Hestia::AssetSystem::Register<Hestia::Mesh>(
@@ -269,6 +376,51 @@ namespace
 
         system.Finalize();
         EXPECT_EQ(Hestia::AssetSystem::Get<Hestia::Mesh>(handle), nullptr);
+    }
+
+    TEST(AssetSystem, GeneratesAndCachesBuiltinMeshesOnFirstLoad)
+    {
+        Hestia::GraphicsSystem graphics;
+        Hestia::AssetSystem system;
+        ASSERT_TRUE(system.Initialize(&graphics));
+
+        EXPECT_FALSE(Hestia::AssetSystem::Register<Hestia::Mesh>(
+            "cUbE", new Hestia::Mesh(MakeValidMesh())).IsValid());
+
+        const auto cube = Hestia::AssetSystem::Load<Hestia::Mesh>("cUbE");
+        ASSERT_TRUE(cube.IsValid());
+        EXPECT_EQ(Hestia::AssetSystem::Load<Hestia::Mesh>("Cube").m_index, cube.m_index);
+        const auto* cubeMesh = Hestia::AssetSystem::Get(cube);
+        ASSERT_NE(cubeMesh, nullptr);
+        EXPECT_EQ(cubeMesh->m_positions.size(), 24u);
+        EXPECT_EQ(cubeMesh->m_indices.size(), 36u);
+
+        const auto plane = Hestia::AssetSystem::Load<Hestia::Mesh>("Plane");
+        const auto* planeMesh = Hestia::AssetSystem::Get(plane);
+        ASSERT_NE(planeMesh, nullptr);
+        EXPECT_EQ(planeMesh->m_positions.size(), 121u);
+        EXPECT_EQ(planeMesh->m_indices.size(), 600u);
+        EXPECT_FLOAT_EQ(planeMesh->m_positions[1].m_position[0] -
+            planeMesh->m_positions[0].m_position[0], 1.0f);
+
+        const auto quad = Hestia::AssetSystem::Load<Hestia::Mesh>("Quad");
+        const auto* quadMesh = Hestia::AssetSystem::Get(quad);
+        ASSERT_NE(quadMesh, nullptr);
+        EXPECT_EQ(quadMesh->m_positions.size(), 4u);
+        EXPECT_EQ(quadMesh->m_indices.size(), 6u);
+
+        const auto sphere = Hestia::AssetSystem::Load<Hestia::Mesh>("Sphere");
+        const auto* sphereMesh = Hestia::AssetSystem::Get(sphere);
+        ASSERT_NE(sphereMesh, nullptr);
+        EXPECT_EQ(sphereMesh->m_positions.size(), 153u);
+        EXPECT_EQ(sphereMesh->m_indices.size(), 768u);
+        for (const auto& vertex : sphereMesh->m_positions)
+        {
+            const auto& position = vertex.m_position;
+            const float radius = std::sqrt(
+                position[0] * position[0] + position[1] * position[1] + position[2] * position[2]);
+            EXPECT_NEAR(radius, 1.0f, 0.00001f);
+        }
     }
 
     TEST(AssetSystem, RejectsNullGraphicsAndSecondActiveInstance)
@@ -346,10 +498,10 @@ namespace
             std::string sourcePath;
             ASSERT_NO_FATAL_FAILURE(WriteShaderSource(source, sourcePath));
 
-            // AssetDB と一致する名前を使い、登録時の名前検証で失敗するだけのケースを除く
-            EXPECT_FALSE(Hestia::AssetLoader<Hestia::MaterialShader>{}.Load("Unlit", sourcePath).IsValid());
+            // ディスクに用意したShaderをLoaderへ直接渡す
+            EXPECT_FALSE(Hestia::AssetLoader<Hestia::MaterialShader>{}.Load({ Hestia::AssetGuid::Parse("18f898be-8721-4ee2-a30e-7386a2bb9c2b"), 0 }, sourcePath).IsValid());
 
-            // 意図した失敗経路を確認してから、同じ名前で正常なファイルをロード
+            // 意図した失敗経路を確認してから、通常のAssetパスから正常なファイルをロード
             std::vector<Hestia::LogEntry> entries;
             m_logStorage.TransferPending(16);
             m_logStorage.Drain(entries, 16);
@@ -359,7 +511,7 @@ namespace
                     && entry.m_message.find(diagnostic) != std::string::npos;
             })) << diagnostic;
 
-            const auto valid = Hestia::AssetSystem::Load<Hestia::MaterialShader>("Unlit");
+            const auto valid = Hestia::AssetSystem::Load<Hestia::MaterialShader>("Shaders/MatShaders/Unlit.matsh");
             const auto* shader = Hestia::AssetSystem::Get(valid);
             ASSERT_NE(shader, nullptr);
             EXPECT_EQ(shader->GetName(), "Hestia/Unlit");
@@ -376,7 +528,7 @@ namespace
     TEST_F(MaterialShaderLoaderTest, LoadsForwardPassAndMergesReflectionAcrossStages)
     {
         // AssetSystem の通常経路でコンパイルし、別表記のロードで同じ Asset を取得
-        const auto handle = Hestia::AssetSystem::Load<Hestia::MaterialShader>("Unlit");
+        const auto handle = Hestia::AssetSystem::Load<Hestia::MaterialShader>("Shaders/MatShaders/Unlit.matsh");
         ASSERT_TRUE(handle.IsValid());
         const auto* shader = Hestia::AssetSystem::Get(handle);
         ASSERT_NE(shader, nullptr);
@@ -384,7 +536,7 @@ namespace
         EXPECT_EQ(shader->GetHandle().m_index, handle.m_index);
         EXPECT_EQ(shader->GetHandle().m_generation, handle.m_generation);
 
-        const auto cached = Hestia::AssetSystem::Load<Hestia::MaterialShader>("uNLIT");
+        const auto cached = Hestia::AssetSystem::Load<Hestia::MaterialShader>("shaders/matshaders/uNLIT.matsh");
         EXPECT_EQ(cached.m_index, handle.m_index);
         EXPECT_EQ(cached.m_generation, handle.m_generation);
         EXPECT_EQ(Hestia::AssetSystem::Get(cached), shader);
@@ -481,7 +633,7 @@ MaterialShader "Test/NormalTangent"
 )", sourcePath));
 
         // どの Pass もバッファの要求は NormalTangent 1件
-        const auto handle = Hestia::AssetLoader<Hestia::MaterialShader>{}.Load("Unlit", sourcePath);
+        const auto handle = Hestia::AssetLoader<Hestia::MaterialShader>{}.Load({ Hestia::AssetGuid::Parse("18f898be-8721-4ee2-a30e-7386a2bb9c2b"), 0 }, sourcePath);
         ASSERT_TRUE(handle.IsValid());
         const auto* shader = Hestia::AssetSystem::Get(handle);
         ASSERT_NE(shader, nullptr);

@@ -55,6 +55,7 @@ namespace Hestia
             EntityHandle m_entity;
             ECSProcessInvoke m_process = nullptr;
             ChangeKind m_kind = ChangeKind::Create;
+            std::vector<ComponentTypeId> m_componentTypes;
         };
 
     public:
@@ -102,6 +103,11 @@ namespace Hestia
         /// @note Process実行中は生成を保留し、反映まではGetEntityとGetComponentがnullptrを返す
         /// @return 成功時はEntityHandle、失敗時は無効Handle
         EntityHandle CreateEntity();
+
+        /// @brief 必須型を含む指定構成でEntityを生成する
+        /// @param componentTypes 必須型を含むすべての登録済みComponent型ID
+        /// @return 生成または予約したHandle。構成が無効な場合は無効Handle
+        EntityHandle CreateEntity(std::span<const ComponentTypeId> componentTypes);
 
         /// @brief Entityを生成取消、または破棄予約する。
         /// @param handle 対象EntityのHandle
@@ -166,6 +172,9 @@ namespace Hestia
         void EndFrame();
 
     private:
+        // 現在のECSSystemと、そのWorldを受け取ったWriterから呼び出す
+        std::optional<SerializedEntity> SerializeEntity(EntityHandle handle) const;
+
 
         bool CanRegisterProcess(ECSProcessInvoke key) const;
         bool RegisterProcessImpl(ECSProcessInvoke key,
@@ -191,11 +200,12 @@ namespace Hestia
 
         Archetype* GetOrCreateArchetype(ArchetypeSignature signature);     // Component型IDの集合をキーにArchetypeを検索し、未登録なら新規作成する
 
-        bool ApplyCreate(EntityHandle handle);                              // 生成待ちのEntityをChunkに構築して生存状態にする
+        EntityHandle RequestCreate(std::span<const ComponentTypeId> componentTypes);
+        bool ApplyCreate(EntityHandle handle, std::vector<ComponentTypeId> componentTypes);
+        bool ConstructEntity(EntityHandle handle, EntitySlot& slot, Archetype& archetype);
 
-        // 保留中の構造変更Requestを反映する
-        // AddProcessまたはRemoveProcessの構造変更を反映する
-        void ApplyChange(const ChangeRequest& request); 
+        // 構造変更要求を反映し、生成時はComponent型ID列の所有権を引き取る
+        void ApplyChange(ChangeRequest request);
 
         // ApplyChangeのComponent追加・削除処理
         void ApplyComponentChange(

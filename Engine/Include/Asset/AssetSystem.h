@@ -1,7 +1,7 @@
 ﻿/*=============================================================================
 
  File   : AssetSystem.h
- Desc   : Asset 名解決、ロード、CPU 所有、Graphics への登録を調停する。
+ Desc   : Asset参照を解決し、ロードとCPU・GPUへの登録をつなぐ。
 
 ------------------------------------------------------------------------------
 
@@ -42,19 +42,28 @@ namespace Hestia
 
         /// @brief GraphicsSystem を借用して Asset 管理を開始する。
         /// @param graphics 本 System より長く生存する非所有 GraphicsSystem。未初期化でも受理する。
+        /// @param assetsRoot 元ファイルと.metaを走査するディレクトリ
         /// @return 初期化成功: true / null Graphics または別の稼働中 instance: false。
         /// @note Graphics が未初期化の場合も CPU Cache を利用できる。GPU Upload は失敗する。
-        bool Initialize(GraphicsSystem* graphics);
+        bool Initialize(GraphicsSystem* graphics, const std::filesystem::path& assetsRoot = "../Assets");
 
         /// @brief Asset を破棄して singleton 接続を解除する。
         void Finalize();
 
-        /// @brief DB に登録された Asset をロードし、名前 Cache を再利用する。
-        /// @param name ASCII 英字の大小を区別しない Asset 名。
+        /// @brief Assetルート相対パスから主Assetをロードする
+        /// @param path 拡張子付きの相対パス。組み込み・手動登録には登録名を使用
         /// @return ロード済み Handle。未登録・型不一致・ロード失敗時は無効 Handle。
         /// @note Material はメモリ上で登録済みの Asset を検索する。
         template<class T>
-        static AssetHandle<T> Load(std::string_view name);
+        static AssetHandle<T> Load(std::string_view path);
+
+        /// @brief 永続参照から主AssetまたはSubAssetをロードする
+        template<class T>
+        static AssetHandle<T> Load(const AssetRef& ref);
+
+        /// @brief 保存に使う永続参照を取得する。参照がないAssetは空
+        template<class T>
+        static AssetRef GetReference(AssetHandle<T> handle);
 
         /// @brief Handle に対応する Asset を借用する。
         /// @param handle 取得する Asset の Handle。
@@ -75,15 +84,14 @@ namespace Hestia
 
     private:
         template<class T>
-        AssetHandle<T> LoadImpl(std::string_view name);
+        AssetHandle<T> LoadFile(const AssetRef& ref, const AssetInfo* info);
 
         template<class T>
-        AssetHandle<T> RegisterImpl(
-            std::string_view name, std::unique_ptr<T> asset, bool databaseOrigin);
+        AssetHandle<T> RegisterNamed(std::string_view name, std::unique_ptr<T> asset);
 
         template<class T>
         static AssetHandle<T> RegisterFromLoader(
-            std::string_view name, std::unique_ptr<T> asset);
+            const AssetRef& ref, std::unique_ptr<T> asset);
 
         template<class T>
         AssetLoader<T>& GetLoader();
@@ -98,7 +106,7 @@ namespace Hestia
 
         AssetDB m_assetDB;
         std::tuple<
-            AssetLoader<Mesh>,
+            AssetLoader<Prefab>,
             AssetLoader<Texture>,
             AssetLoader<MaterialShader>
         > m_loaders;
@@ -107,7 +115,8 @@ namespace Hestia
             AssetStorage<Mesh>,
             AssetStorage<Texture>,
             AssetStorage<MaterialShader>,
-            AssetStorage<Material>
+            AssetStorage<Material>,
+            AssetStorage<Prefab>
         > m_storages;
 
         GraphicsSystem* m_graphics = nullptr;

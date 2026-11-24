@@ -23,8 +23,10 @@
 #include <type_traits>
 #include <utility>
 #include <unordered_map>
+#include <vector>
 
 #include "Log/Logger.h"
+#include "Serialize/SerializeFields.h"
 
 namespace Hestia
 {
@@ -39,6 +41,7 @@ namespace Hestia
         void (*construct)(void*) = nullptr;
         void (*destroy)(void*) noexcept = nullptr;
         void (*moveConstruct)(void*, void*) noexcept = nullptr;
+        std::vector<SerializeFieldDescriptor> serializeFields;
     };
 
     /// @brief 登録名とComponent型の対応および寿命操作を所有する。
@@ -106,6 +109,21 @@ namespace Hestia
                     ::new (destination) Component(std::move(*static_cast<Component*>(source)));
                 };
 
+                // コンパイル時に組み立てた最終リストから、登録時に各フィールドの記述子を構築する
+                if constexpr (requires { Component::SerializeFields(); })
+                {
+                    constexpr auto fields = Component::SerializeFields();
+                    // std::applyはtuple内の構築ラムダをmakeField...に展開し、この処理を1回呼ぶ
+                    std::apply([&info](const auto&... makeField)
+                    {
+                        // sizeof...は構築ラムダの個数。先にvectorの容量を確保する
+                        info.serializeFields.reserve(sizeof...(makeField));
+
+                        // カンマの畳み込みで、各makeField()の結果を宣言順に追加する
+                        (info.serializeFields.push_back(makeField()), ...);
+                    }, fields.fields);
+                }
+
                 return Store<Component>(std::move(info));
             }
         }
@@ -126,6 +144,10 @@ namespace Hestia
         /// @param id 検索するComponent型ID。
         /// @return 登録情報への非所有ポインタ。未知のIDではnullptr。
         const ComponentInfo* GetInfo(ComponentTypeId id) const;
+
+        /// @brief 登録名が一致するComponentの情報を取得する
+        /// @return 非所有ポインタ。未登録ならnullptr
+        const ComponentInfo* FindInfo(std::string_view name) const;
 
         /// @brief 登録をすべて解除する。
         void Finalize();

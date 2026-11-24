@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "Asset/AssetHandle.h"
+#include "Common/Include/StringUtils.h"
 
 namespace Hestia
 {
@@ -38,7 +39,7 @@ namespace Hestia
             if (name.empty())
                 return {};
 
-            const auto found = m_nameToHandle.find(NormalizeName(name));
+            const auto found = m_nameToHandle.find(ToLowerAscii(name));
             if (found == m_nameToHandle.end())
                 return {};
 
@@ -51,33 +52,29 @@ namespace Hestia
         /// @return 登録成功時の Handle。失敗時は無効 Handle。
         AssetHandle<T> Register(std::string_view name, std::unique_ptr<T> asset)
         {
-            if (name.empty() || !asset)
+            if (name.empty())
                 return {};
 
-            const std::string normalizedName = NormalizeName(name);
-            if (m_nameToHandle.contains(normalizedName))
-                return {};
+            return RegisterSlot(m_nameToHandle, ToLowerAscii(name), std::move(asset), {});
+        }
 
-            if (m_slots.size() >= static_cast<std::size_t>(UINT32_MAX))
-                return {};
+        /// @brief 永続参照からロード済みHandleを検索する
+        AssetHandle<T> Find(const AssetRef& ref) const
+        {
+            const auto found = m_refToHandle.find(ref);
+            return found == m_refToHandle.end() ? AssetHandle<T>{} : found->second;
+        }
 
-            const AssetHandle<T> handle{
-                static_cast<uint32_t>(m_slots.size()), 1 };
-            asset->m_handle = handle;
+        /// @brief Loaderが解決した永続参照でCPU Assetを登録する
+        AssetHandle<T> Register(const AssetRef& ref, std::unique_ptr<T> asset)
+        {
+            return RegisterSlot(m_refToHandle, ref, std::move(asset), ref);
+        }
 
-            Slot slot;
-            slot.m_asset = std::move(asset);
-            slot.m_generation = handle.m_generation;
-            m_slots.push_back(std::move(slot));
-
-            const auto [entry, inserted] = m_nameToHandle.emplace(normalizedName, handle);
-            if (!inserted)
-            {
-                m_slots.pop_back();
-                return {};
-            }
-
-            return handle;
+        /// @brief 保存時に使う永続参照を取得する。名前登録のAssetは空
+        AssetRef GetReference(AssetHandle<T> handle) const
+        {
+            return Get(handle) != nullptr ? m_slots[handle.m_index].m_ref : AssetRef{};
         }
 
         /// @brief Index と Generation が一致する Asset を借用する。
@@ -131,22 +128,27 @@ namespace Hestia
         {
             std::unique_ptr<T> m_asset;
             uint32_t m_generation = 1;
+            AssetRef m_ref;
         };
 
-        static std::string NormalizeName(std::string_view name)
+        template<class Map, class Key>
+        AssetHandle<T> RegisterSlot(Map& index, Key key, std::unique_ptr<T> asset, const AssetRef& ref)
         {
-            std::string normalized(name);
-            for (char& character : normalized)
-            {
-                if (character >= 'A' && character <= 'Z')
-                    character += 'a' - 'A';
-            }
+            if (!asset || m_slots.size() >= static_cast<std::size_t>(UINT32_MAX))
+                return {};
 
-            return normalized;
+            const AssetHandle<T> handle{ static_cast<uint32_t>(m_slots.size()), 1 };
+            if (!index.emplace(std::move(key), handle).second)
+                return {};
+
+            asset->m_handle = handle;
+            m_slots.push_back({ std::move(asset), handle.m_generation, ref });
+            return handle;
         }
 
         std::vector<Slot> m_slots;
         std::unordered_map<std::string, AssetHandle<T>> m_nameToHandle;
+        std::unordered_map<AssetRef, AssetHandle<T>, AssetRef::Hash> m_refToHandle;
     };
 }
 

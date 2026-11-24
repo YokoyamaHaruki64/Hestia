@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <vector>
 #include "Common/Include/Math/Vector4.h"
+#include "Serialize/SerializeFields.h"
 
 namespace Hestia
 {
@@ -38,6 +39,14 @@ namespace Hestia
         const Mesh* m_mesh = nullptr;
         std::vector<const Material*> m_materials; // SubMeshのMaterialSlotに対応
         Vector4 m_instanceColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+
+        SERIALIZE_FIELDS(
+            ("mesh", &MeshRenderer::GetMeshReference, &MeshRenderer::SetMeshReference)
+        )
+
+    private:
+        static AssetRef GetMeshReference(EntityHandle entity);
+        static bool SetMeshReference(EntityHandle entity, const AssetRef& ref);
     };
 
     class MeshRendererProcess

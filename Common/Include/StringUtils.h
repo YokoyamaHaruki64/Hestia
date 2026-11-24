@@ -14,10 +14,37 @@
 #define _STRING_UTILS_H_
 
 #include <cstdint>
+#include <filesystem>
+#include <string>
 #include <string_view>
 
 namespace Hestia
 {
+    /// @brief ASCII英大文字だけを小文字化する
+    inline std::string ToLowerAscii(std::string_view value)
+    {
+        std::string result(value);
+        for (char& c : result)
+        {
+            if (c >= 'A' && c <= 'Z')
+                c += 'a' - 'A';
+        }
+        return result;
+    }
+
+    /// @brief パスを区切り文字が / のUTF-8文字列に変換する
+    inline std::string PathToUtf8(const std::filesystem::path& path)
+    {
+        const auto value = path.generic_u8string();
+        return { value.begin(), value.end() };
+    }
+
+    /// @brief UTF-8文字列からファイルシステムのパスを作る
+    inline std::filesystem::path PathFromUtf8(std::string_view value)
+    {
+        return std::filesystem::path(std::u8string(value.begin(), value.end()));
+    }
+
     /// @brief UTF-8 byte列を FNV-1a 64bit でハッシュする
     /// @param value ハッシュする UTF-8 byte列
     /// @return 64bit ハッシュ値
