@@ -51,7 +51,7 @@ EngineはTime更新後に各phaseを呼ぶ。FixedUpdateでは同名phase、Fram
 
 Process実行中、構造変更の適用中、EndFrameの破棄処理中は即時展開できないため、無効Handleを返す。展開途中で失敗した場合は生成済みの階層を破棄予約する。
 
-MeshRendererの保存対象はファイル由来のMesh参照。組み込みMeshや手動登録Meshは永続参照を持たず、保存値は `null` になる。MaterialSlotへのMaterial設定は描画側で行う。往復テストでは親子関係・名前・Local TRS・Mesh参照の復元と、2回展開した階層の独立性を確認済み。 [MeshRendererAPI.cpp](../../../Engine/Source/API/ECSProcess/MeshRendererAPI.cpp) ・ [AssetTests.cpp](../../../Test/Hestia_Tests/Source/AssetTests.cpp) ・ [Prefabの設計](../../Design/Serialize/ComponentSerialization.md)
+MeshRendererはMesh参照と、Slot順のMaterial参照を保存する。モデル由来のMeshとMaterialは `{guid, localId}` で記録し、未設定の参照や手動登録の資源は `null` になる。往復テストでは親子関係・名前・Local TRS・Mesh参照の復元と、2回展開した階層の独立性を確認済み。 [MeshRendererAPI.cpp](../../../Engine/Source/API/ECSProcess/MeshRendererAPI.cpp) ・ [AssetTests.cpp](../../../Test/Hestia_Tests/Source/AssetTests.cpp) ・ [Prefabの設計](../../Design/Serialize/ComponentSerialization.md)
 
 ## エラーと未実装範囲
 

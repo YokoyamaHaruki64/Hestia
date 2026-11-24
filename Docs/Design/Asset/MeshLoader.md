@@ -12,7 +12,13 @@ FBX、OBJ、glTF 2.0（`.gltf`、`.glb`）をAssimp 6.0.5のC APIで読む。OBJ
 - ノードが複数の `aiMesh` を参照する場合は、頂点オフセットを加えて1つのMeshへまとめ、各 `aiMesh` の連続したIndex範囲をSubMeshとする。同じ元MaterialのSubMeshは同じSlotを使い、使用する元Materialを元の番号順にSlotへ割り当てる。
 - 生成したMeshごとに `localId` と内部名を持つ。内部名はノードパスの `/` を `_` にした名前とする。ノード名が空なら参照する `aiMesh` の名前を候補にする。再インポートの照合は変換前のノードパスを使う。同じ内部名を生成する別パスも、別々のIDで扱う。
 
-主Assetは `Assets::Load<Prefab>("Models/Chair.fbx")`、個別Meshは `Assets::Load<Mesh>(AssetRef{guid, localId})` で取得する。Material・Textureの自動生成と、スキニング・アニメーション・モーフの再生は後続作業とする。
+主Assetは `Assets::Load<Prefab>("Models/Chair.fbx")`、個別Meshは `Assets::Load<Mesh>(AssetRef{guid, localId})` で取得する。Textureの取り込みと、スキニング・アニメーション・モーフの再生は後続作業とする。
+
+## Materialの共有
+
+Import時に使用する `aiMaterial` ごとに [DefaultPBR](../../../Assets/Shaders/MatShaders/DefaultPBR.matsh) のMaterialを生成する。同じモデル内で `mMaterialIndex` が同じSubMeshは、ノードをまたいで同じMaterialを参照する。ベースカラーはAssimpのBase Color、未設定ならDiffuse Colorを使う。MetallicとRoughnessは元データにある値を使い、取得できない項目はシェーダーの既定値を使う。既定シェーダーを取得できないAssetルートでは、警告を出してPrefabとMeshを生成する。
+
+Prefabの `MeshRenderer` は `materials` にMaterialの `AssetRef` をSlot順で保存する。YAMLから復元するときも、同じ参照は同じMaterialへ解決する。
 
 ## 座標と頂点属性
 

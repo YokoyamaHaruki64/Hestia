@@ -46,7 +46,7 @@ guid: 2db48ec9-7a6f-49a2-8c79-73639d0a8572
 | `AssetGuid`                | GUIDを保持する値型。YAMLの入出力時に文字列へ変換する                                                                |
 | `AssetRef`                 | `{guid, localId}` を持つ永続参照。主Assetは `localId: 0`、SubAssetは正の整数で指定する                             |
 | `AssetSystem` / `AssetAPI` | `Load<T>(path)` と `Load<T>(AssetRef)` を提供する。パス指定は主Assetの `AssetRef` に解決し、同じロード経路で型付きHandleを返す |
-| 型別Loader / Model Importer  | DBで解決した元ファイルを読み、生成したCPU Assetを `AssetRef` で登録する。Model Importerは1回の読込でPrefabと個別Meshを生成する       |
+| 型別Loader / Model Importer  | DBで解決した元ファイルを読み、生成したCPU Assetを `AssetRef` で登録する。Model ImporterはPrefab・個別Mesh・Materialを生成する |
 | `AssetStorage<T>`          | ファイル由来のAssetは `AssetRef → AssetHandle<T>` でキャッシュする。組み込みMeshと手動登録には名前の索引を使う                    |
 | Prefab / Scene             | 保存時はロード済みHandleに対応する `AssetRef` を記録し、復元時に型付きHandleへ解決する。保存用の対応はStorageのスロットから取得する             |
 | Graphics                   | `AssetHandle<T>` のIndexを添字としてGPU資源を取得し、Generationを照合する                                        |
@@ -55,21 +55,23 @@ guid: 2db48ec9-7a6f-49a2-8c79-73639d0a8572
 
 ## モデルのSubAsset ID
 
-モデルは主AssetとしてPrefabを持ち、Meshを参照するノードごとに個別Meshを持つ。Importerは変換成功時に、元のノードパスとIDの対応、および次に発行するIDを `.meta` に保存する。初回の割り当ては `1` から始める。
+モデルは主AssetとしてPrefabを持ち、個別Meshと使用するMaterialをSubAssetとして保持する。Importerは変換成功時に、各SubAssetのキーとIDの対応、および次に発行するIDを `.meta` に保存する。初回の割り当ては `1` から始め、同じモデル内の各型で採番を共有する。
 以下はモデルファイルを読みこんだ際の例。
 
 ```yaml
 type: Model
 guid: 1c6df791-0fd5-4ddf-9c55-384c61557352
-nextLocalId: 3
+nextLocalId: 4
 subAssets:
   "Chair/Left/Leg": 1
   "Chair/Right/Leg": 2
+materials:
+  "name:Wood": 3
 ```
 
-- 同じノードパスは既存の `localId` を引き継ぐ。新規パスには `nextLocalId` を割り当て、次の値へ進める。
+- 同じノードパスは既存の `localId` を引き継ぐ。Materialは一意な名前を `name:` キーで引き継ぎ、名前が空または重複している場合は `index:` キーでAssimpのMaterial番号を使う。この場合、番号が変わる再出力では対応が変わり得る。新しいキーには `nextLocalId` を割り当て、次の値へ進める。
 - 削除したノードの対応は取り除き、発行済みIDは再利用しない。既存のメタデータでは各IDの一意性・正値と、`nextLocalId` が割り当て済みIDより大きいことを検証する。
-- ノードパスとIDの対応が同じ場合は `.meta` を書き直さない。頂点やTransformだけの変更、ノードの並べ替えは対応に影響しない。
+- MeshとMaterialの対応が同じ場合は `.meta` を書き直さない。頂点やTransformだけの変更、ノードの並べ替えはMeshのIDに影響しない。
 - モデルの初回ロードで元ファイルから変換し、同じ起動中の再ロードではメモリのキャッシュを使う。将来のファイルキャッシュは `Cache/Assets/<guid>/<localId>.mesh` のような名前にできる。インポート入力が変わったら同じキーでキャッシュの内容を再生成する。
 
 ## 移動・改名・更新・置き換え

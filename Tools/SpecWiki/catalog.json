@@ -57,7 +57,7 @@
     },
     "Implementation/ECS/Process.md": { "order": 30, "label": "Process実行と型", "summary": "要求Componentの照合、Chunk単位の呼び出し、実行順と変更反映を確認する。" },
     "Implementation/ECS/DevelopmentGuide.md": { "order": 40, "label": "開発手引き", "summary": "ComponentとProcessの定義・登録から、公開APIとFacadeを介したGame側の操作までの開発手順。" },
-    "Implementation/Asset/README.md": { "summary": ".metaとGUIDによる管理、モデルからのPrefabとMesh生成、CPU登録とGPU転送。", "diagrams": ["asset"] },
+    "Implementation/Asset/README.md": { "summary": ".metaとGUIDによる管理、モデルからのPrefab・Mesh・DefaultPBR Materialの生成。", "diagrams": ["asset"] },
     "CodingStandard.md": { "category": "guides", "order": 10, "summary": "名前、コメント、処理構成、includeパスの規約。" },
     "CodingExamples.md": { "category": "guides", "order": 20, "summary": "LogProcessを題材にしたヘッダー・実装・コメントの記述例。" },
     "BuildTroubleshooting.md": { "category": "guides", "order": 30, "summary": "MSVCのProgram Database Manager不整合に関する対応記録。" },

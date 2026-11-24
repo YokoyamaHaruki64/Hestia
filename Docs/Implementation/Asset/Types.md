@@ -22,7 +22,7 @@
 | `AssetDB` | 元ファイルと `.meta` を走査し、GUIDと正規化した相対パスの索引を作る | 同上 |
 | `AssetStorage<T>` | `AssetRef` と名前の索引を持ち、CPU実体を所有する。GetでIndexとGenerationを照合 | [AssetStorage.h](../../../Engine/Include/Asset/AssetStorage.h) |
 | `AssetStorage<T>::Slot` | `unique_ptr`、Generation、保存用の `AssetRef` を保持する内部要素 | 同上 |
-| `AssetLoader<Prefab>` | モデルからPrefabと個別Meshを生成する。 `.prefab` の場合はYAMLからPrefabを構築する | [MeshLoader.cpp](../../../Engine/Source/Asset/MeshLoader.cpp) ・ [PrefabLoader.cpp](../../../Engine/Source/Serialize/PrefabLoader.cpp) |
+| `AssetLoader<Prefab>` | モデルからPrefab・個別Mesh・Materialを生成する。 `.prefab` の場合はYAMLからPrefabを構築する | [MeshLoader.cpp](../../../Engine/Source/Asset/MeshLoader.cpp) ・ [PrefabLoader.cpp](../../../Engine/Source/Serialize/PrefabLoader.cpp) |
 | `AssetLoader<Texture>` | Graphicsを借用し、WICデコード・変換・CPU登録・GPU転送を担当 | [AssetLoader.cpp](../../../Engine/Source/Asset/AssetLoader.cpp) |
 | `AssetLoader<MaterialShader>` | .matshを読み込み、Parser・Compilerを経てTextureを解決し登録 | [MaterialShaderLoader.cpp](../../../Engine/Source/Asset/MaterialShaderLoader.cpp) |
 | `MaterialShader` / `Material` | Shaderが共通のProperty定義とPassを持ち、Materialが型付きの値を持つ | [MaterialShaderの実装仕様](../Graphics/MaterialShader.md) |
