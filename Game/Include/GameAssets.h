@@ -19,16 +19,24 @@ namespace HestiaGame
 {
     namespace Detail { class GameRuntime; }
 
-    /// @brief GameRuntime に接続された Mesh と Texture の操作窓口。
+    /// @brief GameRuntimeに接続したAsset操作のFacade
     class Assets
     {
     public:
-        /// @brief Asset 名からロードする。失敗・未接続時は無効 Handle。
+        /// @brief Assetルート相対パスまたは組み込み名からロードする
         template<class T>
         static Hestia::AssetHandle<T> Load(std::string_view name)
         {
             const auto load = s_api != nullptr ? s_api->GetOperations<T>().Load : nullptr;
             return load != nullptr ? load(name) : Hestia::AssetHandle<T>{};
+        }
+
+        /// @brief 永続参照からロードする。失敗・未接続時は無効Handle
+        template<class T>
+        static Hestia::AssetHandle<T> Load(const Hestia::AssetRef& ref)
+        {
+            const auto load = s_api != nullptr ? s_api->GetOperations<T>().LoadByReference : nullptr;
+            return load != nullptr ? load(ref) : Hestia::AssetHandle<T>{};
         }
 
         /// @brief Handle に対応する Asset を借用する。失敗・未接続時は nullptr。

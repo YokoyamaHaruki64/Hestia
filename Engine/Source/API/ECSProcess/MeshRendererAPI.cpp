@@ -32,6 +32,61 @@ namespace Hestia
         }
     }
 
+    AssetRef MeshRenderer::GetMeshReference(EntityHandle entity)
+    {
+        const auto* renderer = ResolveMeshRenderer(entity);
+        return renderer != nullptr && renderer->m_mesh != nullptr
+            ? AssetSystem::GetReference(renderer->m_mesh->m_handle) : AssetRef{};
+    }
+
+    bool MeshRenderer::SetMeshReference(EntityHandle entity, const AssetRef& ref)
+    {
+        auto* renderer = ResolveMeshRenderer(entity);
+        if (renderer == nullptr)
+            return false;
+
+        // 参照が未設定なら解除し、解決失敗なら現在のMeshを保つ
+        const auto* mesh = ref.m_guid ? AssetSystem::Get(AssetSystem::Load<Mesh>(ref)) : nullptr;
+        if (ref.m_guid && mesh == nullptr)
+            return false;
+
+        renderer->m_mesh = mesh;
+        return true;
+    }
+
+    std::vector<AssetRef> MeshRenderer::GetMaterialReferences(EntityHandle entity)
+    {
+        std::vector<AssetRef> refs;
+        const auto* renderer = ResolveMeshRenderer(entity);
+        if (!renderer)
+            return refs;
+
+        refs.reserve(renderer->m_materials.size());
+        for (const auto* material : renderer->m_materials)
+            refs.push_back(material ? AssetSystem::GetReference(material->GetHandle()) : AssetRef{});
+        return refs;
+    }
+
+    bool MeshRenderer::SetMaterialReferences(EntityHandle entity, const std::vector<AssetRef>& refs)
+    {
+        auto* renderer = ResolveMeshRenderer(entity);
+        if (!renderer)
+            return false;
+
+        // 未設定Slotを保持し、全参照が解決してから配列を反映する
+        std::vector<const Material*> materials;
+        materials.reserve(refs.size());
+        for (const auto& ref : refs)
+        {
+            const auto* material = ref.m_guid ? AssetSystem::Get(AssetSystem::Load<Material>(ref)) : nullptr;
+            if (ref.m_guid && !material)
+                return false;
+            materials.push_back(material);
+        }
+        renderer->m_materials = std::move(materials);
+        return true;
+    }
+
     MeshRendererAPI MeshRendererAPIImpl::CreateAPI() noexcept
     {
         return {

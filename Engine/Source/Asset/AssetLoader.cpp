@@ -1,7 +1,7 @@
 ﻿/*=============================================================================
 
  File   : AssetLoader.cpp
- Desc   : Mesh / Texture Loader の初期化とロード境界を定義する。
+ Desc   : Texture Loader の初期化とロード境界を定義する。
 
 ------------------------------------------------------------------------------
 
@@ -11,6 +11,7 @@
 =============================================================================*/
 
 #include "pch.h"
+#include "Common/Include/StringUtils.h"
 #include "Asset/AssetLoader.h"
 
 #include <filesystem>
@@ -33,23 +34,11 @@ namespace Hestia
         return true;
     }
 
-    AssetHandle<Mesh> AssetLoader<Mesh>::Load(std::string_view name, std::string_view path)
-    {
-        Logger::Error("Mesh file loading is not supported");
-        return {};
-    }
-
     AssetHandle<Texture> AssetLoader<Texture>::Load(
-        std::string_view name, std::string_view path)
+        const AssetRef& ref, std::string_view path)
     {
-        if (m_graphics == nullptr || name.empty() || path.empty())
-        {
-            Logger::Error("Texture loading requires an initialized loader, name, and path");
-            return {};
-        }
-
         // 画像を CPU 上でデコード
-        const std::filesystem::path filePath{ std::string(path) };
+        const auto filePath = PathFromUtf8(path);
         DirectX::TexMetadata metadata = {};
         DirectX::ScratchImage decodedImage;
         const HRESULT loadResult = DirectX::LoadFromWICFile(
@@ -111,7 +100,7 @@ namespace Hestia
 
         const TextureDesc textureDesc = texture->m_desc;
         const AssetHandle<Texture> handle = AssetSystem::RegisterFromLoader(
-            name, std::move(texture));
+            ref, std::move(texture));
         if (!handle.IsValid())
             return {};
 

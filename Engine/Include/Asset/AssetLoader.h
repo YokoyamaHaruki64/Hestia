@@ -21,20 +21,22 @@ namespace Hestia
 {
     class GraphicsSystem;
     class MaterialShader;
+    class AssetDB;
+    struct AssetInfo;
 
     template<class T>
     class AssetLoader;
 
-    /// @brief Mesh Asset のロード境界。
+    /// @brief モデルをPrefabと個別Meshへ変換する
     template<>
-    class AssetLoader<Mesh>
+    class AssetLoader<Prefab>
     {
     public:
-        /// @brief 指定情報から Mesh をロードする。
-        /// @param name 登録する Asset 名。
-        /// @param path Mesh ファイルへの Path。
-        /// @return 登録済み Handle。初期実装では未対応のため無効 Handle。
-        AssetHandle<Mesh> Load(std::string_view name, std::string_view path);
+        /// @brief 同じファイルに属するPrefabとMeshを一度に登録する
+        AssetHandle<Prefab> Load(const AssetInfo& info, const AssetDB& database);
+
+        /// @brief 保存済みPrefabを読み込み、主Assetとして登録する
+        AssetHandle<Prefab> LoadYaml(const AssetInfo& info, const AssetDB& database);
     };
 
     /// @brief Texture Asset のデコードと GPU Upload 境界。
@@ -45,11 +47,11 @@ namespace Hestia
         bool Initialize(GraphicsSystem* graphics);
 
         /// @brief 画像をデコードし CPU Texture と GPU Texture を登録する。
-        /// @param name 登録する Asset 名。
+        /// @param ref 登録するAssetの永続参照
         /// @param path 画像ファイルへの Path。
         /// @return CPU 登録済み Handle。読込または登録失敗時は無効 Handle。
         /// @note GPU Upload 失敗時も CPU Asset を保持し、有効 Handle を返す。
-        AssetHandle<Texture> Load(std::string_view name, std::string_view path);
+        AssetHandle<Texture> Load(const AssetRef& ref, std::string_view path);
 
     private:
         GraphicsSystem* m_graphics = nullptr;
@@ -61,10 +63,10 @@ namespace Hestia
     {
     public:
         /// @brief AssetDB の情報で .matsh をロードする。
-        /// @param name 登録する AssetDB の名前。
+        /// @param ref 登録するAssetの永続参照
         /// @param path .matsh ファイルへの UTF-8 パス。
         /// @return CPU Asset の Handle。読込、解析、コンパイル、登録失敗時は無効。
-        AssetHandle<MaterialShader> Load(std::string_view name, std::string_view path);
+        AssetHandle<MaterialShader> Load(const AssetRef& ref, std::string_view path);
     };
 }
 

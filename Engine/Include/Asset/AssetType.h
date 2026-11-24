@@ -15,9 +15,11 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "AssetHandle.h"
+#include "Engine/Include/Serialize/SerializedEntity.h"
 
 namespace Hestia
 {
@@ -26,7 +28,17 @@ namespace Hestia
     {
         Mesh,
         Texture,
-        MaterialShader
+        MaterialShader,
+        Model,
+        Prefab
+    };
+
+    /// @brief Entity階層とComponentの保存データを保持するAsset
+    struct Prefab
+    {
+        AssetHandle<Prefab> m_handle;
+        std::string m_name;
+        SerializedEntity m_root;
     };
 
     /// @brief Mesh の頂点位置。
@@ -96,6 +108,7 @@ namespace Hestia
     struct Mesh
     {
         AssetHandle<Mesh> m_handle;
+        std::string m_name;
         std::vector<PositionVertex> m_positions;
         std::vector<NormalTangentVertex> m_normalTangents;
         std::vector<PrimaryTexCoordVertex> m_primaryTexCoords;

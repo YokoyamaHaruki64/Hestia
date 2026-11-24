@@ -258,7 +258,7 @@ namespace
         RecordProperty("target", "AssetAPI texture load, mesh registration, GraphicsSystem submit and fallback draws");
 
         const auto& textures = m_assetAPI.GetOperations<Hestia::Texture>();
-        const auto textureHandle = textures.Load("TextureTest");
+        const auto textureHandle = textures.Load("Textures/texture_test_2048_rgba.png");
         ASSERT_TRUE(textureHandle.IsValid());
         ASSERT_NE(textures.Get(textureHandle), nullptr);
 
@@ -269,7 +269,8 @@ namespace
         ASSERT_NE(mesh, nullptr);
 
         // 実行時に Sprite をロードし、各フレームで同じ Material の Texture を切り替える。
-        auto* shader = Hestia::AssetSystem::Get(Hestia::AssetSystem::Load<Hestia::MaterialShader>("Sprite"));
+        auto* shader = Hestia::AssetSystem::Get(
+            Hestia::AssetSystem::Load<Hestia::MaterialShader>("Shaders/MatShaders/Sprite.matsh"));
         ASSERT_NE(shader, nullptr);
         auto materialAsset = std::make_unique<Hestia::Material>();
         materialAsset->SetShader(shader);
@@ -452,7 +453,8 @@ MaterialShader "Test/ForwardSubMesh"
         Hestia::GraphicsSystem graphics;
         Hestia::AssetSystem assets;
         ASSERT_TRUE(assets.Initialize(&graphics));
-        auto* shader = Hestia::AssetSystem::Get(Hestia::AssetSystem::Load<Hestia::MaterialShader>("Sprite"));
+        auto* shader = Hestia::AssetSystem::Get(
+            Hestia::AssetSystem::Load<Hestia::MaterialShader>("Shaders/MatShaders/Sprite.matsh"));
         ASSERT_NE(shader, nullptr);
         auto materialAsset = std::make_unique<Hestia::Material>();
         materialAsset->SetShader(shader);

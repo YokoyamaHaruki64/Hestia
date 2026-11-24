@@ -7,12 +7,13 @@
     { "id": "time", "parent": "runtime", "title": "Time", "description": "通常・固定更新の時間値、時間倍率と非所有API。" },
     { "id": "ecs", "parent": "runtime", "title": "ECS", "description": "World、Archetype、Chunk、構造変更とEntityの寿命。" },
     { "id": "ecs-processes", "parent": "runtime", "title": "ECSProcess", "description": "個別のProcessが扱うComponent、更新順、公開操作の仕様。" },
-    { "id": "asset", "parent": "runtime", "title": "Asset", "description": "名前解決、CPU側の所有、画像ロードとGPU転送。" },
+    { "id": "asset", "parent": "runtime", "title": "Asset", "description": ".metaによる索引、Asset参照の解決、CPU側の所有とGPU転送。" },
     { "id": "graphics", "parent": "runtime", "title": "Graphics・Shader", "description": "描画提出、DX12資源と同期、Shaderとのデータ受け渡し。" },
     { "id": "log", "parent": "runtime", "title": "Log", "description": "Logger、二つのpending、処理スレッドと出力の寿命。" },
     { "id": "common", "parent": "runtime", "title": "共通ライブラリ", "description": "数学・色・曲線・乱数の型と演算規約。" },
     { "id": "guides", "title": "開発ガイド・観測記録", "description": "コーディング規約、ビルド時の対応と性能観測の記録。" },
-    { "id": "design", "title": "設計参考資料", "description": "設計の背景、資料の出典と未確定事項。現在の実装仕様とは区別して読む。" }
+    { "id": "design", "title": "設計参考資料", "description": "設計の背景、資料の出典と未確定事項。現在の実装仕様とは区別して読む。" },
+    { "id": "legacy", "title": "旧設計", "description": "移行前の設計と仕様の経緯。" }
   ],
   "groups": [
     { "directory": "Implementation/Application", "category": "application" },
@@ -30,6 +31,12 @@
   "pages": {
     "Design/ECS.md": { "category": "design", "order": 35, "summary": "Entityの配置と寿命、Processの要求Component、Gameとの受け渡し。" },
     "Design/Transform.md": { "category": "design", "order": 40, "label": "Transformの設計", "summary": "Transformのクラス構成、Local TRSを正本にする契約とGame向けFacadeの設計。" },
+    "Design/Serialize/ComponentSerialization.md": { "category": "design", "order": 41, "label": "Componentのシリアライズ", "summary": "保存フィールド宣言、Prefabの取得とYAML入出力、Worldへの展開。" },
+    "Design/AssetSystem.md": { "category": "design", "order": 45, "label": "AssetSystemの設計", "summary": "型付きHandleによる資源管理、CPU Assetの所有、組み込みMesh。" },
+    "Design/Asset/AssetDB.md": { "category": "design", "order": 46, "summary": ".metaの生成と検証、GUIDの解決、モデル内のSubAsset ID。" },
+    "Design/Asset/MeshLoader.md": { "category": "design", "order": 47, "summary": "モデルのノード階層、Prefabと個別Mesh、SubMeshとMaterialSlotの割当。" },
+    "Legacy/AssetSystem.md": { "category": "legacy", "order": 10, "label": "名前ベースのAssetSystem", "summary": "AssetDB.yamlから名前・型・パスを解決する旧設計。" },
+    "Legacy/Asset/MeshLoader.md": { "category": "legacy", "order": 20, "label": "単一Meshに変換するMeshLoader", "summary": "ノード変換を焼き付けてファイルを単一Meshにまとめる旧設計。" },
     "Design/MaterialShader.md": { "category": "design", "order": 50, "label": "MaterialShaderの設計", "summary": "Materialの所有、.matsh、PassのStream選択とSubMesh単位のForward描画。" },
     "Design/RenderPass.md": { "category": "design", "order": 60, "label": "RenderPassの設計", "summary": "共通DrawCommand、Build・Sort・Record、Forwardのバッチ化。" },
     "Design/GameRuntime/APIArchitecture.md": { "category": "design", "order": 70, "label": "EngineとGameのAPI構成の設計", "summary": "DLLを越える接続、公開Processの追加手順、初期の描画方針。" },
@@ -46,11 +53,11 @@
     "Implementation/ECS/README.md": {
       "summary": "Entityの識別とSoA配置、構造変更の反映時点、破棄までの寿命を確認する。",
       "diagrams": ["ecs-process", "ecs-layout", "ecs-life"],
-      "notes": [{ "text": "Entityの実行対象はComponent構成から決まり、Process所属一覧は持たない。共有ComponentだけならRemoveProcess後も対象Processが一致し続ける。初期構成指定の生成APIとPrefabは将来案。", "sources": ["Docs/Implementation/ECS/README.md", "Docs/OpenDecisions.md"] }]
+      "notes": [{ "text": "Entityの実行対象はComponent構成から決まり、Process所属一覧は持たない。共有ComponentだけならRemoveProcess後も対象Processが一致し続ける。Prefabの展開は即時生成できるタイミングで行う。", "sources": ["Docs/Implementation/ECS/README.md"] }]
     },
     "Implementation/ECS/Process.md": { "order": 30, "label": "Process実行と型", "summary": "要求Componentの照合、Chunk単位の呼び出し、実行順と変更反映を確認する。" },
     "Implementation/ECS/DevelopmentGuide.md": { "order": 40, "label": "開発手引き", "summary": "ComponentとProcessの定義・登録から、公開APIとFacadeを介したGame側の操作までの開発手順。" },
-    "Implementation/Asset/README.md": { "summary": "名前Cache、CPU Assetの登録、TextureデコードとGPU転送の成否を確認する。", "diagrams": ["asset"] },
+    "Implementation/Asset/README.md": { "summary": ".metaとGUIDによる管理、モデルからのPrefab・Mesh・DefaultPBR Materialの生成。", "diagrams": ["asset"] },
     "CodingStandard.md": { "category": "guides", "order": 10, "summary": "名前、コメント、処理構成、includeパスの規約。" },
     "CodingExamples.md": { "category": "guides", "order": 20, "summary": "LogProcessを題材にしたヘッダー・実装・コメントの記述例。" },
     "BuildTroubleshooting.md": { "category": "guides", "order": 30, "summary": "MSVCのProgram Database Manager不整合に関する対応記録。" },

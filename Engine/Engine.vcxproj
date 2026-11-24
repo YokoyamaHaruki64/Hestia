@@ -33,6 +33,8 @@
     <ClCompile Include="Source\ECS\Chunk.cpp" />
     <ClCompile Include="Source\ECS\ECSProcess.cpp" />
     <ClCompile Include="Source\ECS\ECSWorld.cpp" />
+    <ClCompile Include="Source\Serialize\EntityYamlWriter.cpp" />
+    <ClCompile Include="Source\Serialize\PrefabLoader.cpp" />
     <ClCompile Include="Source\ECS\ECSSystem.cpp" />
     <ClCompile Include="Source\Transform\TransformProcess.cpp" />
     <ClCompile Include="Source\Transform\TransformFacade.cpp" />
@@ -43,8 +45,11 @@
     <ClCompile Include="Source\Asset\MaterialShader.cpp" />
     <ClCompile Include="Source\Asset\MaterialShaderLoader.cpp" />
     <ClCompile Include="Source\Asset\MaterialShaderParser.cpp" />
-    <ClCompile Include="Source\Asset\AssetDB.cpp" />
+    <ClCompile Include="Source\Asset\AssetDB.cpp">
+      <ExceptionHandling>Sync</ExceptionHandling>
+    </ClCompile>
     <ClCompile Include="Source\Asset\AssetLoader.cpp" />
+    <ClCompile Include="Source\Asset\MeshLoader.cpp" />
     <ClCompile Include="Source\Asset\AssetSystem.cpp" />
     <ClCompile Include="Source\API\AssetAPI.cpp" />
     <ClCompile Include="Source\Graphics\DX12Device.cpp" />
@@ -79,6 +84,9 @@
     <ClInclude Include="Include\API\EngineAPI.h" />
     <ClInclude Include="Include\API\EntityAPI.h" />
     <ClInclude Include="Include\ECS\ComponentRegistry.h" />
+    <ClInclude Include="Include\Serialize\SerializeFields.h" />
+    <ClInclude Include="Include\Serialize\SerializedEntity.h" />
+    <ClInclude Include="Include\Serialize\EntityYamlWriter.h" />
     <ClInclude Include="Include\ECS\Component.h" />
     <ClInclude Include="Include\ECS\Entity.h" />
     <ClInclude Include="Include\ECS\Archetype.h" />
@@ -307,6 +315,11 @@
       <PreprocessorDefinitions>HESTIA_ENGINE_INTERNAL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(ConfigurationType)'=='DynamicLibrary'">
+    <Link>
+      <AdditionalDependencies>$(ProjectDir)..\ThirdParty\Library\Assimp\assimp-vc145-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Target Name="CopyDxcRuntime" AfterTargets="Build">
     <PropertyGroup>
@@ -319,6 +332,14 @@
       <DxcRuntime Include="$(DxcSdkBinDir)dxil.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(DxcRuntime)" DestinationFolder="$(DxcRuntimeDir)" SkipUnchangedFiles="true" />
+  </Target>
+  <Target Name="CopyAssimpRuntime" AfterTargets="Build">
+    <PropertyGroup>
+      <AssimpRuntimeDir>$(OutDir)</AssimpRuntimeDir>
+      <AssimpRuntimeDir Condition="'$(Configuration)'=='Test'">$(HestiaTestBinDir)</AssimpRuntimeDir>
+    </PropertyGroup>
+    <Copy SourceFiles="$(ProjectDir)..\ThirdParty\Library\Assimp\assimp-vc145-mt.dll;$(ProjectDir)..\ThirdParty\Library\Assimp\Assimp-LICENSE.txt"
+          DestinationFolder="$(AssimpRuntimeDir)" SkipUnchangedFiles="true" />
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -20,7 +20,7 @@ Chunk内ではEntity列と各Component列の同じrowが同じEntityを表す。
 
 ## Entityの生成と破棄
 
-CreateEntityはslotとHandleを予約し、必須6 Componentを持つArchetypeへ生成する。初期値はactiveがON、NameがEntity{index}、TagとLayerが0で、Transform系の初期値はTransformの仕様に従う。Process実行外では即時構築し、実行中はPendingCreateのHandleを返す。反映前のGetEntity/GetComponentはnullptr。生成待ちへの追加・削除はCreateの後に要求順で適用する。 [Transformの初期値](../ECSProcess/Transform.md#transform)
+`CreateEntity()` は必須6 Component、Engine内部の `CreateEntity(componentTypes)` は必須型を含む指定構成で生成する。後者は未登録の型や必須型の不足をHandle予約前に拒否する。どちらも署名が一致するArchetypeのChunkに直接構築する。初期値はactiveがON、NameがEntity{index}、ほかのComponentは既定値とする。Process実行外では即時構築し、実行中は型ID列を生成要求に保持してPendingCreateのHandleを返す。反映前のGetEntity/GetComponentはnullptr。生成待ちへの追加・削除はCreateの後に要求順で適用する。 [Transformの初期値](../ECSProcess/Transform.md#transform)
 
 生成待ちへのDestroyは生成取消となる。FlushChangesは取消要求を先に処理し、Componentを構築せずslotを解放してgenerationを進める。これにより同じHandleのCreateと後続要求を無効化する。
 
@@ -43,13 +43,23 @@ Process実行中は生成・追加・削除をChangeRequestに積み、現在の
 
 EngineはTime更新後に各phaseを呼ぶ。FixedUpdateでは同名phase、FrameExecuteではFrameBegin → Update → LateUpdate → PreRender、描画後にEndFrameを実行する。終了時はECSをAsset／Graphics／Timeより先に解放し、Logは最後まで利用できる。
 
+## Prefabの保存と展開
+
+1. `ECSSystem::SaveEntity(root)` は `TransformHierarchy` をたどり、Componentの保存値と子孫を所有する `SerializedEntity` を返す。 `EntityYamlWriter::Save` はそのツリーを受け取り、ファイル内の `id` と `parent` を振ってYAMLに出力する。 [ECSSystem.cpp](../../../Engine/Source/ECS/ECSSystem.cpp) ・ [EntityYamlWriter.cpp](../../../Engine/Source/Serialize/EntityYamlWriter.cpp)
+2. `AssetSystem::Load<Prefab>` は `.prefab` のComponent名と保存フィールドをRegistryに照合し、YAMLの `id` と `parent` からツリーを組み直す。ファイルパスは `Prefabs/Character.prefab` のようにAssetルートから指定する。 [PrefabLoader.cpp](../../../Engine/Source/Serialize/PrefabLoader.cpp) ・ [Asset参照の解決](../Asset/README.md#所有とasset参照の解決)
+3. Engine内部の `ECSSystem::Instantiate` は `const Prefab&` または `AssetHandle<Prefab>` を受け取り、保存されたComponent構成でEntityを親から順に生成する。子は `KeepLocal` で接続する。位置・回転・スケールを指定した場合はルートのLocal TRSに適用する。成功時はルートのHandleを返す。
+
+Process実行中、構造変更の適用中、EndFrameの破棄処理中は即時展開できないため、無効Handleを返す。展開途中で失敗した場合は生成済みの階層を破棄予約する。
+
+MeshRendererはMesh参照と、Slot順のMaterial参照を保存する。モデル由来のMeshとMaterialは `{guid, localId}` で記録し、未設定の参照や手動登録の資源は `null` になる。往復テストでは親子関係・名前・Local TRS・Mesh参照の復元と、2回展開した階層の独立性を確認済み。 [MeshRendererAPI.cpp](../../../Engine/Source/API/ECSProcess/MeshRendererAPI.cpp) ・ [AssetTests.cpp](../../../Test/Hestia_Tests/Source/AssetTests.cpp) ・ [Prefabの設計](../../Design/Serialize/ComponentSerialization.md)
+
 ## エラーと未実装範囲
 
 通常の不正操作はLoggerと戻り値で通知する。Componentの既定構築は例外を許容し、Move構築と破棄はnoexceptを要求する。Componentの構築・Move・破棄からECS操作を呼ばないことを前提とする。生成失敗では予約slotを解放し、構造変更失敗では元Entityを維持する。要求ごとに失敗を処理し、後続要求は継続する。
 
 Process登録、ArchetypeのProcess接続、構造変更要求、Component構築、Process実行に例外境界がある。ECSSystem.Initialize自体はRegisterECSをtry/catchで囲まない。標準コンテナの確保例外を全APIで捕捉する設計ではなく、CreateEntityのslot予約やProcess実行外の破棄キュー確保からは例外が伝播し得る。
 
-Game は `World` から Entity を操作し、Transform と MeshRenderer の Facade を取得できる。Script の `OnStart` と寿命管理は GameRuntime が担う。ECS の並列ジョブ、Prefab、初期構成指定の生成 API は将来の検討対象。 [World の設計](../../Design/GameRuntime/World.md) ・ [GameRuntime の実装仕様](../GameRuntime/README.md) ・ [生成APIとPrefabの将来案](../../OpenDecisions.md)
+Game は `World` から Entity を操作し、Transform と MeshRenderer の Facade を取得できる。Script の `OnStart` と寿命管理は GameRuntime が担う。 [World の設計](../../Design/GameRuntime/World.md) ・ [GameRuntime の実装仕様](../GameRuntime/README.md)
 
 ## 検証記録（2026-11-05）
 

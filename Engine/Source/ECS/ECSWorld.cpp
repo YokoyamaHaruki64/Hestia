@@ -311,6 +311,34 @@ namespace Hestia
 
     EntityHandle ECSWorld::CreateEntity()
     {
+        return RequestCreate(m_requiredTypes);
+    }
+
+    EntityHandle ECSWorld::CreateEntity(std::span<const ComponentTypeId> componentTypes)
+    {
+        // 指定構成を検証し、必須Componentが欠けたEntityの生成を防ぐ
+        for (ComponentTypeId type : m_requiredTypes)
+        {
+            if (std::ranges::find(componentTypes, type) == componentTypes.end())
+            {
+                Logger::Error("CreateEntity requires all mandatory Component types");
+                return {};
+            }
+        }
+        for (ComponentTypeId type : componentTypes)
+        {
+            if (m_registry->GetInfo(type) == nullptr)
+            {
+                Logger::Error("CreateEntity references an unregistered Component type");
+                return {};
+            }
+        }
+
+        return RequestCreate(componentTypes);
+    }
+
+    EntityHandle ECSWorld::RequestCreate(std::span<const ComponentTypeId> componentTypes)
+    {
         if (!m_isInitialized || m_isApplyingChanges || m_isEndingFrame)
         {
             Logger::Error("CreateEntity is unavailable in the current ECS state");
@@ -320,6 +348,12 @@ namespace Hestia
         // Entity生成以降はWorldの実行設定が始まるためProcess登録を閉じる
         m_acceptsProcessRegistration = false;
 
+        // ID列は呼び出し元が所有するため、生成要求にコピーして保持する
+        ChangeRequest request;
+        request.m_kind = ChangeKind::Create;
+        request.m_entity = {};
+        request.m_componentTypes.assign(componentTypes.begin(), componentTypes.end());
+
         if (m_isRunningProcess)
         {
             // Slot予約後にqueue確保で失敗してHandleだけ残る事態を避ける
@@ -327,48 +361,43 @@ namespace Hestia
         }
 
         // Handleを先に予約し、実行中なら生成を次の変更反映まで保留する
-        EntityHandle handle;
-        if (!ReserveSlot(handle))
+        if (!ReserveSlot(request.m_entity))
         {
             Logger::Error("EntityHandle reservation failed");
             return {};
         }
 
+        const EntityHandle handle = request.m_entity;
         if (m_isRunningProcess)
         {
-            m_pendingChanges.push_back({ handle, nullptr, ChangeKind::Create });
+            m_pendingChanges.push_back(std::move(request));
             return handle;
         }
 
-        ApplyChange({ handle, nullptr, ChangeKind::Create });
+        ApplyChange(std::move(request));
         return FindAliveSlot(handle) != nullptr ? handle : EntityHandle{};
     }
 
-    bool ECSWorld::ApplyCreate(EntityHandle handle)
+    bool ECSWorld::ApplyCreate(EntityHandle handle, std::vector<ComponentTypeId> componentTypes)
     {
         EntitySlot* slot = FindSlot(handle);
         if (slot == nullptr || slot->m_state != EntitySlotState::PendingCreate)
             return false;
 
-        const auto nameColumnId = m_nameType;
-        if (!nameColumnId)
-            return false;
+        // 構造変更の反映時に署名を解決し、対応するChunkに直接生成する
+        Archetype* archetype = GetOrCreateArchetype({ std::move(componentTypes) });
+        return archetype != nullptr && ConstructEntity(handle, *slot, *archetype);
+    }
 
-        // 必須Componentだけで構成するArchetypeを取得する
-        ArchetypeSignature signature;
-        signature.m_types = m_requiredTypes;
-
-        Archetype* archetype = GetOrCreateArchetype(std::move(signature));
-        if (archetype == nullptr)
-            return false;
-
-        Chunk& chunk = archetype->GetOrCreateWritableChunk();
+    bool ECSWorld::ConstructEntity(EntityHandle handle, EntitySlot& slot, Archetype& archetype)
+    {
+        Chunk& chunk = archetype.GetOrCreateWritableChunk();
         const size_t row = chunk.GetEntityCount();
 
         if (chunk.ConstructEntity(row, handle, true) == nullptr)
             return false;
 
-        // 必須列を構築して初期Nameを設定し、成功してからSlotとrowをAliveにする
+        // 構築途中で失敗した場合は、追加済みの列とEntityだけを片付ける
         size_t constructedColumns = 0;
         ScopeExit rollback([&]() noexcept
         {
@@ -378,20 +407,21 @@ namespace Hestia
             chunk.DestroyEntity(row);
         });
 
-        // 必須Componentは既定値で生成し、NameだけEntity indexから初期値を設定する
-        for (; constructedColumns < archetype->GetLayout().m_components.size();
+        // 構成に含まれるComponentを既定構築し、NameにEntity indexを反映する
+        for (; constructedColumns < archetype.GetLayout().m_components.size();
             ++constructedColumns)
             chunk.ConstructDefault(constructedColumns, row);
 
-        const size_t nameColumn = archetype->FindColumn(*nameColumnId);
+        const size_t nameColumn = archetype.FindColumn(*m_nameType);
         Name* name = static_cast<Name*>(chunk.GetElement(nameColumn, row));
         name->m_value = "Entity" + std::to_string(handle.m_index);
 
+        // すべての構築が済んでから行を確定し、Slotを公開する
         chunk.CommitRow(row);
-        slot->m_state = EntitySlotState::Alive;
-        slot->m_archetype = archetype;
-        slot->m_chunk = &chunk;
-        slot->m_row = row;
+        slot.m_state = EntitySlotState::Alive;
+        slot.m_archetype = &archetype;
+        slot.m_chunk = &chunk;
+        slot.m_row = row;
         rollback.Release();
         return true;
     }
@@ -412,6 +442,34 @@ namespace Hestia
 
         const EntitySlot* slot = FindAliveSlot(handle);
         return slot == nullptr ? nullptr : slot->m_chunk->GetEntity(slot->m_row);
+    }
+
+    std::optional<SerializedEntity> ECSWorld::SerializeEntity(EntityHandle handle) const
+    {
+        // Getterが参照できる状態でだけChunkから値を取得する
+        if (m_isApplyingChanges)
+            return std::nullopt;
+
+        const EntitySlot* slot = FindAliveSlot(handle);
+        if (slot == nullptr || slot->m_chunk->GetEntity(slot->m_row)->IsDestroy())
+            return std::nullopt;
+
+        // 保存対象の値がなくてもComponentの構成は記録する
+        const auto& columns = slot->m_archetype->GetLayout().m_components;
+        const Chunk& chunk = *slot->m_chunk;
+        SerializedEntity result{ handle, {} };
+        result.m_components.reserve(columns.size());
+        for (size_t column = 0; column < columns.size(); ++column)
+        {
+            const ComponentInfo& info = *columns[column].m_info;
+            auto& component = result.m_components.emplace_back(info.name);
+            component.m_fields.reserve(info.serializeFields.size());
+            const void* source = chunk.GetElement(column, slot->m_row);
+            for (const auto& field : info.serializeFields)
+                component.m_fields.emplace(field.name, field.read(source, handle));
+        }
+
+        return result;
     }
 
     bool ECSWorld::SetActive(EntityHandle handle, bool active)
@@ -721,7 +779,7 @@ namespace Hestia
         return result;
     }
 
-    void ECSWorld::ApplyChange(const ChangeRequest& request)
+    void ECSWorld::ApplyChange(ChangeRequest request)
     {
         // queue反映時点でHandleと破棄状態を確認し、無効化された要求を捨てる
         ScopedFlag applyingChanges(m_isApplyingChanges);
@@ -736,7 +794,7 @@ namespace Hestia
                 // 生成要求の反映に失敗した場合はSlotを解放して無効化する
                 if (slot != nullptr &&
                     slot->m_state == EntitySlotState::PendingCreate &&
-                    !ApplyCreate(request.m_entity))
+                    !ApplyCreate(request.m_entity, std::move(request.m_componentTypes)))
                     ReleaseSlot(request.m_entity.m_index);
                 return;
             }
@@ -953,8 +1011,8 @@ namespace Hestia
                 ReleaseSlot(request.m_entity.m_index);
         }
 
-        for (const ChangeRequest& request : changes)
-            ApplyChange(request);
+        for (ChangeRequest& request : changes)
+            ApplyChange(std::move(request));
     }
 
     void ECSWorld::FlushDestroy()

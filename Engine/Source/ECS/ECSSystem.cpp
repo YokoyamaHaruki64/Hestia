@@ -13,9 +13,13 @@
 #include "pch.h"
 #include "ECS/ECSSystem.h"
 
+#include <algorithm>
+#include "API/ECSProcess/TransformAPI.h"
+#include "Asset/AssetSystem.h"
 #include "ECS/Component.h"
 #include "Graphics/MeshRenderer.h"
 #include "Log/Logger.h"
+#include "Transform/TransformData.h"
 #include "Transform/TransformProcess.h"
 
 namespace Hestia
@@ -160,6 +164,17 @@ namespace Hestia
         return s_instance->m_world.CreateEntity();
     }
 
+    EntityHandle ECSSystem::CreateEntity(std::span<const ComponentTypeId> componentTypes)
+    {
+        if (s_instance == nullptr)
+        {
+            Logger::Error("ECSSystem::CreateEntity called while ECS is unavailable");
+            return {};
+        }
+
+        return s_instance->m_world.CreateEntity(componentTypes);
+    }
+
     void ECSSystem::DestroyEntity(EntityHandle handle)
     {
         if (s_instance == nullptr)
@@ -179,6 +194,175 @@ namespace Hestia
             return nullptr;
         }
         return s_instance->m_world.GetEntity(handle);
+    }
+
+    std::optional<SerializedEntity> ECSSystem::SerializeEntity(EntityHandle handle)
+    {
+        // HandleベースのフィールドGetterと同じWorldから取得する
+        if (s_instance == nullptr || !s_instance->m_isInitialized)
+            return std::nullopt;
+
+        return s_instance->m_world.SerializeEntity(handle);
+    }
+
+    std::optional<SerializedEntity> ECSSystem::SaveEntity(EntityHandle root)
+    {
+        if (s_instance == nullptr || !s_instance->m_isInitialized)
+        {
+            Logger::Error("ECSSystem::SaveEntity requires an initialized ECS");
+            return std::nullopt;
+        }
+
+        auto& world = s_instance->m_world;
+        // Worldの親子関係を、独立した保存用のツリーへ移す
+        const auto capture = [&](this const auto& self, EntityHandle handle) -> std::optional<SerializedEntity>
+        {
+            auto snapshot = world.SerializeEntity(handle);
+            if (!snapshot)
+            {
+                Logger::Error("Could not serialize Entity " + std::to_string(handle.m_index));
+                return std::nullopt;
+            }
+
+            const auto* hierarchy = world.GetComponent<const TransformHierarchy>(handle);
+            snapshot->m_children.reserve(hierarchy->m_children.size());
+            for (const auto child : hierarchy->m_children)
+            {
+                const auto* entity = world.GetEntity(child);
+                if (entity != nullptr && entity->IsDestroy())
+                    continue;
+
+                auto childSnapshot = self(child);
+                if (!childSnapshot)
+                    return std::nullopt;
+                snapshot->m_children.push_back(std::move(*childSnapshot));
+            }
+            return snapshot;
+        };
+        return capture(root);
+    }
+
+    const ComponentRegistry* ECSSystem::GetRegistry() noexcept
+    {
+        return s_instance && s_instance->m_isInitialized ? &s_instance->m_registry : nullptr;
+    }
+
+    EntityHandle ECSSystem::Instantiate(const Prefab& prefab)
+    {
+        return s_instance ? s_instance->InstantiateImpl(prefab, nullptr, nullptr, nullptr) : EntityHandle{};
+    }
+
+    EntityHandle ECSSystem::Instantiate(AssetHandle<Prefab> handle)
+    {
+        const auto* prefab = AssetSystem::Get(handle);
+        return prefab ? Instantiate(*prefab) : EntityHandle{};
+    }
+
+    EntityHandle ECSSystem::Instantiate(const Prefab& prefab,
+        const Vector3& position, const Quaternion& rotation, const Vector3& scale)
+    {
+        return s_instance ? s_instance->InstantiateImpl(prefab, &position, &rotation, &scale) : EntityHandle{};
+    }
+
+    EntityHandle ECSSystem::Instantiate(AssetHandle<Prefab> handle,
+        const Vector3& position, const Quaternion& rotation, const Vector3& scale)
+    {
+        const auto* prefab = AssetSystem::Get(handle);
+        return prefab ? Instantiate(*prefab, position, rotation, scale) : EntityHandle{};
+    }
+
+    EntityHandle ECSSystem::InstantiateImpl(const Prefab& prefab,
+        const Vector3* position, const Quaternion* rotation, const Vector3* scale)
+    {
+        if (!m_isInitialized || m_world.m_isRunningProcess || m_world.m_isApplyingChanges || m_world.m_isEndingFrame)
+        {
+            Logger::Error("Prefab instantiation requires immediate Entity creation");
+            return {};
+        }
+
+        const auto root = InstantiateNode(prefab.m_root, {}, position, rotation, scale);
+        if (!root.IsValid())
+            Logger::Error("Could not instantiate Prefab: " + prefab.m_name);
+        return root;
+    }
+
+    EntityHandle ECSSystem::InstantiateNode(const SerializedEntity& source, EntityHandle parent,
+        const Vector3* position, const Quaternion* rotation, const Vector3* scale)
+    {
+        // 保存した構成のArchetypeへ直接生成する
+        std::vector<ComponentTypeId> types;
+        std::vector<const ComponentInfo*> infos;
+        for (const auto& component : source.m_components)
+        {
+            const auto* info = m_registry.FindInfo(component.m_typeName);
+            if (info == nullptr)
+            {
+                Logger::Error("Unknown Prefab Component: " + component.m_typeName);
+                return {};
+            }
+            types.push_back(info->id);
+            infos.push_back(info);
+        }
+
+        // Entityを生成
+        const auto handle = m_world.CreateEntity(types);
+        if (!handle.IsValid())
+            return {};
+
+        // 親が有効ならTransformHierarchyを通じて接続する
+        if (parent.IsValid() && !TransformAPIImpl::SetParent(handle, parent, ParentMode::KeepLocal))
+            return FailPrefabNode(handle, "could not attach child");
+
+        // コンポーネントのフィールドを保存値で上書きする
+        auto* slot = m_world.FindAliveSlot(handle);
+        for (size_t index = 0; index < infos.size(); ++index)
+        {
+            const auto& info = *infos[index];
+            const auto column = slot->m_archetype->FindColumn(info.id);
+            auto* destination = slot->m_chunk->GetElement(column, slot->m_row);
+            const auto& fields = source.m_components[index].m_fields;
+
+            size_t applied = 0;
+            for (const auto& field : info.serializeFields)
+            {
+                const auto value = fields.find(std::string(field.name));
+                if (value == fields.end())
+                    continue;
+
+                // Setterの呼出
+                if (!field.write(destination, handle, value->second))
+                    return FailPrefabNode(handle, "could not apply " + info.name + "." + value->first);
+
+                ++applied;
+            }
+            if (applied != fields.size())
+                return FailPrefabNode(handle, "unregistered fields in " + info.name);
+        }
+
+        // PrefabのルートにLocal TRSが保存されていれば、Transformを上書きする
+        if (position &&
+            !TransformProcess::SetLocalTRS(*m_world.GetComponent<Transform>(handle),
+                *m_world.GetComponent<TransformHierarchy>(handle), *position, *rotation, *scale))
+            return FailPrefabNode(handle, "invalid root Local TRS");
+
+        // 子を再帰的に生成する
+        for (const auto& child : source.m_children)
+        {
+            if (!InstantiateNode(child, handle).IsValid())
+            {
+                m_world.DestroyEntity(handle);
+                return {};
+            }
+        }
+        return handle;
+    }
+
+    EntityHandle ECSSystem::FailPrefabNode(EntityHandle handle, std::string_view reason)
+    {
+        Logger::Error(reason);
+        // 接続済みの子孫も破棄予約する
+        m_world.DestroyEntity(handle);
+        return {};
     }
 
     bool ECSSystem::SetActive(EntityHandle handle, bool active)

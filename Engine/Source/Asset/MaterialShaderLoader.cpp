@@ -11,6 +11,7 @@
 =============================================================================*/
 
 #include "pch.h"
+#include "Common/Include/StringUtils.h"
 #include "Asset/AssetLoader.h"
 
 #include <filesystem>
@@ -24,7 +25,7 @@
 
 namespace Hestia
 {
-    AssetHandle<MaterialShader> AssetLoader<MaterialShader>::Load(std::string_view name, std::string_view path)
+    AssetHandle<MaterialShader> AssetLoader<MaterialShader>::Load(const AssetRef& ref, std::string_view path)
     {
         // エラー報告用のラムダ。呼び出し元に AssetHandle<MaterialShader>{} を返す
         const auto fail = [path](std::string_view message)
@@ -36,10 +37,10 @@ namespace Hestia
         // UTF-8 のパスと DSL 本体を読み込み、すべての Pass を先に解析
         std::error_code pathError;
         const auto filePath = std::filesystem::absolute(
-            std::filesystem::path(std::u8string(path.begin(), path.end())), pathError);
+            PathFromUtf8(path), pathError);
 
-        if (pathError || filePath.extension() != L".matsh")
-            return fail("expected a .matsh path");
+        if (pathError)
+            return fail("could not resolve the source path");
 
         std::ifstream file(filePath, std::ios::binary);
 
@@ -79,6 +80,6 @@ namespace Hestia
         if (!shader)
             return fail("invalid MaterialShader definition");
 
-        return AssetSystem::RegisterFromLoader(name, std::move(shader));
+        return AssetSystem::RegisterFromLoader(ref, std::move(shader));
     }
 }

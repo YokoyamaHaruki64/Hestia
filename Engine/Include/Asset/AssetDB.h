@@ -1,7 +1,7 @@
 ﻿/*=============================================================================
 
  File   : AssetDB.h
- Desc   : Asset 名から Mesh / Texture の種別と Path を解決する。
+ Desc   : .metaからAssetの永続ID、種別、Pathを解決する。
 
 ------------------------------------------------------------------------------
 
@@ -13,47 +13,51 @@
 #ifndef _ASSET_DB_H_
 #define _ASSET_DB_H_
 
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <utility>
 
 #include "Asset/AssetType.h"
 
 namespace Hestia
 {
-    /// @brief AssetDB に登録する Asset の種別とファイル Path。
+    /// @brief 元Assetファイルの索引情報と、モデルのSubAsset割り当て
     struct AssetInfo
     {
+        AssetGuid m_guid;
         AssetType m_type = AssetType::Mesh;
         std::string m_path;
+        uint32_t m_nextLocalId = 1;
+        std::unordered_map<std::string, uint32_t> m_subAssets;
+        std::unordered_map<std::string, uint32_t> m_materials;
     };
 
-    /// @brief 起動時に用意する Asset 名、種別、Path の索引。
+    /// @brief .metaから作るGUIDとAssetルート相対パスの索引
     class AssetDB
     {
     public:
-        using EntryMap = std::unordered_map<std::string, AssetInfo>;
+        /// @brief 元ファイルと.metaを走査し、欠けている.metaを作成する
+        /// @return 成功: true / 読み込み・検証・作成失敗: false
+        bool Initialize(const std::filesystem::path& assetsRoot = "Assets");
 
-        /// @brief AssetSystem が構築した登録情報を正規化して格納する。
-        /// @param entries Asset 名を Key とする登録情報。呼び出し時点で値を受け取る。
-        /// @return 初期化成功: true / 空名・Path・未対応型や正規化後の衝突がある場合: false。
-        bool Initialize(EntryMap entries);
-
-        /// @brief 名前に対応する登録情報を検索する。
-        /// @param name ASCII 英字の大小を区別しない Asset 名。
-        /// @return 登録情報への非所有ポインタ。未登録なら nullptr。
-        const AssetInfo* Find(std::string_view name) const;
-
-        /// @brief 登録名との衝突を確認する。
-        /// @param name ASCII 英字の大小を区別しない Asset 名。
-        /// @return 登録済みなら true。
-        bool Contains(std::string_view name) const;
+        /// @brief 永続IDから元ファイルの情報を取得する。未登録ならnullptr
+        const AssetInfo* FindByGuid(const AssetGuid& guid) const;
+        /// @brief Assetルート相対パスから元ファイルの情報を取得する。未登録ならnullptr
+        const AssetInfo* FindByPath(std::string_view path) const;
+        /// @brief Loaderへ渡す元ファイルのUTF-8パスを組み立てる
+        std::string SourcePath(const AssetInfo& info) const;
+        /// @brief 変換済みモデルの新しいID割り当てを、差分がある場合だけ保存する
+        bool SaveModelMeta(const AssetInfo& previous, const AssetInfo& updated) const;
 
     private:
-        static std::string NormalizeName(std::string_view name);
+        static bool ReadMeta(const std::filesystem::path& path, AssetInfo& info);
+        static bool WriteMeta(const std::filesystem::path& path, const AssetInfo& info);
 
-        std::unordered_map<std::string, AssetInfo> m_entries;
+        std::filesystem::path m_root;
+        std::unordered_map<AssetGuid, AssetInfo, AssetGuid::Hash> m_entries;
+        std::unordered_map<std::string, AssetGuid> m_paths;
+
     };
 }
 

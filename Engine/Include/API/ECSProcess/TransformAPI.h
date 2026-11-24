@@ -48,8 +48,8 @@ namespace Hestia
         bool (*SetParent)(EntityHandle entity, EntityHandle parent, ParentMode mode);
     };
 
-#if defined(HESTIA_ENGINE_INTERNAL)
     class ECSWorld;
+    struct Transform;
 
     /// @brief EntityHandle から対象を解決し、Transform の個別操作を実行する。
     class TransformAPIImpl
@@ -58,10 +58,7 @@ namespace Hestia
         /// @brief Game に渡す操作を Engine 側の実装へ接続する。
         static TransformAPI CreateAPI() noexcept;
 
-    private:
         static bool IsValid(EntityHandle entity) noexcept;
-        static ECSWorld* ResolveForGet(EntityHandle entity);
-        static ECSWorld* ResolveForSet(EntityHandle entity);
         static Vector3 GetLocalPosition(EntityHandle entity);
         static Quaternion GetLocalRotation(EntityHandle entity);
         static Vector3 GetLocalScale(EntityHandle entity);
@@ -78,8 +75,11 @@ namespace Hestia
         static bool SetWorldMatrix(EntityHandle entity, const Matrix4x4_SIMD& matrix);
         static EntityHandle GetParent(EntityHandle entity);
         static bool SetParent(EntityHandle entity, EntityHandle parent, Hestia::ParentMode mode);
+
+    private:
+        static ECSWorld* ResolveForGet(EntityHandle entity);
+        static ECSWorld* ResolveForSet(EntityHandle entity);
     };
-#endif
 }
 
 #endif // _TRANSFORM_API_H_

@@ -26,6 +26,9 @@
     <Filter Include="_Include\ECS">
       <UniqueIdentifier>{8fae9e19-035f-4e76-a90c-48ea0918ce21}</UniqueIdentifier>
     </Filter>
+    <Filter Include="_Include\Serialize">
+      <UniqueIdentifier>{c7834568-407d-47f3-a708-9fd5db3baacb}</UniqueIdentifier>
+    </Filter>
     <Filter Include="_Include\Transform">
       <UniqueIdentifier>{75e0a098-e072-4826-91ab-9d48865b407c}</UniqueIdentifier>
     </Filter>
@@ -53,6 +56,9 @@
     </Filter>
     <Filter Include="_Source\ECS">
       <UniqueIdentifier>{3a5bca59-8a8c-44eb-a22e-ae4cfd0a144c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Source\Serialize">
+      <UniqueIdentifier>{eeeec819-eed8-458e-8c8e-b628b249d4a2}</UniqueIdentifier>
     </Filter>
     <Filter Include="_Source\Core">
       <UniqueIdentifier>{8d41f9e1-c7b0-4f3d-becf-cad61805212a}</UniqueIdentifier>
@@ -102,6 +108,9 @@
       <Filter>_Source\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\AssetLoader.cpp">
+      <Filter>_Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\MeshLoader.cpp">
       <Filter>_Source\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\AssetSystem.cpp">
@@ -173,6 +182,12 @@
     <ClCompile Include="Source\ECS\ECSWorld.cpp">
       <Filter>_Source\ECS</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Serialize\EntityYamlWriter.cpp">
+      <Filter>_Source\Serialize</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Serialize\PrefabLoader.cpp">
+      <Filter>_Source\Serialize</Filter>
+    </ClCompile>
     <ClCompile Include="Source\ECS\ECSSystem.cpp">
       <Filter>_Source\ECS</Filter>
     </ClCompile>
@@ -195,6 +210,15 @@
     </ClInclude>
     <ClInclude Include="Include\ECS\ComponentRegistry.h">
       <Filter>_Include\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Serialize\SerializeFields.h">
+      <Filter>_Include\Serialize</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Serialize\SerializedEntity.h">
+      <Filter>_Include\Serialize</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Serialize\EntityYamlWriter.h">
+      <Filter>_Include\Serialize</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\Component.h">
       <Filter>_Include\ECS</Filter>

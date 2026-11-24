@@ -76,14 +76,14 @@ REGISTER_GAME_PROCESS(MeshRendererAPI, &MeshRendererProcess::Run, PreRender);
 
 ## 5. Entityへ適用する
 
-- CreateEntityは必須6 Componentで生成する。AddProcessで不足する要求Componentを追加し、通常ComponentはGetComponentで値を設定・編集する。追加時に既存Componentの値は維持される。 [必須Component](README.md#所有と初期化)
+- `CreateEntity()` は必須6 Componentで生成する。Engine内部で初期構成を指定する場合は、必須型を含むすべてのComponent型IDを `CreateEntity(componentTypes)` に渡す。生成後はAddProcessで不足する要求Componentを追加し、通常ComponentはGetComponentで値を設定・編集する。追加時に既存Componentの値は維持される。 [Entityの生成](README.md#entityの生成と破棄)
 - Process実行外の生成・追加・削除は即時反映される。Process実行中は、現在のProcessの全Chunk処理が終わってから、次のProcessの前に要求順で反映される。
 - 生成待ちHandleへのGetEntity／GetComponentはnullptrになる。生成直後に追加要求は出せるが、反映前に値へアクセスできないことを踏まえて初期値設定の手順を決める。
 - RemoveProcessは対象Processの要求から、必須Componentと現在一致する他Processの要求を除いて削除する。固有Componentがなければ対象Processも一致したままになるため、常にそのProcessを停止するAPIとしては扱わない。
 - 生存中EntityへのDestroyEntityは破棄予約を設定し、IsActiveはその時点でfalseになる。activeの設定値は変えず、実体はEndFrameで破棄する。生成待ちなら構築せず取消となる。
 - EntityHandle::IsValidは形式の判定であり、Entityの生存を保証しない。取得結果を確認し、長期保持したHandleは使う時点で解決する。
 
-初期 Component 列／Process 列を指定する生成 API と Prefab は ECS の将来案にある。Script の `OnStart` は GameRuntime が Script の追加時に呼ぶ。 [ECS の将来案](../../OpenDecisions.md) ・ [Script の実行](../GameRuntime/README.md)
+EngineからPrefabを展開する場合は、Assetとして取得してからProcess実行外で `ECSSystem::Instantiate` を呼ぶ。Script の `OnStart` は GameRuntime が Script の追加時に呼ぶ。 [Prefabの保存と展開](README.md#prefabの保存と展開) ・ [Script の実行](../GameRuntime/README.md)
 
 ### Gameから公開Processを操作する
 

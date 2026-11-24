@@ -16,7 +16,9 @@
 #include <vector>
 
 #include "Common/Include/HMath.h"
+#include "API/ECSProcess/TransformAPI.h"
 #include "ECS/Entity.h"
+#include "Serialize/SerializeFields.h"
 
 namespace Hestia
 {
@@ -30,6 +32,12 @@ namespace Hestia
         Matrix4x4_SIMD m_localMatrix = Matrix4x4_SIMD::Identity();
         bool m_localDirty = false;
         bool m_worldDirty = false;
+
+        SERIALIZE_FIELDS(
+            ("position", &TransformAPIImpl::GetLocalPosition, &TransformAPIImpl::SetLocalPosition)
+            ("rotation", &TransformAPIImpl::GetLocalRotation, &TransformAPIImpl::SetLocalRotation)
+            ("scale",    &TransformAPIImpl::GetLocalScale,    &TransformAPIImpl::SetLocalScale)
+        )
     };
 
     /// @brief 描画収集が連続して読む計算済みWorld行列
