@@ -30,6 +30,7 @@ namespace Hestia
         std::string m_path;
         uint32_t m_nextLocalId = 1;
         std::unordered_map<std::string, uint32_t> m_subAssets;
+        std::unordered_map<std::string, uint32_t> m_materials;
     };
 
     /// @brief .metaから作るGUIDとAssetルート相対パスの索引
@@ -47,8 +48,7 @@ namespace Hestia
         /// @brief Loaderへ渡す元ファイルのUTF-8パスを組み立てる
         std::string SourcePath(const AssetInfo& info) const;
         /// @brief 変換済みモデルの新しいID割り当てを、差分がある場合だけ保存する
-        bool SaveModelMeta(const AssetInfo& info, uint32_t nextLocalId,
-            const std::unordered_map<std::string, uint32_t>& subAssets) const;
+        bool SaveModelMeta(const AssetInfo& previous, const AssetInfo& updated) const;
 
     private:
         static bool ReadMeta(const std::filesystem::path& path, AssetInfo& info);

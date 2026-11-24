@@ -1,0 +1,88 @@
+MaterialShader "Hestia/DefaultPBR"
+{
+    RenderType = Forward;
+    RenderPhase = Opaque;
+
+    Properties
+    {
+        _BaseColor ("Base Color", Color) = (0.8, 0.8, 0.8, 1)
+        _BaseMap ("Base Map", Texture2D) = "white"
+        _Metallic ("Metallic", Range(0, 1)) = 0
+        _Roughness ("Roughness", Range(0, 1)) = 0.5
+    }
+
+    SHARED_HLSL_BEGIN
+    #include "../Common.hlsl"
+    SHARED_HLSL_END
+
+    Pass "DefaultPBR"
+    {
+        HLSL_BEGIN
+        #pragma vertex VSMain
+        #pragma pixel PSMain
+
+        static const float PI = 3.14159265f;
+
+        struct VertexOutput
+        {
+            float4 position : SV_POSITION;
+            float3 worldPosition : TEXCOORD0;
+            float3 normal : TEXCOORD1;
+            float2 uv : TEXCOORD2;
+        };
+
+        VertexOutput VSMain(float3 position : POSITION, float3 normal : NORMAL, float2 uv : TEXCOORD0)
+        {
+            const float4 worldPosition = mul(float4(position, 1.0f), world);
+
+            // 非一様スケールでも法線が面に直交するよう、逆転置と同じ方向に変換する
+            const float3 axisX = world[0].xyz;
+            const float3 axisY = world[1].xyz;
+            const float3 axisZ = world[2].xyz;
+            const float3 adjX = cross(axisY, axisZ);
+            const float3x3 cofactors = float3x3(adjX, cross(axisZ, axisX), cross(axisX, axisY));
+            const float orientation = dot(axisX, adjX) < 0.0f ? -1.0f : 1.0f;
+
+            VertexOutput output;
+            output.position = mul(mul(worldPosition, view), proj);
+            output.worldPosition = worldPosition.xyz;
+            output.normal = mul(normal, cofactors) * orientation;
+            output.uv = uv;
+            return output;
+        }
+
+        float4 PSMain(VertexOutput input) : SV_Target0
+        {
+            const float3 albedo = _BaseMap.Sample(WrapLinearSampler, input.uv).rgb * _BaseColor.rgb;
+            const float metallic = saturate(_Metallic);
+            const float roughness = clamp(_Roughness, 0.045f, 1.0f);
+
+            // モデル確認用の固定平行光と環境光
+            const float3 light = normalize(float3(-0.4f, 0.7f, -0.6f));
+            const float3 normal = normalize(input.normal);
+            const float3 eye = normalize(cameraPos - input.worldPosition);
+            const float nDotL = saturate(dot(normal, light));
+            const float nDotV = saturate(dot(normal, eye));
+            const float3 ambient = 0.08f * albedo;
+            if (nDotL <= 0.0f || nDotV <= 0.0f)
+                return float4(ambient, 1.0f);
+
+            // GGXの法線分布、Smithの遮蔽、SchlickのFresnelで直接光を計算する
+            const float3 halfway = normalize(light + eye);
+            const float nDotH = saturate(dot(normal, halfway));
+            const float vDotH = saturate(dot(eye, halfway));
+            const float alpha = roughness * roughness;
+            const float alphaSquared = alpha * alpha;
+            const float denominator = nDotH * nDotH * (alphaSquared - 1.0f) + 1.0f;
+            const float distribution = alphaSquared / (PI * denominator * denominator);
+            const float k = (roughness + 1.0f) * (roughness + 1.0f) * 0.125f;
+            const float visibility = 0.25f / (lerp(nDotV, 1.0f, k) * lerp(nDotL, 1.0f, k));
+            const float3 f0 = lerp(float3(0.04f, 0.04f, 0.04f), albedo, metallic);
+            const float3 fresnel = f0 + (1.0f - f0) * pow(1.0f - vDotH, 5.0f);
+            const float3 diffuse = (1.0f - fresnel) * (1.0f - metallic) * albedo / PI;
+            const float3 specular = distribution * visibility * fresnel;
+            return float4(ambient + (diffuse + specular) * (2.5f * nDotL), 1.0f);
+        }
+        HLSL_END
+    }
+}

@@ -54,6 +54,39 @@ namespace Hestia
         return true;
     }
 
+    std::vector<AssetRef> MeshRenderer::GetMaterialReferences(EntityHandle entity)
+    {
+        std::vector<AssetRef> refs;
+        const auto* renderer = ResolveMeshRenderer(entity);
+        if (!renderer)
+            return refs;
+
+        refs.reserve(renderer->m_materials.size());
+        for (const auto* material : renderer->m_materials)
+            refs.push_back(material ? AssetSystem::GetReference(material->GetHandle()) : AssetRef{});
+        return refs;
+    }
+
+    bool MeshRenderer::SetMaterialReferences(EntityHandle entity, const std::vector<AssetRef>& refs)
+    {
+        auto* renderer = ResolveMeshRenderer(entity);
+        if (!renderer)
+            return false;
+
+        // 未設定Slotを保持し、全参照が解決してから配列を反映する
+        std::vector<const Material*> materials;
+        materials.reserve(refs.size());
+        for (const auto& ref : refs)
+        {
+            const auto* material = ref.m_guid ? AssetSystem::Get(AssetSystem::Load<Material>(ref)) : nullptr;
+            if (ref.m_guid && !material)
+                return false;
+            materials.push_back(material);
+        }
+        renderer->m_materials = std::move(materials);
+        return true;
+    }
+
     MeshRendererAPI MeshRendererAPIImpl::CreateAPI() noexcept
     {
         return {

@@ -42,11 +42,14 @@ namespace Hestia
 
         SERIALIZE_FIELDS(
             ("mesh", &MeshRenderer::GetMeshReference, &MeshRenderer::SetMeshReference)
+            ("materials", &MeshRenderer::GetMaterialReferences, &MeshRenderer::SetMaterialReferences)
         )
 
     private:
         static AssetRef GetMeshReference(EntityHandle entity);
         static bool SetMeshReference(EntityHandle entity, const AssetRef& ref);
+        static std::vector<AssetRef> GetMaterialReferences(EntityHandle entity);
+        static bool SetMaterialReferences(EntityHandle entity, const std::vector<AssetRef>& refs);
     };
 
     class MeshRendererProcess

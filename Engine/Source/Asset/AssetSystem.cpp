@@ -313,7 +313,7 @@ namespace Hestia
         if (const auto cached = storage.Find(ref); cached.IsValid())
             return cached;
 
-        // PathとGUIDを共通の登録経路へ渡し、ModelはPrefabとMeshを同時に生成する
+        // PathとGUIDを共通の登録経路へ渡し、モデルのAssetをまとめて生成する
         if (info == nullptr)
             info = m_assetDB.FindByGuid(ref.m_guid);
         if (info == nullptr)
@@ -322,7 +322,7 @@ namespace Hestia
             return {};
         }
 
-        if constexpr (std::is_same_v<T, Mesh> || std::is_same_v<T, Prefab>)
+        if constexpr (std::is_same_v<T, Mesh> || std::is_same_v<T, Material> || std::is_same_v<T, Prefab>)
         {
             if constexpr (std::is_same_v<T, Prefab>)
             {
@@ -330,8 +330,8 @@ namespace Hestia
                     return GetLoader<Prefab>().LoadYaml(*info, m_assetDB);
             }
 
-            const bool isMesh = std::is_same_v<T, Mesh>;
-            if (info->m_type == AssetType::Model && isMesh == (ref.m_localId != 0))
+            constexpr bool isSubAsset = !std::is_same_v<T, Prefab>;
+            if (info->m_type == AssetType::Model && isSubAsset == (ref.m_localId != 0))
             {
                 const AssetRef primary{ ref.m_guid, 0 };
                 if (!GetStorage<Prefab>().Find(primary).IsValid() &&
@@ -478,6 +478,7 @@ namespace Hestia
     template AssetHandle<Mesh> AssetSystem::Load<Mesh>(const AssetRef&);
     template AssetHandle<Texture> AssetSystem::Load<Texture>(const AssetRef&);
     template AssetHandle<MaterialShader> AssetSystem::Load<MaterialShader>(const AssetRef&);
+    template AssetHandle<Material> AssetSystem::Load<Material>(const AssetRef&);
     template AssetHandle<Prefab> AssetSystem::Load<Prefab>(const AssetRef&);
 
     template Mesh* AssetSystem::Get<Mesh>(AssetHandle<Mesh>);
@@ -489,6 +490,7 @@ namespace Hestia
     template AssetRef AssetSystem::GetReference<Mesh>(AssetHandle<Mesh>);
     template AssetRef AssetSystem::GetReference<Texture>(AssetHandle<Texture>);
     template AssetRef AssetSystem::GetReference<MaterialShader>(AssetHandle<MaterialShader>);
+    template AssetRef AssetSystem::GetReference<Material>(AssetHandle<Material>);
     template AssetRef AssetSystem::GetReference<Prefab>(AssetHandle<Prefab>);
 
     template AssetHandle<Mesh> AssetSystem::Register<Mesh>(std::string_view, Mesh*);
@@ -500,5 +502,6 @@ namespace Hestia
     template AssetHandle<Texture> AssetSystem::RegisterFromLoader(const AssetRef&, std::unique_ptr<Texture>);
     template AssetHandle<MaterialShader> AssetSystem::RegisterFromLoader(
         const AssetRef&, std::unique_ptr<MaterialShader>);
+    template AssetHandle<Material> AssetSystem::RegisterFromLoader(const AssetRef&, std::unique_ptr<Material>);
     template AssetHandle<Prefab> AssetSystem::RegisterFromLoader(const AssetRef&, std::unique_ptr<Prefab>);
 }

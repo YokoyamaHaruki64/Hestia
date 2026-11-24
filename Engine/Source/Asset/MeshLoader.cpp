@@ -32,7 +32,8 @@ namespace Hestia
 {
     namespace
     {
-        std::unique_ptr<Mesh> BuildMesh(const aiScene& scene, const aiNode& node, std::string_view& error)
+        std::unique_ptr<Mesh> BuildMesh(const aiScene& scene, const aiNode& node,
+            std::vector<uint32_t>& materialIndices, std::string_view& error)
         {
             const auto fail = [&error](std::string_view reason) -> std::unique_ptr<Mesh>
             {
@@ -73,11 +74,14 @@ namespace Hestia
                 (hasColors && vertexCount > UINT32_MAX / sizeof(ColorVertex)))
                 return fail("Mesh exceeds the GPU vertex stream size limit");
 
-            uint32_t nextSlot = 0;
-            for (auto& slot : materialSlots)
+            for (uint32_t index = 0; index < materialSlots.size(); ++index)
             {
+                auto& slot = materialSlots[index];
                 if (slot != unusedSlot)
-                    slot = nextSlot++;
+                {
+                    slot = static_cast<uint32_t>(materialIndices.size());
+                    materialIndices.push_back(index);
+                }
             }
 
             auto mesh = std::make_unique<Mesh>();
@@ -154,6 +158,25 @@ namespace Hestia
 
             return mesh;
         }
+
+        std::unique_ptr<Material> BuildMaterial(const aiMaterial& source, MaterialShader& shader)
+        {
+            auto material = std::make_unique<Material>();
+            material->SetShader(&shader);
+
+            // 取得できた値だけを既定のPBRパラメータに反映する
+            aiColor4D color;
+            if (aiGetMaterialColor(&source, AI_MATKEY_BASE_COLOR, &color) == AI_SUCCESS ||
+                aiGetMaterialColor(&source, AI_MATKEY_COLOR_DIFFUSE, &color) == AI_SUCCESS)
+                material->SetColor("_BaseColor", Color(color.r, color.g, color.b, color.a));
+
+            ai_real value;
+            if (aiGetMaterialFloat(&source, AI_MATKEY_METALLIC_FACTOR, &value) == AI_SUCCESS)
+                material->SetFloat("_Metallic", value);
+            if (aiGetMaterialFloat(&source, AI_MATKEY_ROUGHNESS_FACTOR, &value) == AI_SUCCESS)
+                material->SetFloat("_Roughness", value);
+            return material;
+        }
     }
 
     AssetHandle<Prefab> AssetLoader<Prefab>::Load(const AssetInfo& info, const AssetDB& database)
@@ -180,11 +203,30 @@ namespace Hestia
         if ((scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) != 0 || !scene->mRootNode || !scene->HasMeshes())
             return fail("Scene is incomplete or has no meshes");
 
-        // 階層をたどり、実際にMeshを生成したノードだけの割り当てを作る
+        // 同名Materialの有無を調べ、再インポート用のキーを決める
+        constexpr std::string_view shaderPath = "Shaders/MatShaders/DefaultPBR.matsh";
+        auto* shader = database.FindByPath(shaderPath)
+            ? AssetSystem::Get(AssetSystem::Load<MaterialShader>(shaderPath)) : nullptr;
+        if (!shader)
+            Logger::Warning("DefaultPBR is unavailable for model: " + info.m_path);
+
+        std::vector<std::string> materialNames(scene->mNumMaterials);
+        std::unordered_map<std::string, uint32_t> nameCounts;
+        for (uint32_t index = 0; index < scene->mNumMaterials; ++index)
+        {
+            aiString name;
+            if (aiGetMaterialString(scene->mMaterials[index], AI_MATKEY_NAME, &name) == AI_SUCCESS)
+            {
+                materialNames[index] = name.C_Str();
+                ++nameCounts[materialNames[index]];
+            }
+        }
+
+        // MeshとMaterialで同じ連番を使い、使用するSubAssetだけを登録する
         auto prefab = std::make_unique<Prefab>();
         std::vector<std::pair<AssetRef, std::unique_ptr<Mesh>>> meshes;
-        std::unordered_map<std::string, uint32_t> subAssets;
-        uint32_t nextLocalId = info.m_nextLocalId;
+        std::vector<std::pair<AssetRef, std::unique_ptr<Material>>> materials(scene->mNumMaterials);
+        AssetInfo updated{ info.m_guid, info.m_type, info.m_path, info.m_nextLocalId, {}, {} };
         std::string error;
         const auto visit = [&](this const auto& visitNode, const aiNode& node,
             const std::string& parentPath, SerializedEntity& entity) -> bool
@@ -224,15 +266,16 @@ namespace Hestia
             if (node.mNumMeshes != 0)
             {
                 const auto old = info.m_subAssets.find(nodePath);
-                const auto id = old != info.m_subAssets.end() ? old->second : nextLocalId++;
-                if (!subAssets.emplace(nodePath, id).second)
+                const auto id = old != info.m_subAssets.end() ? old->second : updated.m_nextLocalId++;
+                if (!updated.m_subAssets.emplace(nodePath, id).second)
                 {
                     error = "Duplicate mesh node path: " + nodePath;
                     return false;
                 }
 
                 std::string_view meshError;
-                auto mesh = BuildMesh(*scene, node, meshError);
+                std::vector<uint32_t> materialIndices;
+                auto mesh = BuildMesh(*scene, node, materialIndices, meshError);
                 if (!mesh)
                 {
                     error = std::format("{}: {}", nodePath, meshError);
@@ -242,8 +285,32 @@ namespace Hestia
                 mesh->m_name = nodePath;
                 std::ranges::replace(mesh->m_name, '/', '_');
                 const AssetRef ref{ info.m_guid, id };
-                entity.m_components.push_back({ "Hestia::MeshRenderer", { { "mesh", ToSerializedValue(ref) } } });
+                auto& renderer = entity.m_components.emplace_back("Hestia::MeshRenderer");
+                renderer.m_fields.emplace("mesh", ToSerializedValue(ref));
                 meshes.emplace_back(ref, std::move(mesh));
+
+                // Materialはモデル内で一度だけ作り、各RendererへSlot順に参照を並べる
+                std::vector<AssetRef> references;
+                for (const auto sourceIndex : materialIndices)
+                {
+                    auto& [materialRef, material] = materials[sourceIndex];
+                    if (!materialRef.m_guid)
+                    {
+                        const auto& name = materialNames[sourceIndex];
+                        const auto key = !name.empty() && nameCounts.at(name) == 1
+                            ? "name:" + name : "index:" + std::to_string(sourceIndex);
+                        const auto previous = info.m_materials.find(key);
+                        const auto materialId = previous != info.m_materials.end()
+                            ? previous->second : updated.m_nextLocalId++;
+                        updated.m_materials.emplace(key, materialId);
+                        materialRef = { info.m_guid, materialId };
+                        if (shader)
+                            material = BuildMaterial(*scene->mMaterials[sourceIndex], *shader);
+                    }
+                    if (shader)
+                        references.push_back(materialRef);
+                }
+                renderer.m_fields.emplace("materials", ToSerializedValue(references));
             }
 
             // ノードの親子関係をSerializedEntityの所有関係へ移す
@@ -260,13 +327,18 @@ namespace Hestia
             return fail(error);
 
         // 全ノードを変換できた場合だけメタデータとCPU Assetを公開する
-        if (!database.SaveModelMeta(info, nextLocalId, subAssets))
+        if (!database.SaveModelMeta(info, updated))
             return {};
 
         for (auto& [ref, mesh] : meshes)
         {
             if (!AssetSystem::RegisterFromLoader(ref, std::move(mesh)).IsValid())
                 return fail("CPU Mesh registration failed");
+        }
+        for (auto& [ref, material] : materials)
+        {
+            if (material && !AssetSystem::RegisterFromLoader(ref, std::move(material)).IsValid())
+                return fail("CPU Material registration failed");
         }
         return AssetSystem::RegisterFromLoader(AssetRef{ info.m_guid, 0 }, std::move(prefab));
     }

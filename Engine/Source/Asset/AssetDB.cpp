@@ -231,20 +231,30 @@ namespace Hestia
 
         // モデルはSubAssetの割り当てを読み込む
         const auto subAssets = root.find_child("subAssets");
+        const auto materials = root.find_child("materials");
         const auto next = root.find_child("nextLocalId");
-        if (!subAssets.readable() && !next.readable())
+        if (!subAssets.readable() && !materials.readable() && !next.readable())
             return true;
         if (!subAssets.readable() || !subAssets.is_map() || !next.readable() || !ReadId(next, info.m_nextLocalId))
             return MetaError(path, "Expected subAssets and a positive nextLocalId");
 
         std::unordered_set<uint32_t> ids;
-        for (const auto node : subAssets.children())
+        // MeshとMaterialをまたいでIDの衝突を検出する
+        for (const auto& [group, entries] :
+            { std::pair{subAssets, &info.m_subAssets}, std::pair{materials, &info.m_materials} })
         {
-            uint32_t id = 0;
-            const auto key = node.key();
-            if (key.empty() || !ReadId(node, id) || id >= info.m_nextLocalId ||
-                !ids.insert(id).second || !info.m_subAssets.emplace(std::string(key.str, key.len), id).second)
-                return MetaError(path, "Invalid or duplicate SubAsset path or ID");
+            if (!group.readable())
+                continue;
+            if (!group.is_map())
+                return MetaError(path, "Expected a SubAsset map");
+            for (const auto node : group.children())
+            {
+                uint32_t id = 0;
+                const auto key = node.key();
+                if (key.empty() || !ReadId(node, id) || id >= info.m_nextLocalId ||
+                    !ids.insert(id).second || !entries->emplace(std::string(key.str, key.len), id).second)
+                    return MetaError(path, "Invalid or duplicate SubAsset key or ID");
+            }
         }
         return true;
     }
@@ -259,14 +269,21 @@ namespace Hestia
         if (info.m_nextLocalId != 1 || !info.m_subAssets.empty())
         {
             root["nextLocalId"].save(info.m_nextLocalId);
-            auto subAssets = root["subAssets"];
-            subAssets |= ryml::MAP;
-            for (const auto& [nodePath, id] : info.m_subAssets)
+            for (const auto& [name, entries] :
+                { std::pair{std::string_view("subAssets"), &info.m_subAssets},
+                  std::pair{std::string_view("materials"), &info.m_materials} })
             {
-                auto node = subAssets.append_child();
-                node.set_key(tree.to_arena(ryml::to_csubstr(nodePath)));
-                node.set_key_style(ryml::KEY_DQUO);
-                node.save(id);
+                if (name == "materials" && entries->empty())
+                    continue;
+                auto group = root[ryml::to_csubstr(name)];
+                group |= ryml::MAP;
+                for (const auto& [key, id] : *entries)
+                {
+                    auto node = group.append_child();
+                    node.set_key(tree.to_arena(ryml::to_csubstr(key)));
+                    node.set_key_style(ryml::KEY_DQUO);
+                    node.save(id);
+                }
             }
         }
 
@@ -302,16 +319,12 @@ namespace Hestia
         return PathToUtf8(m_root / PathFromUtf8(info.m_path));
     }
 
-    bool AssetDB::SaveModelMeta(const AssetInfo& info, uint32_t nextLocalId,
-        const std::unordered_map<std::string, uint32_t>& subAssets) const
+    bool AssetDB::SaveModelMeta(const AssetInfo& previous, const AssetInfo& updated) const
     {
-        if (info.m_subAssets == subAssets)
+        if (previous.m_subAssets == updated.m_subAssets && previous.m_materials == updated.m_materials)
             return true;
 
-        auto updated = info;
-        updated.m_nextLocalId = nextLocalId;
-        updated.m_subAssets = subAssets;
-        const auto source = SourcePath(info);
+        const auto source = SourcePath(updated);
         auto path = PathFromUtf8(source);
         path += L".meta";
         return WriteMeta(path, updated);
