@@ -5,6 +5,9 @@ Build/
 /Engine/Include/API/Generated/ECSProcessAPI.generated.h
 /Engine/Source/API/Generated/ECSProcessAPI.generated.cpp
 
+# Build Library
+/Library/
+
 # ThirdParty distribution libraries
 !/ThirdParty/Library/**/*.lib
 !/ThirdParty/Library/Assimp/assimp-vc145-mt.dll
