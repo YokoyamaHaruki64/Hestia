@@ -1,6 +1,6 @@
 ﻿# 実装仕様書
 
-2026-11-02の実装調査を基に、2026-11-05にECSとEngine接続、2026-11-07にMaterialShaderとDX12 Forward描画、2026-11-17にGameRuntimeと公開APIの記述を更新した。
+2026-11-02の実装調査を基に、2026-11-05にECSとEngine接続、2026-11-07にMaterialShaderとDX12 Forward描画、2026-11-17にGameRuntimeと公開API、2026-11-25にAssetDBの `.meta` 管理、モデルの読み込み、Prefabの保存と展開を反映した。
 
 ## 読み方
 
@@ -13,7 +13,7 @@
 | GameRuntime / Game向けAPI | [GameRuntime](GameRuntime/README.md) | [型とAPI](GameRuntime/Types.md)、[Processの登録と公開](ECS/DevelopmentGuide.md#公開processのapiとfacade) |
 | Time | [Time](Time/README.md) | [Types](Time/Types.md) |
 | Log | [Log](Log/README.md) | [Types](Log/Types.md) |
-| Asset | [Asset](Asset/README.md) | [Types](Asset/Types.md) |
+| Asset | [Asset](Asset/README.md) | [Types](Asset/Types.md)、[Assetの設計](../Design/AssetSystem.md) |
 | Graphics / DX12 / Shader | [Graphics](Graphics/README.md)、[MaterialShader と Forward 描画](Graphics/MaterialShader.md) | [Types](Graphics/Types.md)、[MaterialShader の設計](../Design/MaterialShader.md)、[RenderPassの設計](../Design/RenderPass.md) |
 | ECS | [ECS](ECS/README.md) | [Types](ECS/Types.md)、[Process](ECS/Process.md)、[開発手引き](ECS/DevelopmentGuide.md) |
 | ECSProcess | [Transform](ECSProcess/Transform.md)、[MeshRenderer](ECSProcess/MeshRenderer.md) | [Transformの設計](../Design/Transform.md) |

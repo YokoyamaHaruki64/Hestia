@@ -15,4 +15,4 @@
 
 ## 将来案：ECS 初期構成と Prefab
 
-初期 Component・Process を指定する Entity 生成と Component 値を保存・復元する Prefab は将来案である。API 名、引数、保存形式は未確定。導入時は値の復元を終えてから Entity を使用可能にし、Process 対象は復元後の Component 構成で決める。非自明型は型ごとの復元処理を使い、Process 実行中の生成は保留変更の契約に従う。
+Prefabの初版は、Entityの親子関係、Component構成、選択したフィールドの初期値をYAMLに保存する。スナップショットの取得、YAML入出力、`ECSSystem::Instantiate` によるWorldへの展開は[Componentのシリアライズ](Design/Serialize/ComponentSerialization.md)に定める。Process実行中に展開を要求した場合の扱いと、Scriptの保存・復元は今後決める。

@@ -7,6 +7,7 @@ Engine は `ECSSystem` を所有し、`ECSSystem` は Component の登録情報�
 - `EntityHandle` は Index と Generation を持つ。World は Index から Slot を引き、Generation を照合して現在の Archetype、Chunk、行を解決する。行が移動したら Slot を更新し、Slot を再利用したときは世代照合で古い Handle を拒否する。
 - Archetype は同じ Component 型の集合を持つ Entity をまとめる。Chunk 内で Entity と型ごとの Component をそれぞれ連続した列に置き、同じ行番号で対応させる。Component のアドレスを借用できるのは構造変更まで。長期保持には Handle を使う。
 - Entity は `Name`、`Tag`、`Layer` と [Transform を構成する三つの Component](Transform.md) を持つ。生成に成功すると Active になり、移行時も必須 Component と既存値を保持する。
+- `CreateEntity()` は必須 Component の構成を使う。`CreateEntity(componentTypes)` は必須型を含む全 Component の型 ID を受け取り、欠けている必須型または未登録の型があれば生成を拒否する。どちらも構成に対応する Archetype の Chunk に直接生成する。Prefab や Scene を復元するときは、保存された型名を Registry で ID に解決してから渡す。初期値と親子関係は生成後に復元する。 [Componentのシリアライズ](Serialize/ComponentSerialization.md)
 
 ## Process と構造変更
 
