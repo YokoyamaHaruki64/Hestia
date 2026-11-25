@@ -1,6 +1,6 @@
 # Componentのシリアライズ
 
-PrefabはEntityの親子関係、各EntityのComponent構成、復元するフィールドの値をYAMLに保存する。初版はComponentを対象とし、Scriptの型や値の保存は後続とする。 [ECSの設計](../ECS.md)
+PrefabはEntityの親子関係、各EntityのComponent構成、復元するフィールドの値をYAMLに保存する。Prefabの初版はComponentを対象とする。SceneはこのComponent保存の仕組みを共有し、複数ルート、Active状態、Scriptの型参照を扱う。 [ECSの設計](../ECS.md) ・ [Sceneの保存・読み込み](SceneSerialization.md)
 
 ## 保存フィールドの宣言
 
@@ -55,8 +55,18 @@ World上の `TransformHierarchy` は実行中のEntityをHandleで結び付け�
 
 ## スナップショットの取得と保存
 
-1. `ECSSystem::SaveEntity(rootHandle)` は `std::optional<SerializedEntity>` を返す。Worldの `TransformHierarchy` をたどり、単体の取得処理を再利用して、子孫を `m_children` に格納したルートを返す。破棄予約済みの子とその配下は除く。ルートまたは対象の子の取得に失敗したら、ログを出して `std::nullopt` を返す。
-2. Writerは取得済みのルート、Prefab名、出力先を受け取り、書き出し結果を `bool` で返す。ルートから `m_children` の順に深さ優先でたどり、`id: 1` から採番する。子の `parent` には直近の親のIDを出力する。子がいなければルート1件を出力する。
+`ECSSystem::SaveEntity()` は、Worldの `TransformHierarchy` をたどって、ルートと子孫を `std::optional<SerializedEntity>` で返す。単体の取得処理を再利用して子孫を `m_children` に格納し、破棄予約済みの子とその配下は除く。取得やScript照会に失敗したら、ログを出して `std::nullopt` を返す。
+
+| オーバーロード | Script参照の取得 |
+| --- | --- |
+| `SaveEntity(rootHandle)` | 保存対象のルートと子孫のHandleを集め、`SaveEntity()` の中でGameRuntimeへの一括照会から `EntityHandle → Script GUID列` のmapを取得する。 |
+| `SaveEntity(rootHandle, scriptRefsByEntity)` | 呼び出し側が取得済みのmapを読み取り専用で借用する。Scene保存では全ルートで同じmapを使う。 |
+
+どちらもルートと子孫の各ノードで、保存元Handleをキーにmapを引く。一致したGUIDを `{guid, localId: 0}` の `AssetRef` として `SerializedEntity` に格納する。mapに項目がないEntityのScript参照は空とする。
+
+引数1つの呼び出しで使う照会はEngineが接続し、GameRuntimeの破棄前に切断する。GameRuntime未接続時はScript参照を空としてスナップショットを作る。Scene保存は、Scriptの追加・削除を反映した後の状態を使う。 [Script参照の取得](../GameRuntime/Script.md#scene保存用の逆引き) ・ [Scene保存の手順](SceneSerialization.md#worldからの保存)
+
+PrefabのWriterは取得済みのルート、Prefab名、出力先を受け取り、書き出し結果を `bool` で返す。ルートから `m_children` の順に深さ優先でたどり、`id: 1` から採番する。子の `parent` には直近の親のIDを出力する。子がいなければルート1件を出力する。
 
 Componentはスナップショットの配列順に、フィールドはRegistryの宣言順に出力する。保存対象がないComponentは `{}`、空の配列値は `[]` とする。
 

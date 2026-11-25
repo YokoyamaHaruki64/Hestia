@@ -35,6 +35,7 @@
     <ClCompile Include="Source\ECS\ECSWorld.cpp" />
     <ClCompile Include="Source\Serialize\EntityYamlWriter.cpp" />
     <ClCompile Include="Source\Serialize\PrefabLoader.cpp" />
+    <ClCompile Include="Source\Scene\SceneSystem.cpp" />
     <ClCompile Include="Source\ECS\ECSSystem.cpp" />
     <ClCompile Include="Source\Transform\TransformProcess.cpp" />
     <ClCompile Include="Source\Transform\TransformFacade.cpp" />
@@ -87,6 +88,8 @@
     <ClInclude Include="Include\Serialize\SerializeFields.h" />
     <ClInclude Include="Include\Serialize\SerializedEntity.h" />
     <ClInclude Include="Include\Serialize\EntityYamlWriter.h" />
+    <ClInclude Include="Include\Serialize\EntityYamlReader.h" />
+    <ClInclude Include="Include\Scene\SceneSystem.h" />
     <ClInclude Include="Include\ECS\Component.h" />
     <ClInclude Include="Include\ECS\Entity.h" />
     <ClInclude Include="Include\ECS\Archetype.h" />

@@ -138,16 +138,67 @@ namespace Hestia
             return true;
         }
         bool WriteEntity(ryml::NodeRef entities, const SerializedEntity& entity,
-            const ComponentRegistry& registry, uint64_t id, uint64_t parentId)
+            const ComponentRegistry& registry, uint64_t id, uint64_t parentId, bool scene)
         {
-            // 親子関係にはPrefab内のIDを使う
+            // 親子関係にはファイル内のIDを使う
             auto entry = entities.append_child();
             entry |= ryml::MAP;
             entry["id"].save(id);
             if (parentId != 0)
                 entry["parent"].save(parentId);
 
+            if (scene)
+            {
+                entry["active"].set_val(entity.m_active ? "true" : "false");
+                if (!entity.m_scripts.empty())
+                {
+                    auto scripts = entry["scripts"];
+                    scripts |= ryml::SEQ;
+                    for (const auto& ref : entity.m_scripts)
+                    {
+                        if (!ref.m_guid || ref.m_localId != 0)
+                        {
+                            Logger::Error("Scene YAML contains an invalid Script reference");
+                            return false;
+                        }
+                        WriteValue(scripts.append_child(), SerializedValue{ ref });
+                    }
+                }
+            }
             return WriteComponents(entry["components"], entity, registry);
+        }
+
+        bool WriteHierarchy(ryml::NodeRef entities, std::span<const SerializedEntity> roots, bool scene)
+        {
+            const auto* registry = ECSSystem::GetRegistry();
+            if (!registry)
+            {
+                Logger::Error("Entity YAML requires an initialized ComponentRegistry");
+                return false;
+            }
+
+            // ルートをまたいで使うファイル内IDを、深さ優先で割り当てる
+            uint64_t nextId = 1;
+            const auto append = [&](this const auto& self, const SerializedEntity& entity, uint64_t parentId) -> bool
+            {
+                const uint64_t id = nextId++;
+                if (!WriteEntity(entities, entity, *registry, id, parentId, scene))
+                    return false;
+
+                for (const auto& child : entity.m_children)
+                {
+                    if (!self(child, id))
+                        return false;
+                }
+                return true;
+            };
+
+            for (const auto& root : roots)
+            {
+                if (!append(root, 0))
+                    return false;
+            }
+            return true;
         }
 
         bool SaveTree(const ryml::Tree& tree, const std::filesystem::path& path)
@@ -175,35 +226,22 @@ namespace Hestia
     bool EntityYamlWriter::Save(const SerializedEntity& root, std::string_view prefabName,
         const std::filesystem::path& path)
     {
-        const auto* registry = ECSSystem::GetRegistry();
-        if (registry == nullptr)
-        {
-            Logger::Error("Entity YAML requires an initialized ComponentRegistry");
-            return false;
-        }
-
         ryml::Tree tree;
         auto entities = BeginPrefab(tree, prefabName);
-        if (!entities.readable())
-            return false;
+        return entities.readable() && WriteHierarchy(entities, { &root, 1 }, false) && SaveTree(tree, path);
+    }
 
-        uint64_t nextId = 1;
-
-        // スナップショットを深さ優先でたどり、ファイル内だけで使うIDを振る
-        const auto append = [&](this const auto& self, const SerializedEntity& entity, uint64_t parentId) -> bool
-        {
-            const uint64_t id = nextId++;
-            if (!WriteEntity(entities, entity, *registry, id, parentId))
-                return false;
-
-            for (const auto& child : entity.m_children)
-            {
-                if (!self(child, id))
-                    return false;
-            }
-            return true;
-        };
-
-        return append(root, 0) && SaveTree(tree, path);
+    bool EntityYamlWriter::SaveScene(std::span<const SerializedEntity> roots, const std::filesystem::path& path)
+    {
+        // Sceneのバージョンを付けてから、Prefabと同じEntity形式で階層を出力する
+        ryml::Tree tree;
+        auto document = tree.rootref();
+        document |= ryml::MAP;
+        document["version"].save(1);
+        auto entities = document["entities"];
+        entities |= ryml::SEQ;
+        if (roots.empty())
+            entities |= ryml::FLOW_SL;
+        return WriteHierarchy(entities, roots, true) && SaveTree(tree, path);
     }
 }

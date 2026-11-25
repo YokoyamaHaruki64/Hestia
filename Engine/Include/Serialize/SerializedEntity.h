@@ -43,6 +43,8 @@ namespace Hestia
         EntityHandle m_source;
         std::vector<SerializedComponent> m_components;
         std::vector<SerializedEntity> m_children;
+        bool m_active = true;
+        std::vector<AssetRef> m_scripts;
     };
 }
 

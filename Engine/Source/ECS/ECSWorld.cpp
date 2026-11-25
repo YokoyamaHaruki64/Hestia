@@ -458,6 +458,7 @@ namespace Hestia
         const auto& columns = slot->m_archetype->GetLayout().m_components;
         const Chunk& chunk = *slot->m_chunk;
         SerializedEntity result{ handle, {} };
+        result.m_active = chunk.GetEntity(slot->m_row)->IsActive();
         result.m_components.reserve(columns.size());
         for (size_t column = 0; column < columns.size(); ++column)
         {
@@ -1106,6 +1107,53 @@ namespace Hestia
             if (processFailed)
                 return;
         }
+    }
+
+    std::vector<const Archetype*> ECSWorld::QueryArchetypes(std::span<const ComponentTypeId> required) const
+    {
+        std::vector<const Archetype*> matches;
+        if (!m_isInitialized || m_isApplyingChanges)
+            return matches;
+
+        // Archetypeごとの署名を照合し、Entityの行には触れない
+        for (const auto& [signature, archetype] : m_archetypes)
+        {
+            if (std::ranges::all_of(required, [&](ComponentTypeId type)
+                { return std::ranges::binary_search(signature, type); }))
+                matches.push_back(archetype.get());
+        }
+        return matches;
+    }
+
+    bool ECSWorld::ClearSceneEntities(void* context, void (*clearScripts)(void*))
+    {
+        if (!m_isInitialized || m_isRunningProcess || m_isApplyingChanges || m_isEndingFrame)
+            return false;
+
+        // 旧Entityを読める状態でScriptを終了し、その間の新規生成を禁止する
+        ScopedFlag endingFrame(m_isEndingFrame);
+        if (clearScripts)
+            clearScripts(context);
+
+        // Processが借用するArchetypeを維持し、旧SceneのChunkだけをまとめて解放する
+        ScopedFlag applyingChanges(m_isApplyingChanges);
+        m_pendingChanges.clear();
+        m_pendingDestroy.clear();
+        ClearEntitySearchResults();
+        for (const auto& [signature, archetype] : m_archetypes)
+        {
+            archetype->m_activeChunk = nullptr;
+            archetype->m_writableChunks.clear();
+            archetype->m_chunks.clear();
+        }
+
+        // Slotを残して世代を進め、次のSceneのEntityと旧Handleを区別する
+        for (size_t index = 0; index < m_entitySlots.size(); ++index)
+        {
+            if (m_entitySlots[index].m_state != EntitySlotState::Free)
+                ReleaseSlot(static_cast<uint32_t>(index));
+        }
+        return true;
     }
 
     void ECSWorld::EndFrame()

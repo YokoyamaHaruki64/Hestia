@@ -14,10 +14,17 @@
 #define _GAME_RUNTIME_API_H_
 
 #include "DllAPI.h"
+#include "AssetIdentity.h"
+#include "EntityHandle.h"
 
 namespace Hestia
 {
     struct GameEngineAPI;
+
+    using ScriptAttachmentVisitor = void (*)(void*, EntityHandle, AssetGuid);
+    using ScriptAttachmentQuery = bool (*)(void*, const EntityHandle*, size_t, void*, ScriptAttachmentVisitor);
+
+    enum class SceneScriptResult { Attached, UnknownType, Failed };
 
     /// @brief Game 内の Runtime を Engine から操作する関数テーブル。
     struct GameRuntimeAPI
@@ -31,6 +38,14 @@ namespace Hestia
         void (*LateUpdate)(void*) = nullptr;
         /// @brief ECS の実体破棄前に Script の寿命と次フレームの実行対象を確定する。
         void (*EndFrame)(void*) = nullptr;
+        /// @brief Engine所有の出力に、反映済みのScript型参照を渡す。
+        ScriptAttachmentQuery QueryScriptAttachments = nullptr;
+        /// @brief GUIDから既定のScriptを生成し、追加を予約する。
+        SceneScriptResult (*AttachSceneScript)(void*, EntityHandle, AssetGuid) = nullptr;
+        /// @brief 新SceneのScriptの追加を確定する。
+        bool (*FlushScripts)(void*) = nullptr;
+        /// @brief 登録を維持したまま旧SceneのScriptを終了して解放する。
+        void (*ClearSceneScripts)(void*) = nullptr;
     };
 }
 

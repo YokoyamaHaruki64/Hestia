@@ -24,6 +24,20 @@
 
 namespace Hestia
 {
+    namespace
+    {
+        void SaveScriptGuids(SerializedEntity& entity, const ScriptGuidsByEntity& scripts)
+        {
+            const auto found = scripts.find(entity.m_source);
+            if (found == scripts.end())
+                return;
+
+            entity.m_scripts.reserve(found->second.size());
+            for (const auto guid : found->second)
+                entity.m_scripts.push_back({ guid, 0 });
+        }
+    }
+
     ECSSystem* ECSSystem::s_instance = nullptr;
 
     ECSSystem::ECSSystem()
@@ -207,6 +221,35 @@ namespace Hestia
 
     std::optional<SerializedEntity> ECSSystem::SaveEntity(EntityHandle root)
     {
+        auto snapshot = SaveEntity(root, {});
+        if (!snapshot || !s_instance->m_scriptQuery)
+            return snapshot;
+
+        // 保存できた全ノードのHandleだけを一度にGameRuntimeへ渡す
+        std::vector<EntityHandle> handles;
+        std::vector<SerializedEntity*> nodes;
+        const auto collect = [&](this const auto& self, SerializedEntity& node) -> void
+        {
+            handles.push_back(node.m_source);
+            nodes.push_back(&node);
+            for (auto& child : node.m_children)
+                self(child);
+        };
+        collect(*snapshot);
+
+        const auto scripts = QueryScriptAttachments(handles);
+        if (!scripts)
+        {
+            Logger::Error("Could not query Script attachments for Entity " + std::to_string(root.m_index));
+            return std::nullopt;
+        }
+        for (auto* node : nodes)
+            SaveScriptGuids(*node, *scripts);
+        return snapshot;
+    }
+
+    std::optional<SerializedEntity> ECSSystem::SaveEntity(EntityHandle root, const ScriptGuidsByEntity& scripts)
+    {
         if (s_instance == nullptr || !s_instance->m_isInitialized)
         {
             Logger::Error("ECSSystem::SaveEntity requires an initialized ECS");
@@ -224,6 +267,7 @@ namespace Hestia
                 return std::nullopt;
             }
 
+            SaveScriptGuids(*snapshot, scripts);
             const auto* hierarchy = world.GetComponent<const TransformHierarchy>(handle);
             snapshot->m_children.reserve(hierarchy->m_children.size());
             for (const auto child : hierarchy->m_children)
@@ -240,6 +284,57 @@ namespace Hestia
             return snapshot;
         };
         return capture(root);
+    }
+
+    void ECSSystem::BindScriptAttachmentQuery(void* runtime, ScriptAttachmentQuery query) noexcept
+    {
+        if (s_instance)
+        {
+            s_instance->m_scriptRuntime = runtime;
+            s_instance->m_scriptQuery = query;
+        }
+    }
+
+    std::optional<ScriptGuidsByEntity> ECSSystem::QueryScriptAttachments(std::span<const EntityHandle> entities)
+    {
+        ScriptGuidsByEntity scripts;
+        if (s_instance && s_instance->m_scriptQuery)
+        {
+            // 出力のmapはEngine側が所有し、DLL境界ではHandleとGUIDだけを受け取る
+            const auto collect = [](void* context, EntityHandle entity, AssetGuid guid)
+            {
+                (*static_cast<ScriptGuidsByEntity*>(context))[entity].push_back(guid);
+            };
+            if (!s_instance->m_scriptQuery(s_instance->m_scriptRuntime, entities.data(), entities.size(),
+                &scripts, collect))
+                return std::nullopt;
+        }
+        return scripts;
+    }
+
+    std::vector<const Archetype*> ECSSystem::QueryArchetypes(std::span<const ComponentTypeId> required)
+    {
+        return s_instance ? s_instance->m_world.QueryArchetypes(required) : std::vector<const Archetype*>{};
+    }
+
+    bool ECSSystem::ClearSceneEntities(void* context, void (*clearScripts)(void*))
+    {
+        return s_instance && s_instance->m_world.ClearSceneEntities(context, clearScripts);
+    }
+
+    bool ECSSystem::InstantiateScene(std::span<const SerializedEntity> roots, std::vector<SceneScriptAttachment>& scripts)
+    {
+        if (!s_instance || !s_instance->m_isInitialized || s_instance->m_world.m_isRunningProcess ||
+            s_instance->m_world.m_isApplyingChanges || s_instance->m_world.m_isEndingFrame)
+            return false;
+
+        // 全Entityを先に展開し、Scriptの生成はSceneSystemへ返す
+        for (const auto& root : roots)
+        {
+            if (!s_instance->InstantiateNode(root, {}, nullptr, nullptr, nullptr, &scripts).IsValid())
+                return false;
+        }
+        return true;
     }
 
     const ComponentRegistry* ECSSystem::GetRegistry() noexcept
@@ -287,7 +382,8 @@ namespace Hestia
     }
 
     EntityHandle ECSSystem::InstantiateNode(const SerializedEntity& source, EntityHandle parent,
-        const Vector3* position, const Quaternion* rotation, const Vector3* scale)
+        const Vector3* position, const Quaternion* rotation, const Vector3* scale,
+        std::vector<SceneScriptAttachment>* sceneScripts)
     {
         // 保存した構成のArchetypeへ直接生成する
         std::vector<ComponentTypeId> types;
@@ -297,7 +393,7 @@ namespace Hestia
             const auto* info = m_registry.FindInfo(component.m_typeName);
             if (info == nullptr)
             {
-                Logger::Error("Unknown Prefab Component: " + component.m_typeName);
+                Logger::Error("Unknown serialized Component: " + component.m_typeName);
                 return {};
             }
             types.push_back(info->id);
@@ -345,10 +441,19 @@ namespace Hestia
                 *m_world.GetComponent<TransformHierarchy>(handle), *position, *rotation, *scale))
             return FailPrefabNode(handle, "invalid root Local TRS");
 
+        // SceneのActiveを適用してから、後で追加するScriptの対応を記録する
+        if (sceneScripts)
+        {
+            if (!m_world.SetActive(handle, source.m_active))
+                return FailPrefabNode(handle, "could not restore Entity Active state");
+            for (const auto& ref : source.m_scripts)
+                sceneScripts->push_back({ handle, ref.m_guid });
+        }
+
         // 子を再帰的に生成する
         for (const auto& child : source.m_children)
         {
-            if (!InstantiateNode(child, handle).IsValid())
+            if (!InstantiateNode(child, handle, nullptr, nullptr, nullptr, sceneScripts).IsValid())
             {
                 m_world.DestroyEntity(handle);
                 return {};

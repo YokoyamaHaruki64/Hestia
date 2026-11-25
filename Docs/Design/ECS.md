@@ -9,6 +9,12 @@ Engine は `ECSSystem` を所有し、`ECSSystem` は Component の登録情報�
 - Entity は `Name`、`Tag`、`Layer` と [Transform を構成する三つの Component](Transform.md) を持つ。生成に成功すると Active になり、移行時も必須 Component と既存値を保持する。
 - `CreateEntity()` は必須 Component の構成を使う。`CreateEntity(componentTypes)` は必須型を含む全 Component の型 ID を受け取り、欠けている必須型または未登録の型があれば生成を拒否する。どちらも構成に対応する Archetype の Chunk に直接生成する。Prefab や Scene を復元するときは、保存された型名を Registry で ID に解決してから渡す。初期値と親子関係は生成後に復元する。 [Componentのシリアライズ](Serialize/ComponentSerialization.md)
 
+### Archetypeクエリ
+
+`ECSWorld::QueryArchetypes(std::span<const ComponentTypeId> required)` は、指定されたComponentをすべて含むArchetypeを `std::vector<const Archetype*>` として返す。`ECSSystem` はEngine内部からクエリを呼ぶ入口を提供する。照合はArchetypeの署名を対象とし、各Entityの状態による絞り込みは呼び出し側で行う。
+
+ArchetypeとChunkはWorldが所有する。呼び出し側は構造変更のない区間で結果を使い切る。Scene保存では `TransformHierarchy` を持つArchetypeのChunkを順に読み、親を持たないEntityのHandleを集める。 [Sceneの保存・読み込み](Serialize/SceneSerialization.md)
+
 ## Process と構造変更
 
 Process は phase と関数を初期化時に登録する。関数は `count`、Entity 列、要求する Component 列を受け取る。要求 Component をすべて含む Archetype が対象になり、同じ phase では登録順に Chunk 単位で呼ぶ。Active な Entity だけを処理する Process は、各行の `IsActive()` を確認する。

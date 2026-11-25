@@ -14,6 +14,7 @@
 #define _ENTITY_YAML_WRITER_H_
 
 #include <filesystem>
+#include <span>
 #include <string_view>
 
 namespace Hestia
@@ -31,6 +32,9 @@ namespace Hestia
         /// @return 保存成功: true / 保存データが不正または出力に失敗: false
         static bool Save(const SerializedEntity& root, std::string_view prefabName,
             const std::filesystem::path& path);
+
+        /// @brief 複数ルートとScene固有の値を1つのYAMLに保存する。
+        static bool SaveScene(std::span<const SerializedEntity> roots, const std::filesystem::path& path);
     };
 }
 
