@@ -23,16 +23,6 @@
 
 namespace Hestia
 {
-    /// @brief AssetDB が初期対応する CPU Asset の種別。
-    enum class AssetType
-    {
-        Mesh,
-        Texture,
-        MaterialShader,
-        Model,
-        Prefab
-    };
-
     /// @brief Entity階層とComponentの保存データを保持するAsset
     struct Prefab
     {

@@ -18,21 +18,10 @@
 #include <string_view>
 #include <unordered_map>
 
-#include "Asset/AssetType.h"
+#include "Common/Include/AssetMetadata.h"
 
 namespace Hestia
 {
-    /// @brief 元Assetファイルの索引情報と、モデルのSubAsset割り当て
-    struct AssetInfo
-    {
-        AssetGuid m_guid;
-        AssetType m_type = AssetType::Mesh;
-        std::string m_path;
-        uint32_t m_nextLocalId = 1;
-        std::unordered_map<std::string, uint32_t> m_subAssets;
-        std::unordered_map<std::string, uint32_t> m_materials;
-    };
-
     /// @brief .metaから作るGUIDとAssetルート相対パスの索引
     class AssetDB
     {
@@ -47,13 +36,14 @@ namespace Hestia
         const AssetInfo* FindByPath(std::string_view path) const;
         /// @brief Loaderへ渡す元ファイルのUTF-8パスを組み立てる
         std::string SourcePath(const AssetInfo& info) const;
+        /// @brief Assetルート相対のパスを物理パスへ解決する。
+        std::filesystem::path SourcePath(std::string_view relativePath) const;
+        /// @brief 保存したファイルのメタデータを揃え、索引を1件追加する。
+        bool RegisterFile(std::string_view relativePath);
         /// @brief 変換済みモデルの新しいID割り当てを、差分がある場合だけ保存する
         bool SaveModelMeta(const AssetInfo& previous, const AssetInfo& updated) const;
 
     private:
-        static bool ReadMeta(const std::filesystem::path& path, AssetInfo& info);
-        static bool WriteMeta(const std::filesystem::path& path, const AssetInfo& info);
-
         std::filesystem::path m_root;
         std::unordered_map<AssetGuid, AssetInfo, AssetGuid::Hash> m_entries;
         std::unordered_map<std::string, AssetGuid> m_paths;
