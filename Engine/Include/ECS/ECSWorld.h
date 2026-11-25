@@ -171,6 +171,12 @@ namespace Hestia
         /// @note Entityの実体とComponentはこの呼び出しまで維持する
         void EndFrame();
 
+        /// @brief 要求型をすべて含むArchetypeを構造変更まで借用する。
+        std::vector<const Archetype*> QueryArchetypes(std::span<const ComponentTypeId> required) const;
+
+        /// @brief 旧Scriptの終了後に、全Entity実体を空にして旧Handleを無効にする。
+        bool ClearSceneEntities(void* context, void (*clearScripts)(void*));
+
     private:
         // 現在のECSSystemと、そのWorldを受け取ったWriterから呼び出す
         std::optional<SerializedEntity> SerializeEntity(EntityHandle handle) const;

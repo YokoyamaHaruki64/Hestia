@@ -84,6 +84,9 @@ namespace HestiaGame::Detail
             storage->DestroyAll();
 
         m_storageIndices.clear();
+        m_guidStorageIndices.clear();
+        m_storageGuids.clear();
+        m_entityScripts.clear();
         m_storages.clear();
         Assets::Unbind();
         Logger::Unbind();
@@ -113,9 +116,72 @@ namespace HestiaGame::Detail
                 storage->Remove(entity);
         }
 
-        // フレーム境界で全 Storage の実体と参照先を更新する
+        FlushScripts();
+    }
+
+    bool GameRuntime::FlushScripts()
+    {
+        // フレーム境界でStorageの反映と逆引き索引を同期する
+        bool success = true;
+        for (std::size_t index = 0; index < m_storages.size(); ++index)
+        {
+            if (!m_storages[index]->Flush(m_entityScripts, index))
+                success = false;
+        }
+        return success;
+    }
+
+    void GameRuntime::ClearSceneScripts()
+    {
+        // OnDestroyから旧SceneのScriptが追加されないよう、操作を一時的に閉じる
+        m_initialized = false;
         for (auto& storage : m_storages)
-            storage->Flush();
+            storage->DestroyAll();
+        m_entityScripts.clear();
+        m_initialized = true;
+    }
+
+    bool GameRuntime::QueryScriptAttachments(const Hestia::EntityHandle* entities, std::size_t count,
+        void* context, Hestia::ScriptAttachmentVisitor visitor) const
+    {
+        if (!m_initialized || !visitor || (!entities && count != 0))
+            return false;
+
+        // 対象Handleから反映済みのStorageを引き、GUIDだけを返す
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            const auto entity = entities[index];
+            const auto found = m_entityScripts.find(entity);
+            if (found == m_entityScripts.end())
+                continue;
+
+            for (const auto storageIndex : found->second)
+                visitor(context, entity, m_storageGuids[storageIndex]);
+        }
+        return true;
+    }
+
+    Hestia::SceneScriptResult GameRuntime::AttachSceneScript(Hestia::EntityHandle entity, Hestia::AssetGuid guid)
+    {
+        using Hestia::SceneScriptResult;
+        if (!m_initialized || !m_engineAPI.m_entity->Exists(entity))
+            return SceneScriptResult::Failed;
+
+        const auto found = m_guidStorageIndices.find(guid);
+        if (found == m_guidStorageIndices.end())
+            return SceneScriptResult::UnknownType;
+
+        // 生成に失敗した場合は、部分的なSceneを実行せず呼び出し元で処理する
+        try
+        {
+            return m_storages[found->second]->AddDefault(entity, ++m_lastAttachment) ?
+                SceneScriptResult::Attached : SceneScriptResult::Failed;
+        }
+        catch (...)
+        {
+            Logger::Error("GameRuntime failed to construct a Scene Script");
+            return SceneScriptResult::Failed;
+        }
     }
 
     void GameRuntime::OnEntityActiveChanged(Hestia::EntityHandle entity, bool active)

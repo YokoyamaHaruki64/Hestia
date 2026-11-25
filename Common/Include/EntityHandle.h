@@ -14,6 +14,7 @@
 #define _ENTITY_HANDLE_H_
 
 #include <cstdint>
+#include <functional>
 
 namespace Hestia
 {
@@ -31,6 +32,15 @@ namespace Hestia
         }
 
         bool operator==(const EntityHandle&) const noexcept = default;
+    };
+
+    /// @brief Slotを再利用した別Entityも区別できるHandleのハッシュ。
+    struct EntityHandleHash
+    {
+        size_t operator()(const EntityHandle& handle) const noexcept
+        {
+            return std::hash<uint64_t>{}((uint64_t{ handle.m_generation } << 32) | handle.m_index);
+        }
     };
 }
 

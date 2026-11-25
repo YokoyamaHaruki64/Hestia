@@ -23,20 +23,8 @@ extern "C" HESTIA_GAME_API const Hestia::GameRuntimeAPI* GetGameRuntimeAPI()
     static const Hestia::GameRuntimeAPI api{
         .Create = [](const Hestia::GameEngineAPI* engineAPI) -> void*
         {
-            auto* runtime = GameRuntime::Create(engineAPI, &HestiaGame::Setup::RegisterScripts);
-            if (runtime == nullptr)
-                return nullptr;
-
-            // 初期配置に失敗した場合は、追加済みの Script を含めて解放する
-            if (!HestiaGame::Setup::SetupScene([runtime] { runtime->EndFrame(); }))
-            {
-                runtime->Finalize();
-                delete runtime;
-                return nullptr;
-            }
-            // 最後に追加した分も最初のフレームより前に反映する
-            runtime->EndFrame();
-            return runtime;
+            // 型登録を完了し、初期配置はEngineの起動Sceneに委ねる
+            return GameRuntime::Create(engineAPI, &HestiaGame::Setup::RegisterScripts);
         },
         .Destroy = [](void* handle)
         {
@@ -48,6 +36,17 @@ extern "C" HESTIA_GAME_API const Hestia::GameRuntimeAPI* GetGameRuntimeAPI()
         .Update = [](void* handle) { static_cast<GameRuntime*>(handle)->Run(ScriptPhase::Update); },
         .LateUpdate = [](void* handle) { static_cast<GameRuntime*>(handle)->Run(ScriptPhase::LateUpdate); },
         .EndFrame = [](void* handle) { static_cast<GameRuntime*>(handle)->EndFrame(); },
+        .QueryScriptAttachments = [](void* handle, const Hestia::EntityHandle* entities, size_t count,
+            void* context, Hestia::ScriptAttachmentVisitor visitor)
+        {
+            return static_cast<GameRuntime*>(handle)->QueryScriptAttachments(entities, count, context, visitor);
+        },
+        .AttachSceneScript = [](void* handle, Hestia::EntityHandle entity, Hestia::AssetGuid guid)
+        {
+            return static_cast<GameRuntime*>(handle)->AttachSceneScript(entity, guid);
+        },
+        .FlushScripts = [](void* handle) { return static_cast<GameRuntime*>(handle)->FlushScripts(); },
+        .ClearSceneScripts = [](void* handle) { static_cast<GameRuntime*>(handle)->ClearSceneScripts(); },
     };
     return &api;
 }

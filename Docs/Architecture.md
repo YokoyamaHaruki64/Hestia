@@ -22,6 +22,7 @@ Editor・Game 構成では App、Engine.dll、Game.dll を同じ出力先に置�
 | --- | --- |
 | Time | Application が渡す経過秒を保持し、倍率を scaled 時間に反映する |
 | ECS | 単一 World の Entity と Component を所有し、Component 構成に基づき Process を実行する |
+| Scene | Engineから受けた保存・切り替え要求をフレーム末尾で処理する。 [SceneSystemの設計](Design/SceneSystem.md) |
 | Asset | Asset参照の解決とCPU Assetの寿命を管理する。GPU資源はGraphicsが所有する。 [AssetSystem設計](Design/AssetSystem.md) ・ [AssetDB設計](Design/Asset/AssetDB.md) |
 | Graphics | ECS の描画提出を受け、Backend で記録して表示する |
 | Log | Engine と Game のログを受け、System 終了中も利用できる |

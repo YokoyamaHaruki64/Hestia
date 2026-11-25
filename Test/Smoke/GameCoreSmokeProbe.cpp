@@ -13,6 +13,7 @@
 #include <fstream>
 
 #include "Game/Include/GameTime.h"
+#include "Game/Include/GameSetup.h"
 #include "Game/Include/World.h"
 
 namespace
@@ -100,7 +101,9 @@ namespace
 
     bool RegisterSmokeScripts()
     {
-        return World::RegisterScript<FrameProbe>() && World::RegisterScript<ShutdownProbe>();
+        return HestiaGame::Setup::RegisterScripts() &&
+            World::RegisterScript<FrameProbe>({ { 1, 0 } }) &&
+            World::RegisterScript<ShutdownProbe>({ { 2, 0 } });
     }
 
     bool CreateSmokeScripts()
@@ -113,7 +116,7 @@ namespace
 
     void* CreateSmokeGameRuntime(const Hestia::GameEngineAPI* engineAPI)
     {
-        return HestiaGame::Detail::GameRuntime::Create(engineAPI, &RegisterSmokeScripts, &CreateSmokeScripts);
+        return HestiaGame::Detail::GameRuntime::Create(engineAPI, &RegisterSmokeScripts);
     }
 }
 
@@ -124,6 +127,18 @@ extern "C" const Hestia::GameRuntimeAPI* GetSmokeGameRuntimeAPI()
     {
         auto wrapped = *GetGameRuntimeAPI();
         wrapped.Create = &CreateSmokeGameRuntime;
+        wrapped.FlushScripts = [](void* runtime)
+        {
+            // 起動Sceneが旧Worldを空にした後で、動作確認用のScriptを配置する
+            static bool placed = false;
+            if (!placed)
+            {
+                if (!CreateSmokeScripts())
+                    return false;
+                placed = true;
+            }
+            return GetGameRuntimeAPI()->FlushScripts(runtime);
+        };
         return wrapped;
     }();
     return &api;

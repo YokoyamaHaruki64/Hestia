@@ -19,6 +19,12 @@
     <ClInclude Include="Include\EntityHandle.h">
       <Filter>Include</Filter>
     </ClInclude>
+    <ClInclude Include="Include\AssetIdentity.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\AssetMetadata.h">
+      <Filter>Include</Filter>
+    </ClInclude>
     <ClInclude Include="Include\GameRuntimeAPI.h">
       <Filter>Include</Filter>
     </ClInclude>
@@ -82,6 +88,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\LibMain.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\AssetMetadata.cpp">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>

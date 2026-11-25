@@ -6,11 +6,12 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Scripts\GameSetup.cpp">
+    <ClCompile Include="..\Assets\Gameplay\DebugCubeGenerator.cpp">
       <Filter>Scripts</Filter>
     </ClCompile>
-    <ClInclude Include="Scripts\RotateTransformScript.h">
+    <ClCompile Include="..\Assets\Gameplay\RotateTransformScript.cpp">
       <Filter>Scripts</Filter>
-    </ClInclude>
+    </ClCompile>
+    <ClCompile Include="$(GameGeneratedRoot)\GameSetup.generated.cpp" />
   </ItemGroup>
 </Project>

@@ -31,6 +31,7 @@ namespace Hestia
         m_texture = { &AssetSystem::Load<Texture>, &AssetSystem::Get<Texture>,
             &AssetSystem::Register<Texture>, &AssetSystem::Load<Texture> };
         m_prefab = { &AssetSystem::Load<Prefab>, &AssetSystem::Get<Prefab>, nullptr, &AssetSystem::Load<Prefab> };
+        m_loadMaterial = &AssetSystem::Load<Material>;
     }
 
     void AssetAPI::Finalize()
@@ -38,5 +39,6 @@ namespace Hestia
         m_mesh = {};
         m_texture = {};
         m_prefab = {};
+        m_loadMaterial = nullptr;
     }
 }

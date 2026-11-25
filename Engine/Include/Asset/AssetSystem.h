@@ -31,6 +31,9 @@ namespace Hestia
     class AssetSystem
     {
     public:
+        /// @brief Sceneのファイル索引をEngine内部で参照する。
+        AssetDB& GetDatabase() noexcept { return m_assetDB; }
+
         /// @brief 未初期化の AssetSystem を生成する。
         AssetSystem() = default;
 

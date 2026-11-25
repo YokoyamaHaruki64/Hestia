@@ -22,9 +22,19 @@
 #include "ECS/ComponentRegistry.h"
 #include "ECS/ECSWorld.h"
 
+#include "Common/Include/GameRuntimeAPI.h"
+
 namespace Hestia
 {
     struct Prefab;
+    using ScriptGuidsByEntity = std::unordered_map<EntityHandle, std::vector<AssetGuid>, EntityHandleHash>;
+
+    /// @brief SceneのEntity展開後に復元するScript型参照。
+    struct SceneScriptAttachment
+    {
+        EntityHandle m_entity;
+        AssetGuid m_guid;
+    };
     struct ECSSettings
     {
         size_t m_chunkByteSize = 16 * 1024; // 16KB
@@ -101,6 +111,19 @@ namespace Hestia
 
         /// @brief ルートと子孫のスナップショットを取得する。失敗時は空
         static std::optional<SerializedEntity> SaveEntity(EntityHandle root);
+        /// @brief 取得済みのScript型参照を使って階層を保存する。
+        static std::optional<SerializedEntity> SaveEntity(EntityHandle root, const ScriptGuidsByEntity& scripts);
+        /// @brief Engineが所有するGameRuntimeの照会を、利用期間だけ借用する。
+        static void BindScriptAttachmentQuery(void* runtime, ScriptAttachmentQuery query) noexcept;
+        /// @brief 対象Entityに付いている反映済みScriptのGUIDを取得する。
+        static std::optional<ScriptGuidsByEntity> QueryScriptAttachments(std::span<const EntityHandle> entities);
+        /// @brief 指定された全Componentを持つArchetypeを構造変更まで借用する。
+        static std::vector<const Archetype*> QueryArchetypes(std::span<const ComponentTypeId> required);
+        /// @brief Script終了処理を済ませ、登録を残したままWorldを空にする。
+        static bool ClearSceneEntities(void* context, void (*clearScripts)(void*));
+        /// @brief 全ルートを展開し、新しいHandleとScript型の対応を返す。
+        static bool InstantiateScene(std::span<const SerializedEntity> roots,
+            std::vector<SceneScriptAttachment>& scripts);
 
         /// @brief YAML入出力で参照する登録情報を借用する。ECS未初期化時はnullptr
         static const ComponentRegistry* GetRegistry() noexcept;
@@ -176,7 +199,8 @@ namespace Hestia
         EntityHandle InstantiateImpl(const Prefab& prefab,
             const Vector3* position, const Quaternion* rotation, const Vector3* scale);
         EntityHandle InstantiateNode(const SerializedEntity& source, EntityHandle parent,
-            const Vector3* position = nullptr, const Quaternion* rotation = nullptr, const Vector3* scale = nullptr);
+            const Vector3* position = nullptr, const Quaternion* rotation = nullptr, const Vector3* scale = nullptr,
+            std::vector<SceneScriptAttachment>* sceneScripts = nullptr);
         EntityHandle FailPrefabNode(EntityHandle handle, std::string_view reason);
         /// @brief Initialize中に標準Componentを登録してWorldを初期化する
         bool RegisterECS();
@@ -197,6 +221,8 @@ namespace Hestia
 
         ComponentRegistry m_registry;
         ECSWorld m_world;
+        void* m_scriptRuntime = nullptr;
+        ScriptAttachmentQuery m_scriptQuery = nullptr;
         ECSProcessAPI m_processAPI;
         bool m_isInitializing = false;
         bool m_isInitialized = false;

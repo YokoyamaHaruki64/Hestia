@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "Common/Include/GameRuntimeAPI.h"
+#include "Engine/Include/API/AssetAPI.h"
 #include "Engine/Include/Asset/AssetSystem.h"
 #include "Engine/Include/ECS/ECSSystem.h"
 #include "Engine/Include/Game/MeshRenderer.h"
@@ -25,6 +26,8 @@
 #include "Engine/Include/Graphics/MeshRenderer.h"
 #include "Engine/Include/API/TimeAPI.h"
 #include "Engine/Include/Time/TimeSystem.h"
+#include "Engine/Include/Scene/SceneSystem.h"
+#include "Engine/Include/Serialize/EntityYamlWriter.h"
 #include "Game/Include/GameTime.h"
 #include "Game/Include/World.h"
 
@@ -149,13 +152,13 @@ namespace
             ASSERT_NE(m_runtimeAPI, nullptr);
             m_runtime = HestiaGame::Detail::GameRuntime::Create(&m_engineAPI, []
             {
-                return World::RegisterScript<ReactivateScript>() &&
-                    World::RegisterScript<SpawnScript>() &&
-                    World::RegisterScript<LifecycleScript>() &&
-                    World::RegisterScript<DisableOnStartScript>() &&
-                    World::RegisterScript<ValueScript>() &&
-                    World::RegisterScript<RelocationScript>() &&
-                    World::RegisterScript<DestroyScript>();
+                return World::RegisterScript<ReactivateScript>({ { 1, 0 } }) &&
+                    World::RegisterScript<SpawnScript>({ { 2, 0 } }) &&
+                    World::RegisterScript<LifecycleScript>({ { 3, 0 } }) &&
+                    World::RegisterScript<DisableOnStartScript>({ { 4, 0 } }) &&
+                    World::RegisterScript<ValueScript>({ { 5, 0 } }) &&
+                    World::RegisterScript<RelocationScript>({ { 6, 0 } }) &&
+                    World::RegisterScript<DestroyScript>({ { 7, 0 } });
             });
             ASSERT_NE(m_runtime, nullptr);
         }
@@ -197,6 +200,161 @@ namespace
         EXPECT_EQ(api->Create(&incomplete), nullptr);
     }
 
+    TEST(SceneStartup, GeneratesCubesWithSharedInstancedMaterialWithoutRendering)
+    {
+        using namespace Hestia;
+        const auto repository = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path().parent_path();
+        const auto source = repository.empty() ? std::filesystem::path("../Assets") : repository / "Assets";
+        const auto directory = std::filesystem::temp_directory_path() /
+            ("HestiaSceneStartup-" + std::to_string(GetCurrentProcessId()));
+        const std::filesystem::path files[] = {
+            "Scenes/Startup.scene", "Scenes/Startup.scene.meta", "Shaders/Common.hlsl",
+            "Shaders/MatShaders/Unlit_Inst.matsh", "Shaders/MatShaders/Unlit_Inst.matsh.meta"
+        };
+        for (const auto& file : files)
+        {
+            std::filesystem::create_directories((directory / file).parent_path());
+            ASSERT_TRUE(std::filesystem::copy_file(source / file, directory / file,
+                std::filesystem::copy_options::overwrite_existing));
+        }
+
+        // 描画デバイスなしで、起動Sceneが使う共有Materialを用意する
+        GraphicsSystem graphics;
+        AssetSystem assets;
+        ECSSystem ecs;
+        ASSERT_TRUE(assets.Initialize(&graphics, directory));
+        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Shaders/MatShaders/Unlit_Inst.matsh"));
+        ASSERT_TRUE(shader && shader->IsInstancing());
+        auto material = std::make_unique<Material>();
+        material->SetShader(shader);
+        const auto* sharedMaterial = AssetSystem::Get(AssetSystem::Register<Material>("DebugCubeMaterial", material.release()));
+        ASSERT_NE(sharedMaterial, nullptr);
+
+        // 本番用の生成登録とAsset Facadeを起動Sceneの復元へ接続する
+        ASSERT_TRUE(ecs.Initialize());
+        Hestia::TimeSystem clock;
+        clock.Initialize();
+        const std::unique_ptr<TimeSystem, void (*)(TimeSystem*)> finalizeClock(
+            &clock, [](TimeSystem* value) { value->Finalize(); });
+        TimeAPI time;
+        time.Initialize(&clock);
+        auto entityAPI = ECSSystem::CreateEntityAPI();
+        AssetAPI assetAPI;
+        assetAPI.Initialize(&assets);
+        GameEngineAPI engineAPI{ &time, &entityAPI, &ecs.GetProcessAPI(), nullptr, &assetAPI };
+        const auto* runtimeAPI = GetGameRuntimeAPI();
+        std::unique_ptr<void, decltype(runtimeAPI->Destroy)> runtime(runtimeAPI->Create(&engineAPI), runtimeAPI->Destroy);
+        ASSERT_TRUE(runtime);
+        ECSSystem::BindScriptAttachmentQuery(runtime.get(), runtimeAPI->QueryScriptAttachments);
+
+        SceneSystem scenes;
+        ASSERT_TRUE(scenes.LoadScene("Scenes/Startup.scene"));
+        ASSERT_TRUE(scenes.CheckScene(assets.GetDatabase(), *runtimeAPI, runtime.get()));
+        const auto generator = World::FindFirstEntityByName("Debug Cube Generator");
+        ASSERT_TRUE(generator.IsValid());
+        const auto snapshot = ECSSystem::SaveEntity(generator);
+        ASSERT_TRUE(snapshot);
+        ASSERT_EQ(snapshot->m_scripts.size(), 1u);
+        EXPECT_EQ(snapshot->m_scripts.front().m_guid, AssetGuid::Parse("feb7a48d-7059-4edb-9dd3-646b29b6f37c"));
+
+        // 全Cubeが組み込みMeshと同じMaterialを持つことを確認する
+        const auto cubes = World::FindEntitiesWithProcess<HestiaGame::MeshRenderer>();
+        ASSERT_EQ(cubes.size(), 100'000u);
+        const auto* mesh = AssetSystem::Get(AssetSystem::Load<Mesh>("Cube"));
+        ASSERT_NE(mesh, nullptr);
+        EXPECT_TRUE(std::ranges::all_of(cubes, [mesh, sharedMaterial](EntityHandle cube)
+        {
+            const auto* renderer = ECSSystem::GetComponent<Hestia::MeshRenderer>(cube);
+            return renderer && renderer->m_mesh == mesh && renderer->m_materials.size() == 1 &&
+                renderer->m_materials.front() == sharedMaterial;
+        }));
+
+        ECSSystem::BindScriptAttachmentQuery(nullptr, nullptr);
+        std::filesystem::remove_all(directory);
+    }
+
+    TEST_F(GameRuntimeTests, SceneSaveCanReloadImmediatelyAndReplacesTheWorld)
+    {
+        const auto directory = std::filesystem::temp_directory_path() /
+            ("HestiaSceneSwitch-" + std::to_string(GetCurrentProcessId()));
+        std::filesystem::create_directories(directory);
+        Hestia::AssetDB database;
+        ASSERT_TRUE(database.Initialize(directory));
+        Hestia::SceneSystem scenes;
+        ECSSystem::BindScriptAttachmentQuery(m_runtime, m_runtimeAPI->QueryScriptAttachments);
+
+        const auto original = World::CreateEntity();
+        ASSERT_TRUE(World::SetName(original, "Saved spinner"));
+        ASSERT_TRUE(World::AddScript<ValueScript>(original, 42));
+        EndFrame();
+        ASSERT_TRUE(scenes.SaveScene("Saved.scene"));
+        ASSERT_TRUE(scenes.SaveScene("Saved.scene"));
+        ASSERT_TRUE(scenes.SerializeScene(database));
+        ASSERT_NE(database.FindByPath("Saved.scene"), nullptr);
+        ASSERT_TRUE(World::SetName(original, "Unsaved change"));
+        ASSERT_TRUE(scenes.SerializeScene(database));
+
+        // 保存後に追加したScriptも、旧Entityの実体がある間に終了する
+        ASSERT_TRUE(World::AddScript<DestroyScript>(original, EntityHandle{}, &m_destroyed));
+        EndFrame();
+        ASSERT_TRUE(scenes.LoadScene("Missing.scene"));
+        ASSERT_TRUE(scenes.LoadScene("Saved.scene"));
+        ASSERT_TRUE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(scenes.GetCurrentScenePath(), "Saved.scene");
+        EXPECT_EQ(m_destroyed, (std::vector<EntityHandle>{ original }));
+        EXPECT_EQ(ECSSystem::GetEntity(original), nullptr);
+        const auto restored = World::FindFirstEntityByName("Saved spinner");
+        ASSERT_TRUE(restored.IsValid());
+        ASSERT_TRUE(World::GetScript<ValueScript>(restored));
+        EXPECT_EQ(World::GetScript<ValueScript>(restored)->m_value, 0);
+
+        // 同じパスでもファイルを読み直し、未登録の型だけ除いて展開する
+        auto current = ECSSystem::SaveEntity(restored);
+        ASSERT_TRUE(current);
+        ASSERT_EQ(current->m_scripts.size(), 1u);
+        current->m_active = false;
+        current->m_scripts.push_back({ { { 90, 1 } }, 0 });
+        ASSERT_TRUE(Hestia::EntityYamlWriter::SaveScene({ &*current, 1 }, directory / "Saved.scene"));
+        ASSERT_TRUE(scenes.LoadScene("Saved.scene"));
+        ASSERT_TRUE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(ECSSystem::GetEntity(restored), nullptr);
+        const auto reopened = World::FindFirstEntityByName("Saved spinner");
+        ASSERT_TRUE(reopened.IsValid());
+        EXPECT_FALSE(World::IsActive(reopened));
+        EXPECT_TRUE(World::GetScript<ValueScript>(reopened));
+        EXPECT_FALSE(scenes.LoadScene("../Saved.scene"));
+        ASSERT_TRUE(scenes.LoadScene("Missing.scene"));
+        EXPECT_FALSE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(scenes.GetCurrentScenePath(), "Saved.scene");
+        ECSSystem::BindScriptAttachmentQuery(nullptr, nullptr);
+        std::filesystem::remove_all(directory);
+    }
+
+    TEST_F(GameRuntimeTests, QueriesOnlyRequestedAttachmentsAfterFlush)
+    {
+        const auto selected = World::CreateEntity();
+        const auto omitted = World::CreateEntity();
+        ASSERT_TRUE(World::AddScript<LifecycleScript>(selected, &m_events));
+        ASSERT_TRUE(World::AddScript<LifecycleScript>(omitted, &m_events));
+
+        std::vector<Hestia::AssetGuid> results;
+        const auto collect = [](void* output, EntityHandle, Hestia::AssetGuid guid)
+        {
+            static_cast<std::vector<Hestia::AssetGuid>*>(output)->push_back(guid);
+        };
+        ASSERT_TRUE(m_runtimeAPI->QueryScriptAttachments(m_runtime, &selected, 1, &results, collect));
+        EXPECT_TRUE(results.empty());
+        EndFrame();
+
+        ASSERT_TRUE(m_runtimeAPI->QueryScriptAttachments(m_runtime, &selected, 1, &results, collect));
+        EXPECT_EQ(results, (std::vector<Hestia::AssetGuid>{ { { 3, 0 } } }));
+        results.clear();
+        ASSERT_TRUE(World::RemoveScript<LifecycleScript>(selected));
+        EndFrame();
+        ASSERT_TRUE(m_runtimeAPI->QueryScriptAttachments(m_runtime, &selected, 1, &results, collect));
+        EXPECT_TRUE(results.empty());
+    }
+
     TEST_F(GameRuntimeTests, TimeReadsEngineClockAndChangesScaleThroughCallback)
     {
         Time::SetTimeScale(2.0f);
@@ -212,7 +370,7 @@ namespace
     {
         const auto entity = World::CreateEntity();
         ASSERT_TRUE(entity.IsValid());
-        EXPECT_FALSE(World::RegisterScript<UnregisteredScript>());
+        EXPECT_FALSE(World::RegisterScript<UnregisteredScript>({ { 8, 0 } }));
         auto script = World::AddScript<LifecycleScript>(entity, &m_events);
         ASSERT_TRUE(script);
         EXPECT_EQ(m_events, (std::vector<std::string_view>{ "enable", "start" }));

@@ -2,42 +2,22 @@
 
 Assetの永続参照に使うGUIDを元ファイルの隣の `.meta` に保存する。AssetDBは起動時に `Assets/` から検索用の索引を組み立てる。コードからは相対パスでロードでき、PrefabやSceneはファイルのGUIDとファイル内IDでAssetを参照する。
 
-[AssetSystemの設計](../AssetSystem.md) ・ [MeshLoaderの設計](MeshLoader.md) ・ [現行のAsset実装仕様](../../Implementation/Asset/README.md) ・ [旧AssetDB方式](../../Legacy/AssetSystem.md)
+[AssetSystemの設計](../AssetSystem.md) ・ [AssetメタデータとMetaTool](MetaTool.md) ・ [MeshLoaderの設計](MeshLoader.md) ・ [現行のAsset実装仕様](../../Implementation/Asset/README.md) ・ [旧AssetDB方式](../../Legacy/AssetSystem.md)
 
 ## .metaの形式
 
-元ファイル `Assets/Textures/Icon.png` に対応するメタデータは `Assets/Textures/Icon.png.meta` に置く。元ファイルのパスは `.meta` の位置から末尾の `.meta` を外して求める。元ファイルと `.meta` はセットでバージョン管理する。
-以下は最小構成。
-
-```yaml
-type: Texture
-guid: 2db48ec9-7a6f-49a2-8c79-73639d0a8572
-```
-
-| 項目     | 意味                                          |
-| ------ | ------------------------------------------- |
-| `type` | 元ファイルの型。対応拡張子の表から決める                        |
-| `guid` | 新規登録時に発行する128bitの永続ID。YAMLではハイフン付きの文字列で保存する |
-
-対応拡張子は `AssetDB.cpp` に `static const std::unordered_map<std::string_view, AssetType>` で定義する。小文字に揃えた拡張子を、生成時の型決定と既存ファイルの型検証で共用する。`.png` は `Texture`、`.matsh` は `MaterialShader`、`.prefab` は `Prefab` とする。`.fbx`、`.obj`、`.gltf`、`.glb` は `Model` として扱い、Importerが主Assetの `Prefab` を生成する。 [Prefabの読み込み](../Serialize/ComponentSerialization.md#読み込み)
+`.meta` のファイル形式、対応拡張子、生成・検証の契約は [AssetメタデータとMetaTool](MetaTool.md) に定める。モデルファイルの主AssetはImporterが生成する `Prefab` とする。 [Prefabの読み込み](../Serialize/ComponentSerialization.md#読み込み)
 
 ## 起動時の索引作成
 
-`AssetDB::Initialize(assetsRoot)` は指定されたAssetルートを再帰的に走査する。対応拡張子の元ファイルに `.meta` がなければGUIDを発行し、書き込み成功後に登録する。拡張子表にないファイルは自動登録の対象外とする。
-
-| 状態                                       | 処理                                     |
-| ---------------------------------------- | -------------------------------------- |
-| 既存の `.meta` のYAML、必須項目、GUID形式、拡張子と型の組が不正 | パスと理由をエラーログに出し、初期化を失敗させる。既存ファイルを保持する   |
-| 登録するGUIDが重複                              | 両方のパスをエラーログに出し、初期化を失敗させる               |
-| 元ファイルがない `.meta`                         | 想定される元ファイルのパスを警告に出し、索引から外す。`.meta` は残す |
-| 走査や `.meta` の書き込みに失敗                     | パスと理由をエラーログに出し、初期化を失敗させる               |
+`AssetDB::Initialize(assetsRoot)` は `Common.lib` の走査処理にAssetルートを渡し、対応拡張子すべてのメタデータを取得する。走査に失敗したらパスと理由をログに出して初期化を失敗させる。全件が揃い、相対パスの重複もない場合に索引を公開する。 [走査と作成の順序](MetaTool.md#走査と作成の順序)
 
 `AssetInfo` は `AssetGuid`、`AssetType`、Assetルート起点の相対パスを持つ。DBは次の2つの索引をメモリ上に作る。モデルファイルも1ファイルにつき1件とする。
 
 - `GUID → AssetInfo` を `FindByGuid(guid)` で検索する。
 - `正規化した相対パス → GUID` を `FindByPath(path)` で検索し、同じ `AssetInfo` を返す。
 
-初版の変更反映は再起動で行う。起動時に索引を再構築し、各Assetは初回ロード時に元ファイルから読み込む。ディスク上に索引を置く場合は、元ファイルと `.meta` から再生成できるキャッシュとして扱う。
+ファイルの追加・移動に伴う索引の再構築は起動時に行う。EngineのScene新規保存は `.meta` を作成し、保存した1件をその場で登録する。`.scene` は型・パス・GUIDを索引に置き、SceneSystemがロード要求ごとに本体を読む。ディスク上に索引を置く場合は、元ファイルと `.meta` から再生成できるキャッシュとして扱う。 [Sceneの保存・読み込み](../Serialize/SceneSerialization.md)
 
 ## Asset参照とクラスの責務
 
@@ -59,6 +39,7 @@ guid: 2db48ec9-7a6f-49a2-8c79-73639d0a8572
 以下はモデルファイルを読みこんだ際の例。
 
 ```yaml
+version: 1
 type: Model
 guid: 1c6df791-0fd5-4ddf-9c55-384c61557352
 nextLocalId: 4

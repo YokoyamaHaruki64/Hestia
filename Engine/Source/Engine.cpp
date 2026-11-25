@@ -15,10 +15,6 @@
 
 #include <filesystem>
 
-#include "Asset/Material.h"
-#include "Game/Transform.h"
-#include "Graphics/MeshRenderer.h"
-
 namespace Hestia
 {
     Engine::~Engine()
@@ -64,15 +60,36 @@ namespace Hestia
         }
         m_ecsInitialized = true;
 
-        // 通常のECS描画経路を使うデバッグシーンを作成
-        if (!CreateDebugScene())
+        // Game の初期化と Facade の接続は、参照先の System が揃ってから行う
+        if (!LoadGame())
         {
             Finalize();
             return false;
         }
 
-        // Game の初期化と Facade の接続は、参照先の System が揃ってから行う
-        if (!LoadGame())
+        // 起動SceneのCubeが同じ描画バッチに入るよう、復元前にMaterialを一つだけ登録する
+        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Shaders/MatShaders/Unlit_Inst.matsh"));
+        if (shader == nullptr || !shader->IsInstancing())
+        {
+            Logger::Error("DebugCubeMaterial requires the Unlit_Inst MaterialShader");
+            Finalize();
+            return false;
+        }
+        auto material = std::make_unique<Material>();
+        material->SetShader(shader);
+        if (!AssetSystem::Register<Material>("DebugCubeMaterial", material.release()).IsValid())
+        {
+            Finalize();
+            return false;
+        }
+
+        // 起動Sceneの表示と復元を、最初の更新より前に確定する
+        GraphicsSystem::SetView(Matrix4x4_SIMD::LookAtLH(
+            { 440.0f, 275.0f, -820.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }));
+        GraphicsSystem::SetProj(Matrix4x4_SIMD::PerspectiveFovLH(
+            0.8f, 1600.0f / 900.0f, 10.0f, 1600.0f));
+        if (!m_scenes.LoadScene("Scenes/Startup.scene") ||
+            !m_scenes.CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
         {
             Finalize();
             return false;
@@ -127,7 +144,9 @@ namespace Hestia
             runtimeAPI->FixedUpdate == nullptr ||
             runtimeAPI->Update == nullptr ||
             runtimeAPI->LateUpdate == nullptr ||
-            runtimeAPI->EndFrame == nullptr)
+            runtimeAPI->EndFrame == nullptr || runtimeAPI->QueryScriptAttachments == nullptr ||
+            runtimeAPI->AttachSceneScript == nullptr || runtimeAPI->FlushScripts == nullptr ||
+            runtimeAPI->ClearSceneScripts == nullptr)
         {
             Logger::Error("Game.dll: invalid GameRuntimeAPI table");
             return false;
@@ -144,13 +163,15 @@ namespace Hestia
 
         // Active 設定の通知先を含む Runtime の初期化が済んでから、更新用 API を保持する
         m_gameRuntimeAPI = runtimeAPI;
+        ECSSystem::BindScriptAttachmentQuery(m_gameRuntime, runtimeAPI->QueryScriptAttachments);
         Logger::Log("GameRuntime initialized");
         return true;
     }
 
     void Engine::UnloadGame()
     {
-        // Game の終了処理からは引き続き Engine API を使えるようにする
+        // GameRuntimeの借用は終了処理より前に解除する
+        ECSSystem::BindScriptAttachmentQuery(nullptr, nullptr);
         if (m_gameRuntime != nullptr)
         {
             m_gameRuntimeAPI->Destroy(m_gameRuntime);
@@ -167,68 +188,6 @@ namespace Hestia
             FreeLibrary(m_gameModule);
             m_gameModule = nullptr;
         }
-    }
-
-    bool Engine::CreateDebugScene()
-    {
-        // 全立方体で同じインスタンス描画用Materialを共有
-        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Shaders/MatShaders/Unlit_Inst.matsh"));
-        if (!shader || !shader->IsInstancing())
-            return false;
-
-        auto material = std::make_unique<Material>();
-        material->SetShader(shader);
-        const auto* debugMaterial = AssetSystem::Get(AssetSystem::Register<Material>("DebugCubeMaterial", material.release()));
-        if (!debugMaterial)
-            return false;
-
-        // 斜め上から透視投影し、手前と奥で立方体の見かけの大きさに差を出す
-        GraphicsSystem::SetView(Matrix4x4_SIMD::LookAtLH(
-            { 440.0f, 275.0f, -820.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }));
-        GraphicsSystem::SetProj(Matrix4x4_SIMD::PerspectiveFovLH(
-            0.8f, 1600.0f / 900.0f, 10.0f, 1600.0f));
-
-        // 100×25×40の格子に並べ、回転後の対角線もセル間隔より小さくする
-        constexpr int columns = 100;
-        constexpr int rows = 25;
-        constexpr int layers = 40;
-        constexpr int cubeCount = columns * rows * layers;
-        constexpr float spacing = 10.0f;
-        constexpr float cubeSize = 5.5f;
-        const Vector4 colors[] = {
-            { 1.0f, 0.25f, 0.30f, 1.0f }, { 0.25f, 0.85f, 0.40f, 1.0f },
-            { 0.30f, 0.60f, 1.0f, 1.0f }, { 1.0f, 0.75f, 0.25f, 1.0f },
-            { 0.75f, 0.40f, 1.0f, 1.0f }, { 0.20f, 0.85f, 0.85f, 1.0f },
-        };
-        const auto rotation = Quaternion::EulerToQuat({ 0.5f, 0.65f, 0.0f });
-        for (int index = 0; index < cubeCount; ++index)
-        {
-            const auto entity = ECSSystem::CreateEntity();
-            if (!entity.IsValid())
-                return false;
-            ECSSystem::AddProcess<&MeshRendererProcess::Run>(entity);
-            auto* renderer = ECSSystem::GetComponent<MeshRenderer>(entity);
-            if (!renderer)
-                return false;
-
-            // 格子の位置を求め、奥行きのある色分けを設定
-            const int column = index % columns;
-            const int row = index / columns % rows;
-            const int layer = index / (columns * rows);
-            renderer->m_mesh = AssetSystem::Get(AssetSystem::Load<Mesh>("Cube"));
-            renderer->m_materials = { debugMaterial };
-            renderer->m_instanceColor = colors[(column / 5 + row / 5 + layer / 5) % std::size(colors)];
-
-            // 格子の中心を原点に揃えてTransformへ登録
-            const float x = (column - (columns - 1) * 0.5f) * spacing;
-            const float y = (row - (rows - 1) * 0.5f) * spacing;
-            const float z = (layer - (layers - 1) * 0.5f) * spacing;
-            HestiaGame::Transform transform(entity);
-            if (!transform.SetLocalScale({ cubeSize, cubeSize, cubeSize }) ||
-                !transform.SetLocalRotation(rotation) || !transform.SetLocalPosition({ x, y, z }))
-                return false;
-        }
-        return true;
     }
 
     void Engine::Finalize()
@@ -273,6 +232,7 @@ namespace Hestia
             m_timeInitialized = false;
         }
 
+        m_scenes = {};
         m_applicationAPI = ApplicationAPI{};
 
         if (m_logInitialized)
@@ -336,6 +296,13 @@ namespace Hestia
         if (m_gameRuntime != nullptr)
             m_gameRuntimeAPI->EndFrame(m_gameRuntime);
         if (m_ecsInitialized)
+        {
             ECSSystem::EndFrame();
+
+            // 反映済みWorldを保存してから、保留されたSceneを切り替える
+            m_scenes.SerializeScene(m_assets.GetDatabase());
+            if (m_gameRuntime && !m_scenes.CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
+                m_applicationAPI.RequestQuit();
+        }
     }
 }

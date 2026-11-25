@@ -188,6 +188,9 @@
     <ClCompile Include="Source\Serialize\PrefabLoader.cpp">
       <Filter>_Source\Serialize</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Scene\SceneSystem.cpp">
+      <Filter>_Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\ECS\ECSSystem.cpp">
       <Filter>_Source\ECS</Filter>
     </ClCompile>
@@ -219,6 +222,12 @@
     </ClInclude>
     <ClInclude Include="Include\Serialize\EntityYamlWriter.h">
       <Filter>_Include\Serialize</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Serialize\EntityYamlReader.h">
+      <Filter>_Include\Serialize</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Scene\SceneSystem.h">
+      <Filter>_Include</Filter>
     </ClInclude>
     <ClInclude Include="Include\ECS\Component.h">
       <Filter>_Include\ECS</Filter>

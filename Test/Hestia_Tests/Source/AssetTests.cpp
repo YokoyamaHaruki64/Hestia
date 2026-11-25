@@ -35,6 +35,7 @@
 #include "Log/Logger.h"
 #include "Log/LogStorage.h"
 #include "Game/Include/GameAssets.h"
+#include "Serialize/EntityYamlReader.h"
 #include "Serialize/EntityYamlWriter.h"
 #include "Transform/TransformData.h"
 #include "Transform/TransformProcess.h"
@@ -121,6 +122,108 @@ namespace
         std::filesystem::remove(directory / "Triangle.obj.meta");
         std::filesystem::remove(directory / "Triangle.obj");
         std::filesystem::remove(directory);
+    }
+
+    TEST(AssetDB, FindsSceneAndNestedScriptWithStableGuids)
+    {
+        const auto root = std::filesystem::temp_directory_path() /
+            ("HestiaAssetDB-SceneScript-" + std::to_string(GetCurrentProcessId()));
+        std::filesystem::create_directories(root / "Actors");
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "Main.scene", ""));
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "Actors" / "Spin.cpp", ""));
+
+        Hestia::AssetDB db;
+        ASSERT_TRUE(db.Initialize(root));
+        const auto* scene = db.FindByPath("Main.scene");
+        const auto* script = db.FindByPath("Actors/Spin.cpp");
+        EXPECT_NE(scene, nullptr);
+        EXPECT_NE(script, nullptr);
+        if (scene && script)
+        {
+            const auto sceneGuid = scene->m_guid;
+            const auto scriptGuid = script->m_guid;
+            EXPECT_NE(sceneGuid, scriptGuid);
+            ASSERT_TRUE(db.Initialize(root));
+            EXPECT_EQ(db.FindByGuid(sceneGuid), db.FindByPath("Main.scene"));
+            EXPECT_EQ(db.FindByGuid(scriptGuid), db.FindByPath("Actors/Spin.cpp"));
+        }
+        EXPECT_TRUE(std::filesystem::exists(root / "Main.scene.meta"));
+        EXPECT_TRUE(std::filesystem::exists(root / "Actors" / "Spin.cpp.meta"));
+        std::filesystem::remove_all(root);
+    }
+
+    TEST(AssetDB, RejectsUnknownMetadataVersionBeforeCreatingMissingMetadata)
+    {
+        const auto root = std::filesystem::temp_directory_path() /
+            ("HestiaAssetDB-Version-" + std::to_string(GetCurrentProcessId()));
+        std::filesystem::create_directories(root);
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "A.png", ""));
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "Z.png", ""));
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(root / "Z.png.meta",
+            "version: 2\ntype: Texture\nguid: 94b2374d-0a87-420d-9e11-16dcacbde2fd\n"));
+
+        Hestia::AssetDB db;
+        EXPECT_FALSE(db.Initialize(root));
+        EXPECT_FALSE(std::filesystem::exists(root / "A.png.meta"));
+        std::filesystem::remove_all(root);
+    }
+
+    TEST(SceneSerialization, RoundTripsMultipleRootsActiveStateAndChildScript)
+    {
+        using namespace Hestia;
+        const auto directory = std::filesystem::temp_directory_path() /
+            ("HestiaScene-" + std::to_string(GetCurrentProcessId()));
+        std::filesystem::create_directories(directory);
+        AssetDB db;
+        ASSERT_TRUE(db.Initialize(directory));
+
+        ECSSystem ecs;
+        ASSERT_TRUE(ecs.Initialize());
+        const auto parent = ECSSystem::CreateEntity();
+        const auto child = ECSSystem::CreateEntity();
+        const auto other = ECSSystem::CreateEntity();
+        ECSSystem::GetComponent<TransformHierarchy>(parent)->m_children.push_back(child);
+        ECSSystem::GetComponent<TransformHierarchy>(child)->m_parent = parent;
+        ASSERT_TRUE(ECSSystem::SetActive(child, false));
+        ECSSystem::GetComponent<Name>(other)->m_value = "Second root";
+        const AssetGuid guid{ { 8, 1 } };
+        const ScriptGuidsByEntity scriptGuids{ { child, { guid } } };
+        auto first = ECSSystem::SaveEntity(parent, scriptGuids);
+        auto second = ECSSystem::SaveEntity(other);
+        ASSERT_TRUE(first && second);
+        const std::array roots{ std::move(*first), std::move(*second) };
+
+        const auto path = directory / "Saved.scene";
+        ASSERT_TRUE(EntityYamlWriter::SaveScene(roots, path));
+        ASSERT_TRUE(db.RegisterFile("Saved.scene"));
+        ASSERT_NE(db.FindByPath("Saved.scene"), nullptr);
+        auto loaded = EntityYamlReader::LoadScene(path);
+        ASSERT_TRUE(loaded);
+        ASSERT_EQ(loaded->size(), 2u);
+        EXPECT_TRUE(loaded->at(0).m_active);
+        ASSERT_EQ(loaded->at(0).m_children.size(), 1u);
+        const auto& savedChild = loaded->at(0).m_children.front();
+        EXPECT_FALSE(savedChild.m_active);
+        ASSERT_EQ(savedChild.m_scripts.size(), 1u);
+        EXPECT_EQ(savedChild.m_scripts.front(), (AssetRef{ guid, 0 }));
+        EXPECT_FALSE(savedChild.m_source.IsValid());
+        EXPECT_TRUE(loaded->at(1).m_children.empty());
+        std::filesystem::remove_all(directory);
+    }
+
+    TEST(SceneSerialization, RejectsDisconnectedParentCycle)
+    {
+        using namespace Hestia;
+        const auto path = std::filesystem::temp_directory_path() /
+            ("HestiaScene-Cycle-" + std::to_string(GetCurrentProcessId()) + ".scene");
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(path,
+            "version: 1\nentities:\n"
+            "  - { id: 1, parent: 2, active: true, components: {} }\n"
+            "  - { id: 2, parent: 1, active: true, components: {} }\n"));
+        ECSSystem ecs;
+        ASSERT_TRUE(ecs.Initialize());
+        EXPECT_FALSE(EntityYamlReader::LoadScene(path));
+        std::filesystem::remove(path);
     }
 
     Hestia::Mesh MakeValidMesh()

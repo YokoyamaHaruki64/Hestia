@@ -25,6 +25,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Game", "Game\Game.vcxproj",
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GameCore", "Game\GameCore.vcxproj", "{60BA309A-8AB3-44A8-9960-4F137CED39D2}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MetaTool", "Tools\MetaTool\MetaTool.vcxproj", "{F2D14613-0636-4859-97F4-E9D56A038160}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GameCodeGenerator", "Tools\GameCodeGenerator\GameCodeGenerator.vcxproj", "{2A326D60-D7C2-4674-B350-936DB49B52EF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug_Editor|x64 = Debug_Editor|x64
@@ -34,6 +38,16 @@ Global
 		Test|x64 = Test|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F2D14613-0636-4859-97F4-E9D56A038160}.Debug_Editor|x64.ActiveCfg = Release|x64
+		{F2D14613-0636-4859-97F4-E9D56A038160}.Debug_Game|x64.ActiveCfg = Release|x64
+		{F2D14613-0636-4859-97F4-E9D56A038160}.Release_Editor|x64.ActiveCfg = Release|x64
+		{F2D14613-0636-4859-97F4-E9D56A038160}.Release_Game|x64.ActiveCfg = Release|x64
+		{F2D14613-0636-4859-97F4-E9D56A038160}.Test|x64.ActiveCfg = Release|x64
+		{2A326D60-D7C2-4674-B350-936DB49B52EF}.Debug_Editor|x64.ActiveCfg = Release|x64
+		{2A326D60-D7C2-4674-B350-936DB49B52EF}.Debug_Game|x64.ActiveCfg = Release|x64
+		{2A326D60-D7C2-4674-B350-936DB49B52EF}.Release_Editor|x64.ActiveCfg = Release|x64
+		{2A326D60-D7C2-4674-B350-936DB49B52EF}.Release_Game|x64.ActiveCfg = Release|x64
+		{2A326D60-D7C2-4674-B350-936DB49B52EF}.Test|x64.ActiveCfg = Release|x64
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Editor|x64.ActiveCfg = Debug_Editor|x64
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Editor|x64.Build.0 = Debug_Editor|x64
 		{6F2D40F9-3276-4671-B6C0-664AF95F0B2F}.Debug_Game|x64.ActiveCfg = Debug_Game|x64
