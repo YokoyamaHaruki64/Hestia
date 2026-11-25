@@ -1,6 +1,10 @@
 ﻿# VisualStudio
 .vs/
 Build/
+/Tools/MetaTool/MetaTool.exe
+/Tools/GameCodeGenerator/GameCodeGenerator.exe
+/Cache/
+/GeneratedScript/
 /Library/
 /Engine/Include/API/Generated/ECSProcessAPI.generated.h
 /Engine/Source/API/Generated/ECSProcessAPI.generated.cpp
@@ -20,6 +24,13 @@ Build/
 
 # GameAssets
 /Assets/**
+!/Assets/**/
+!/Assets/**/*.cpp
+!/Assets/**/*.cpp.meta
+!/Assets/**/*.scene
+!/Assets/**/*.scene.meta
+!/Assets/Scenes/StartupCube.obj
+!/Assets/Scenes/StartupCube.obj.meta
 !/Assets/Shaders/
 !/Assets/Shaders/**/
 !/Assets/Shaders/**/*.hlsl

@@ -1,0 +1,65 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <GameRepositoryRoot>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '..'))</GameRepositoryRoot>
+    <GameAssetRoot>$(GameRepositoryRoot)\Assets</GameAssetRoot>
+    <_GameScriptAssetDirectory>$([MSBuild]::NormalizeDirectory('$(GameAssetRoot)'))</_GameScriptAssetDirectory>
+    <GameGeneratedRoot>$(GameRepositoryRoot)\GeneratedScript</GameGeneratedRoot>
+    <GameMetaToolExe>$(GameRepositoryRoot)\Tools\MetaTool\MetaTool.exe</GameMetaToolExe>
+    <GameCodeGeneratorExe>$(GameRepositoryRoot)\Tools\GameCodeGenerator\GameCodeGenerator.exe</GameCodeGeneratorExe>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Gameに登録済みの.cppから、Assets配下にあるものだけを生成対象にする。 -->
+    <_GameCppCandidate Include="@(ClCompile->WithMetadataValue('Extension', '.cpp'))">
+      <IsUnderAssets>$([System.String]::Copy('%(FullPath)').ToUpperInvariant().StartsWith($(_GameScriptAssetDirectory.ToUpperInvariant())))</IsUnderAssets>
+    </_GameCppCandidate>
+    <_GameCppScript Include="@(_GameCppCandidate->WithMetadataValue('IsUnderAssets', 'true'))" />
+
+    <!-- IDEでは元の.cppを解析し、通常ビルドでは生成側の.cppをコンパイルする。 -->
+    <ClCompile Update="@(_GameCppScript)">
+      <ExcludedFromBuild Condition="'$(DesignTimeBuild)' != 'true'">true</ExcludedFromBuild>
+      <ForcedIncludeFiles>$(MSBuildProjectDirectory)\Include\CppScriptIntelliSense.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <_GameCppScript Update="@(_GameCppScript)">
+      <AssetPath>$([MSBuild]::MakeRelative('$(GameAssetRoot)', '%(FullPath)'))</AssetPath>
+    </_GameCppScript>
+    <_GameCppScript Update="@(_GameCppScript)">
+      <GeneratedSource>$(GameGeneratedRoot)\Scripts\$([System.IO.Path]::ChangeExtension('%(AssetPath)', '.generated.cpp'))</GeneratedSource>
+      <ObjectFileName>$(IntDir)GameScripts\$([System.IO.Path]::ChangeExtension('%(AssetPath)', '.obj'))</ObjectFileName>
+    </_GameCppScript>
+    <ClCompile Include="@(_GameCppScript->'%(GeneratedSource)')" />
+    <ClCompile Include="$(GameGeneratedRoot)\GameSetup.generated.cpp" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(GameGeneratedRoot);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <Target Name="GenerateGameScripts" BeforeTargets="ClCompile">
+    <Error Condition="!Exists('$(GameMetaToolExe)')"
+        Text="$(GameMetaToolExe) が見つかりません。MetaTool の Release|x64 を先にビルドしてください。" />
+    <Error Condition="!Exists('$(GameCodeGeneratorExe)')"
+        Text="$(GameCodeGeneratorExe) が見つかりません。GameCodeGenerator の Release|x64 を先にビルドしてください。" />
+
+    <!-- Visual StudioのC++ビルドがScriptの.cppと.metaの変更を検出できるよう、生成の依存関係を記録する。 -->
+    <ItemGroup>
+      <_GameScriptGeneration Include="$(MSBuildThisFileFullPath)">
+        <AdditionalInputs>$(MSBuildProjectFullPath);@(_GameCppScript->'%(FullPath)');@(_GameCppScript->'%(FullPath).meta');$(GameMetaToolExe);$(GameCodeGeneratorExe)</AdditionalInputs>
+        <Outputs>$(IntDir)GameScripts.stamp</Outputs>
+      </_GameScriptGeneration>
+    </ItemGroup>
+    <GetOutOfDateItems Sources="@(_GameScriptGeneration)" OutputsMetadataName="Outputs"
+        DependenciesMetadataName="AdditionalInputs" CommandMetadataName="Command"
+        TLogDirectory="$(TLogLocation)" TLogNamePrefix="GameCodeGenerator" TrackFileAccess="$(TrackFileAccess)" />
+
+    <!-- C++コンパイルの前に、メタデータと生成ソースを同じ入力順で揃える。 -->
+    <MakeDir Directories="$(IntDir);@(_GameCppScript->'$([System.IO.Path]::GetDirectoryName(%(ObjectFileName)))')" />
+    <WriteLinesToFile File="$(IntDir)GameScriptInputs.txt" Lines="@(_GameCppScript->'%(AssetPath)')"
+        Encoding="UTF-8" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <Exec WorkingDirectory="$(GameRepositoryRoot)" UseUtf8Encoding="Always"
+        Command="&quot;$(GameCodeGeneratorExe)&quot; --project &quot;$(IntDir)GameScriptInputs.txt&quot;" />
+    <Touch Files="@(_GameScriptGeneration->'%(Outputs)')" AlwaysCreate="true" />
+  </Target>
+</Project>
