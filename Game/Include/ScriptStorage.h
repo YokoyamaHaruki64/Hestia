@@ -18,15 +18,20 @@
 #include <list>
 #include <memory>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "Engine/Include/API/GameEngineAPI.h"
+#include "Common/Include/EntityHandle.h"
 #include "GameLogger.h"
 #include "ScriptRef.h"
 
 namespace HestiaGame::Detail
 {
+    using AttachedScriptIndices =
+        std::unordered_map<Hestia::EntityHandle, std::vector<std::size_t>, Hestia::EntityHandleHash>;
+
     enum class ScriptPhase
     {
         FixedUpdate,
@@ -61,7 +66,10 @@ namespace HestiaGame::Detail
 
         /// @brief Script実体の生成/削除をバッチ処理
         /// @note 初期配置の完了時とフレーム末尾に呼ぶ
-        virtual void Flush() = 0;
+        virtual bool Flush(AttachedScriptIndices& attachments, std::size_t storageIndex) = 0;
+
+        /// @brief 既定状態のScriptを生成して追加を予約する。
+        virtual bool AddDefault(Hestia::EntityHandle entity, std::size_t attachment) = 0;
     };
 
     template<class T>
@@ -255,16 +263,37 @@ namespace HestiaGame::Detail
                     NotifyDestroy(state);
             for (auto& pending : m_pending)
                 NotifyDestroy(pending.m_state);
+
+            // 型のStorageを残し、旧Sceneの実体と位置情報だけを解放する
+            m_pages.clear();
+            m_denseCount = 0;
+            m_sparse.clear();
+            m_pending.clear();
+            m_pendingRemovals.clear();
+        }
+
+        bool AddDefault(Hestia::EntityHandle entity, std::size_t attachment) override
+        {
+            if constexpr (std::is_default_constructible_v<T>)
+                return static_cast<bool>(Add(entity, attachment));
+
+            return false;
         }
 
         /// @brief Script実体の削除と追加を反映する
-        void Flush() override
+        bool Flush(AttachedScriptIndices& attachments, std::size_t storageIndex) override
         {
             // 再追加に備え、古いインスタンスを先に外す
             while (!m_pendingRemovals.empty())
             {
-                SwapRemove(FindDenseIndex(m_pendingRemovals.back()));
+                const auto entity = m_pendingRemovals.back();
+                SwapRemove(FindDenseIndex(entity));
                 m_pendingRemovals.pop_back();
+
+                auto entry = attachments.find(entity);
+                std::erase(entry->second, storageIndex);
+                if (entry->second.empty())
+                    attachments.erase(entry);
             }
 
             while (!m_pending.empty())
@@ -273,16 +302,23 @@ namespace HestiaGame::Detail
                 if (!pending.m_state.m_removed)
                 {
                     const auto index = m_denseCount;
+                    const auto entity = pending.m_state.m_entity;
+                    std::vector<std::size_t>* attached = nullptr;
                     try
                     {
-                        ReserveFor(pending.m_state.m_entity);
+                        // 実体の反映後に逆引きの確保が失敗しないよう、先に空きを確保する
+                        ReserveFor(entity);
+                        attached = &attachments[entity];
+                        attached->reserve(attached->size() + 1);
                         GetPage(index).m_scripts.emplace_back(
                             std::move_if_noexcept(pending.m_script));    // ムーブが例外を投げ得る場合はコピーを使う(move_if_noexceptの機能)
                     }
                     catch (...)
                     {
+                        if (attached && attached->empty())
+                            attachments.erase(entity);
                         Logger::Error("ScriptStorage failed to place a Script in dense storage");
-                        return;
+                        return false;
                     }
 
                     // Stateの設定とSparseの更新はScriptの配置に成功してから行う
@@ -290,10 +326,12 @@ namespace HestiaGame::Detail
                     auto& state = page.m_states.emplace_back(std::move(pending.m_state));
                     state.m_reference->m_script = &page.m_scripts.back();       // ScriptRefの参照先を更新
                     m_sparse[state.m_entity.m_index] = { state.m_entity.m_generation, index };
+                    attached->push_back(storageIndex);
                     ++m_denseCount;
                 }
                 m_pending.pop_front();
             }
+            return true;
         }
 
     private:

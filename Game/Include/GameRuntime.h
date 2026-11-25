@@ -20,6 +20,8 @@
 #include <vector>
 
 #include "ScriptStorage.h"
+#include "Common/Include/AssetIdentity.h"
+#include "Common/Include/GameRuntimeAPI.h"
 
 namespace HestiaGame::Detail
 {
@@ -34,23 +36,34 @@ namespace HestiaGame::Detail
         void Finalize();
         void Run(ScriptPhase phase);
         void EndFrame();
+        bool FlushScripts();
+        void ClearSceneScripts();
+        bool QueryScriptAttachments(const Hestia::EntityHandle* entities, std::size_t count,
+            void* context, Hestia::ScriptAttachmentVisitor visitor) const;
+        Hestia::SceneScriptResult AttachSceneScript(Hestia::EntityHandle entity, Hestia::AssetGuid guid);
         void OnEntityActiveChanged(Hestia::EntityHandle entity, bool active);
 
         const Hestia::GameEngineAPI& GetEngineAPI() const noexcept { return m_engineAPI; }
 
         /// @brief 初期化の型登録工程で具象 Script 型を登録する。
         /// @tparam T 登録する Script 型。
+        /// @param guid Script Assetの永続GUID。
         /// @return 登録成功時は true。
         template<class T>
-        bool RegisterScript()
+        bool RegisterScript(Hestia::AssetGuid guid)
         {
-            if (!m_initializing || FindStorage<T>() != nullptr)
+            if (!m_initializing || !guid || FindStorage<T>() != nullptr || m_guidStorageIndices.contains(guid))
                 return false;
 
+            // C++型と永続GUIDを同じStorageの添字に結び付ける
             auto storage = std::make_unique<ScriptStorage<T>>(m_engineAPI);
-            m_storages.reserve(m_storages.size() + 1);
-            m_storageIndices.emplace(typeid(T), m_storages.size());
+            const auto index = m_storages.size();
+            m_storages.reserve(index + 1);
+            m_storageGuids.reserve(index + 1);
+            m_storageIndices.emplace(typeid(T), index);
+            m_guidStorageIndices.emplace(guid, index);
             m_storages.push_back(std::move(storage));
+            m_storageGuids.push_back(guid);
             return true;
         }
 
@@ -134,6 +147,9 @@ namespace HestiaGame::Detail
         const Hestia::GameEngineAPI& m_engineAPI;
         std::vector<std::unique_ptr<IScriptStorage>> m_storages;
         std::unordered_map<std::type_index, std::size_t> m_storageIndices;
+        std::vector<Hestia::AssetGuid> m_storageGuids;
+        std::unordered_map<Hestia::AssetGuid, std::size_t, Hestia::AssetGuid::Hash> m_guidStorageIndices;
+        AttachedScriptIndices m_entityScripts;
         std::vector<ActiveChange> m_activeChanges;
         std::size_t m_lastAttachment = 0;
         bool m_initializing = false;

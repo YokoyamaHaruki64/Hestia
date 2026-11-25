@@ -152,7 +152,7 @@ function Invoke-AppCase {
         # App・DLL・ログをケースごとに分離し、Engineの相対Assetsパスを保つ。
         [System.IO.Directory]::CreateDirectory($bin) | Out-Null
         New-Item -ItemType Junction -Path (Join-Path $CaseRoot 'Assets') -Value (Join-Path $repositoryRoot 'Assets') | Out-Null
-        foreach ($file in @('App.exe', 'Engine.dll', 'dxcompiler.dll', 'dxil.dll')) {
+        foreach ($file in @('App.exe', 'Engine.dll', 'dxcompiler.dll', 'dxil.dll', 'assimp-vc145-mt.dll')) {
             Copy-Item -LiteralPath (Join-Path $BinaryDirectory $file) -Destination $bin
         }
         if ($CaseName -eq 'normal') {

@@ -55,9 +55,9 @@ namespace HestiaGame
         /// @brief GameRuntime に具象 Script 型を登録する。成功時は true。
         /// @pre GameRuntime の初期化中の型登録工程で呼ぶ。T はコピー構築または noexcept なムーブ構築が可能で、コピーまたはムーブ代入が可能である。
         template<class T>
-        static bool RegisterScript()
+        static bool RegisterScript(Hestia::AssetGuid guid)
         {
-            return s_runtime != nullptr && s_runtime->RegisterScript<T>();
+            return s_runtime != nullptr && s_runtime->RegisterScript<T>(guid);
         }
 
         /// @brief 生存中の Entity に登録済み型の Script を追加する。失敗時は空の参照。

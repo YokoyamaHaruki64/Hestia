@@ -1,7 +1,7 @@
 ﻿/*=============================================================================
 
  File   : AssetAPI.h
- Desc   : Game.dll へ Mesh / Texture Asset 操作を公開する境界 API。
+ Desc   : Game.dll へ Asset 操作を公開する境界 API。
 
 ------------------------------------------------------------------------------
 
@@ -22,6 +22,7 @@
 namespace Hestia
 {
     class AssetSystem;
+    class Material;
 
     /// @brief AssetSystem の操作を型ごとの関数テーブルとして Game に公開する。
     /// @note 未接続時の各ポインタは nullptr。
@@ -34,6 +35,12 @@ namespace Hestia
 
         /// @brief AssetSystem の操作との接続を解除する。
         void Finalize();
+
+        /// @brief 名前で登録済みの Material の Handle を返す。未接続・未登録時は無効 Handle。
+        AssetHandle<Material> LoadMaterial(std::string_view name) const
+        {
+            return m_loadMaterial != nullptr ? m_loadMaterial(name) : AssetHandle<Material>{};
+        }
 
         /// @brief Asset 型ごとの公開操作。
         template<class T>
@@ -66,6 +73,7 @@ namespace Hestia
         Operations<Mesh> m_mesh;
         Operations<Texture> m_texture;
         Operations<Prefab> m_prefab;
+        AssetHandle<Material> (*m_loadMaterial)(std::string_view name) = nullptr;
     };
 }
 

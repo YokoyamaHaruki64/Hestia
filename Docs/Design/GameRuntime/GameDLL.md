@@ -12,7 +12,7 @@ Hestia の起動経路に `Game.dll` を加え、通常の C++ `.h/.cpp` で書�
 | GameCore | Engine との接続、DLL の入口、GameRuntime、Script の Storage、World などの共通 Facade を提供する | 静的ライブラリ `GameCore.lib` |
 | Game | 具象 Script と、ゲーム固有の型登録・初期配置を定義する | `GameCore.lib` を組み込んだ `Game.dll` |
 
-GameCore から Game のセットアップを呼ぶ接続点は、型登録の `RegisterScripts()` と初期配置の `SetupScene()` とする。GameCore が Facade の接続、型登録、初期配置、保留分の反映の順を決める。具象 Script を扱う登録・追加のテンプレートは Game のコードから使えるようにする。将来は接続点を維持し、`.cppsc` から Script の C++ コードを生成する処理で Setup の実装も生成する。 [Script の型登録と所有](./Script.md#型登録と所有) ・ [C++ Script のコード生成](CppScript.md)
+GameCore から Game のセットアップを呼ぶ接続点は、型登録の `RegisterScripts()` と初期配置の `SetupScene()` とする。GameCore が Facade の接続、型登録、初期配置、保留分の反映の順を決める。具象 Script を扱う登録・追加のテンプレートは Game のコードから使えるようにする。`.cppsc` への移行では Script の C++ コードと `RegisterScripts()` を生成する。起動時の配置をSceneから復元できるようになった時点で、手書きの `SetupScene()` を外す。 [Script の型登録と所有](./Script.md#型登録と所有) ・ [C++ Script のコード生成](CppScript.md)
 
 ## DLL 境界と所有
 ---

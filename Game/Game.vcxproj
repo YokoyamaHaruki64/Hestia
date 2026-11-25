@@ -23,10 +23,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Scripts\GameSetup.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Scripts\RotateTransformScript.h" />
+    <ClCompile Include="..\Assets\Gameplay\DebugCubeGenerator.cpp" />
+    <ClCompile Include="..\Assets\Gameplay\RotateTransformScript.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="GameCore.vcxproj">
@@ -116,6 +114,9 @@
     <Import Project="..\Props\Hestia_Editor.props" />
     <Import Project="..\Props\Hestia_Release.props" />
     <Import Project="..\Props\Hestia_Common.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="..\Props\GameScripts.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
