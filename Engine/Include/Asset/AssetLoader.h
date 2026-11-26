@@ -20,6 +20,7 @@
 namespace Hestia
 {
     class GraphicsSystem;
+    class Material;
     class MaterialShader;
     class AssetDB;
     struct AssetInfo;
@@ -67,6 +68,18 @@ namespace Hestia
         /// @param path .matsh ファイルへの UTF-8 パス。
         /// @return CPU Asset の Handle。読込、解析、コンパイル、登録失敗時は無効。
         AssetHandle<MaterialShader> Load(const AssetRef& ref, std::string_view path);
+    };
+
+    /// @brief 単独の.materialを読み込み、検証済みのMaterialを登録する
+    template<>
+    class AssetLoader<Material>
+    {
+    public:
+        /// @brief ShaderとTextureを解決してMaterialを構築する
+        /// @param ref 登録するAssetの永続参照
+        /// @param path .materialファイルへのUTF-8パス
+        /// @return ロード済みHandle。構文・参照・値の検証に失敗した場合は無効Handle
+        AssetHandle<Material> Load(const AssetRef& ref, std::string_view path);
     };
 }
 

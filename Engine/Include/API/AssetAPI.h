@@ -36,10 +36,10 @@ namespace Hestia
         /// @brief AssetSystem の操作との接続を解除する。
         void Finalize();
 
-        /// @brief 名前で登録済みの Material の Handle を返す。未接続・未登録時は無効 Handle。
-        AssetHandle<Material> LoadMaterial(std::string_view name) const
+        /// @brief Asset相対パスまたは登録名からMaterialを取得する。失敗時は無効Handle。
+        AssetHandle<Material> LoadMaterial(std::string_view path) const
         {
-            return m_loadMaterial != nullptr ? m_loadMaterial(name) : AssetHandle<Material>{};
+            return m_loadMaterial != nullptr ? m_loadMaterial(path) : AssetHandle<Material>{};
         }
 
         /// @brief Asset 型ごとの公開操作。

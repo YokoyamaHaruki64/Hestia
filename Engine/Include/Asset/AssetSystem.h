@@ -14,6 +14,9 @@
 #define _ASSET_SYSTEM_H_
 
 #include <memory>
+#include <optional>
+#include <span>
+#include <string>
 #include <string_view>
 #include <tuple>
 
@@ -56,13 +59,32 @@ namespace Hestia
         /// @brief Assetルート相対パスから主Assetをロードする
         /// @param path 拡張子付きの相対パス。組み込み・手動登録には登録名を使用
         /// @return ロード済み Handle。未登録・型不一致・ロード失敗時は無効 Handle。
-        /// @note Material はメモリ上で登録済みの Asset を検索する。
         template<class T>
         static AssetHandle<T> Load(std::string_view path);
 
         /// @brief 永続参照から主AssetまたはSubAssetをロードする
         template<class T>
         static AssetHandle<T> Load(const AssetRef& ref);
+
+        /// @brief 登録済みMaterialのShader参照とPropertyを保存する
+        /// @param handle 保存するMaterial
+        /// @param path Assetルート相対の保存先。空なら元ファイルまたは自動命名を使う
+        /// @return 成功時は確定した相対パス、失敗時はstd::nullopt
+        static std::optional<std::string> Save(AssetHandle<Material> handle, std::string_view path = {});
+
+        /// @brief 取得済みのSceneスナップショットを保存する
+        /// @param roots 保存するルートの列
+        /// @param path Assetルート相対の保存先。空なら自動命名を使う
+        /// @return 成功時は確定した相対パス、失敗時はstd::nullopt
+        static std::optional<std::string> Save(std::span<const SerializedEntity> roots, std::string_view path = {});
+
+        /// @brief 取得済みのPrefab階層を保存する
+        /// @param root 保存するルートと子孫
+        /// @param prefabName ファイルに保存するPrefab名
+        /// @param path Assetルート相対の保存先。空なら自動命名を使う
+        /// @return 成功時は確定した相対パス、失敗時はstd::nullopt
+        static std::optional<std::string> Save(const SerializedEntity& root, std::string_view prefabName,
+            std::string_view path = {});
 
         /// @brief 保存に使う永続参照を取得する。参照がないAssetは空
         template<class T>
@@ -86,6 +108,12 @@ namespace Hestia
         static AssetHandle<T> Register(std::string_view name, T* asset);
 
     private:
+        std::optional<std::string> ResolveSavePath(std::string_view path, std::string_view extension,
+            std::string_view name, std::string_view defaultName);
+
+        template<class T, class... Args>
+        std::optional<std::string> SaveFile(const std::string& path, bool replaceExisting, Args&&... args);
+
         template<class T>
         AssetHandle<T> LoadFile(const AssetRef& ref, const AssetInfo* info);
 
@@ -111,7 +139,8 @@ namespace Hestia
         std::tuple<
             AssetLoader<Prefab>,
             AssetLoader<Texture>,
-            AssetLoader<MaterialShader>
+            AssetLoader<MaterialShader>,
+            AssetLoader<Material>
         > m_loaders;
 
         std::tuple<

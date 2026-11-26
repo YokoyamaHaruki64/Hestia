@@ -29,6 +29,7 @@ namespace Hestia
         using Array = std::vector<SerializedValue>;
 
         std::variant<bool, int64_t, uint64_t, double, std::string, Array, AssetRef> m_value;
+        bool operator==(const SerializedValue&) const = default;
     };
 
     struct SerializedComponent

@@ -16,14 +16,11 @@
 
 #include <algorithm>
 #include <charconv>
-#include <fstream>
-#include <iterator>
-#include <limits>
 
 #include "ECS/ECSSystem.h"
 #include "Serialize/EntityYamlReader.h"
 #include "Log/Logger.h"
-#include "RapidYaml/rapidyaml.hpp"
+#include "Serialize/YamlFile.h"
 
 namespace Hestia
 {
@@ -53,71 +50,13 @@ namespace Hestia
             return ReadNumber(View(node.val()), value);
         }
 
-        std::optional<SerializedValue> ReadValue(ryml::ConstNodeRef node)
-        {
-            // 配列とAssetRefはYAMLの構造で区別する
-            if (node.is_seq())
-            {
-                SerializedValue::Array items;
-                items.reserve(node.num_children());
-                for (const auto child : node.children())
-                {
-                    auto item = ReadValue(child);
-                    if (!item)
-                        return std::nullopt;
-                    items.push_back(std::move(*item));
-                }
-                return SerializedValue{ std::move(items) };
-            }
-            if (node.is_map())
-            {
-                const auto guid = node.find_child("guid");
-                AssetRef ref;
-
-                if (node.num_children() != 2 ||
-                    !guid.readable() ||
-                    !guid.has_val() ||
-                    !(ref.m_guid = AssetGuid::Parse(View(guid.val()))) ||   // GUID文字列をAssetGuidへ変換する
-                    !ReadNumber(node.find_child("localId"), ref.m_localId))
-                    return std::nullopt;
-                return SerializedValue{ ref };
-            }
-
-            if (!node.has_val())
-                return std::nullopt;
-            if (node.val_is_null())
-                return SerializedValue{ AssetRef{} };
-
-            const auto text = View(node.val());
-            if (node.is_val_quoted())
-                return SerializedValue{ std::string(text) };
-            if (text == "true" || text == "false")
-                return SerializedValue{ text == "true" };
-
-            int64_t signedValue = 0;
-            uint64_t unsignedValue = 0;
-            double floatingValue = 0;
-            if (ReadNumber(text, signedValue))
-                return SerializedValue{ signedValue };
-            if (ReadNumber(text, unsignedValue))
-                return SerializedValue{ unsignedValue };
-            if (ReadNumber(text, floatingValue))
-                return SerializedValue{ floatingValue };
-            if (text == ".inf" || text == "-.inf")
-                return SerializedValue{ text.front() == '-' ? -std::numeric_limits<double>::infinity() :
-                    std::numeric_limits<double>::infinity() };
-            if (text == ".nan")
-                return SerializedValue{ std::numeric_limits<double>::quiet_NaN() };
-            return SerializedValue{ std::string(text) };
-        }
-
         bool ReadSceneFields(ryml::ConstNodeRef row, SerializedEntity& entity)
         {
             const auto active = row.find_child("active");
             if (!active.readable())
                 return false;
 
-            const auto value = ReadValue(active);
+            const auto value = ReadYamlValue(active);
             const auto* flag = value ? std::get_if<bool>(&value->m_value) : nullptr;
             if (!flag)
                 return false;
@@ -132,7 +71,7 @@ namespace Hestia
 
             for (const auto node : scripts.children())
             {
-                const auto script = ReadValue(node);
+                const auto script = ReadYamlValue(node);
                 const auto* ref = script ? std::get_if<AssetRef>(&script->m_value) : nullptr;
                 if (!ref || !ref->m_guid || ref->m_localId != 0 ||
                     std::ranges::find(entity.m_scripts, *ref) != entity.m_scripts.end())
@@ -156,34 +95,11 @@ namespace Hestia
         if (!registry)
             return fail("ComponentRegistry is unavailable");
 
-        std::ifstream file(path, std::ios::binary);
-
-        if (!file)
-            return fail("could not open file");
-        const std::string source((std::istreambuf_iterator<char>(file)), {});
-        if (file.bad())
-            return fail("could not read file");
-
-        // RapidYAMLの構文エラーを通常のロード失敗として扱う
-        struct ParseError { std::string m_message; };
-        auto callbacks = ryml::get_callbacks();
-        callbacks.set_error_parse([](ryml::csubstr message, const ryml::ErrorDataParse&, void*)
-        {
-            throw ParseError{ std::string(View(message)) };
-        });
-        ryml::EventHandlerTree handler(callbacks);
-        ryml::Parser parser(&handler);
-        ryml::Tree tree;
-        try
-        {
-            tree = ryml::parse_in_arena(&parser, ryml::to_csubstr(source));
-        }
-        catch (const ParseError& error)
-        {
-            return fail(error.m_message);
-        }
-
-        const auto root = tree.crootref();
+        std::string error;
+        const auto tree = YamlReader::Read(path, error);
+        if (!tree)
+            return fail(error);
+        const auto root = tree->crootref();
 
         if (!root.is_map())
             return fail("expected a YAML map");
@@ -251,7 +167,7 @@ namespace Hestia
                 {
                     const auto key = View(fieldNode.key());
                     const auto field = std::ranges::find(schema->serializeFields, key, &SerializeFieldDescriptor::name);
-                    auto value = ReadValue(fieldNode);
+                    auto value = ReadYamlValue(fieldNode);
                     if (field == schema->serializeFields.end() || !value || !field->accepts(*value) ||
                         !fields.emplace(key, std::move(*value)).second)
                         return fail("invalid or duplicate field: " + schema->name + "." + std::string(key));

@@ -41,6 +41,7 @@ namespace Hestia
             { ".glb", AssetType::Model },
             { ".png", AssetType::Texture },
             { ".matsh", AssetType::MaterialShader },
+            { ".material", AssetType::Material },
             { ".prefab", AssetType::Prefab },
             { ".scene", AssetType::Scene },
             { ".cpp", AssetType::Script },
@@ -53,6 +54,7 @@ namespace Hestia
             case AssetType::Mesh: return "Mesh";
             case AssetType::Texture: return "Texture";
             case AssetType::MaterialShader: return "MaterialShader";
+            case AssetType::Material: return "Material";
             case AssetType::Model: return "Model";
             case AssetType::Prefab: return "Prefab";
             case AssetType::Scene: return "Scene";

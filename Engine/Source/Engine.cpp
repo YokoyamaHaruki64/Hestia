@@ -67,22 +67,6 @@ namespace Hestia
             return false;
         }
 
-        // 起動SceneのCubeが同じ描画バッチに入るよう、復元前にMaterialを一つだけ登録する
-        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Shaders/MatShaders/Unlit_Inst.matsh"));
-        if (shader == nullptr || !shader->IsInstancing())
-        {
-            Logger::Error("DebugCubeMaterial requires the Unlit_Inst MaterialShader");
-            Finalize();
-            return false;
-        }
-        auto material = std::make_unique<Material>();
-        material->SetShader(shader);
-        if (!AssetSystem::Register<Material>("DebugCubeMaterial", material.release()).IsValid())
-        {
-            Finalize();
-            return false;
-        }
-
         // 起動Sceneの表示と復元を、最初の更新より前に確定する
         GraphicsSystem::SetView(Matrix4x4_SIMD::LookAtLH(
             { 440.0f, 275.0f, -820.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }));
@@ -300,7 +284,7 @@ namespace Hestia
             ECSSystem::EndFrame();
 
             // 反映済みWorldを保存してから、保留されたSceneを切り替える
-            m_scenes.SerializeScene(m_assets.GetDatabase());
+            m_scenes.SerializeScene();
             if (m_gameRuntime && !m_scenes.CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
                 m_applicationAPI.RequestQuit();
         }

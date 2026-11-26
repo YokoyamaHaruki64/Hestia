@@ -33,7 +33,10 @@
     <ClCompile Include="Source\ECS\Chunk.cpp" />
     <ClCompile Include="Source\ECS\ECSProcess.cpp" />
     <ClCompile Include="Source\ECS\ECSWorld.cpp" />
-    <ClCompile Include="Source\Serialize\EntityYamlWriter.cpp" />
+    <ClCompile Include="Source\Serialize\EntitySerializer.cpp" />
+    <ClCompile Include="Source\Serialize\YamlFile.cpp">
+      <ExceptionHandling>Sync</ExceptionHandling>
+    </ClCompile>
     <ClCompile Include="Source\Serialize\PrefabLoader.cpp" />
     <ClCompile Include="Source\Scene\SceneSystem.cpp" />
     <ClCompile Include="Source\ECS\ECSSystem.cpp" />
@@ -43,6 +46,7 @@
     <ClCompile Include="Source\API\ECSProcess\MeshRendererAPI.cpp" />
     <ClCompile Include="Source\API\Generated\ECSProcessAPI.generated.cpp" />
     <ClCompile Include="Source\Asset\Material.cpp" />
+    <ClCompile Include="Source\Asset\MaterialSerialization.cpp" />
     <ClCompile Include="Source\Asset\MaterialShader.cpp" />
     <ClCompile Include="Source\Asset\MaterialShaderLoader.cpp" />
     <ClCompile Include="Source\Asset\MaterialShaderParser.cpp" />
@@ -87,7 +91,8 @@
     <ClInclude Include="Include\ECS\ComponentRegistry.h" />
     <ClInclude Include="Include\Serialize\SerializeFields.h" />
     <ClInclude Include="Include\Serialize\SerializedEntity.h" />
-    <ClInclude Include="Include\Serialize\EntityYamlWriter.h" />
+    <ClInclude Include="Include\Serialize\Serializer.h" />
+    <ClInclude Include="Include\Serialize\YamlFile.h" />
     <ClInclude Include="Include\Serialize\EntityYamlReader.h" />
     <ClInclude Include="Include\Scene\SceneSystem.h" />
     <ClInclude Include="Include\ECS\Component.h" />

@@ -27,7 +27,6 @@
 #include "Engine/Include/API/TimeAPI.h"
 #include "Engine/Include/Time/TimeSystem.h"
 #include "Engine/Include/Scene/SceneSystem.h"
-#include "Engine/Include/Serialize/EntityYamlWriter.h"
 #include "Game/Include/GameTime.h"
 #include "Game/Include/World.h"
 
@@ -209,6 +208,7 @@ namespace
             ("HestiaSceneStartup-" + std::to_string(GetCurrentProcessId()));
         const std::filesystem::path files[] = {
             "Scenes/Startup.scene", "Scenes/Startup.scene.meta", "Shaders/Common.hlsl",
+            "Materials/DebugCube.material", "Materials/DebugCube.material.meta",
             "Shaders/MatShaders/Unlit_Inst.matsh", "Shaders/MatShaders/Unlit_Inst.matsh.meta"
         };
         for (const auto& file : files)
@@ -218,17 +218,13 @@ namespace
                 std::filesystem::copy_options::overwrite_existing));
         }
 
-        // 描画デバイスなしで、起動Sceneが使う共有Materialを用意する
+        // 描画デバイスなしで、起動Sceneの共有Materialをファイルから取得する
         GraphicsSystem graphics;
         AssetSystem assets;
         ECSSystem ecs;
         ASSERT_TRUE(assets.Initialize(&graphics, directory));
-        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Shaders/MatShaders/Unlit_Inst.matsh"));
-        ASSERT_TRUE(shader && shader->IsInstancing());
-        auto material = std::make_unique<Material>();
-        material->SetShader(shader);
-        const auto* sharedMaterial = AssetSystem::Get(AssetSystem::Register<Material>("DebugCubeMaterial", material.release()));
-        ASSERT_NE(sharedMaterial, nullptr);
+        const auto* sharedMaterial = AssetSystem::Get(AssetSystem::Load<Material>("Materials/DebugCube.material"));
+        ASSERT_TRUE(sharedMaterial && sharedMaterial->GetShader() && sharedMaterial->GetShader()->IsInstancing());
 
         // 本番用の生成登録とAsset Facadeを起動Sceneの復元へ接続する
         ASSERT_TRUE(ecs.Initialize());
@@ -278,8 +274,10 @@ namespace
         const auto directory = std::filesystem::temp_directory_path() /
             ("HestiaSceneSwitch-" + std::to_string(GetCurrentProcessId()));
         std::filesystem::create_directories(directory);
-        Hestia::AssetDB database;
-        ASSERT_TRUE(database.Initialize(directory));
+        Hestia::GraphicsSystem graphics;
+        Hestia::AssetSystem assets;
+        ASSERT_TRUE(assets.Initialize(&graphics, directory));
+        const auto& database = assets.GetDatabase();
         Hestia::SceneSystem scenes;
         ECSSystem::BindScriptAttachmentQuery(m_runtime, m_runtimeAPI->QueryScriptAttachments);
 
@@ -287,20 +285,21 @@ namespace
         ASSERT_TRUE(World::SetName(original, "Saved spinner"));
         ASSERT_TRUE(World::AddScript<ValueScript>(original, 42));
         EndFrame();
-        ASSERT_TRUE(scenes.SaveScene("Saved.scene"));
-        ASSERT_TRUE(scenes.SaveScene("Saved.scene"));
-        ASSERT_TRUE(scenes.SerializeScene(database));
-        ASSERT_NE(database.FindByPath("Saved.scene"), nullptr);
+        ASSERT_TRUE(scenes.SaveScene());
+        ASSERT_TRUE(scenes.SaveScene());
+        ASSERT_TRUE(scenes.SerializeScene());
+        EXPECT_EQ(scenes.GetLastSavedScenePath(), "NewScene.scene");
+        ASSERT_NE(database.FindByPath("NewScene.scene"), nullptr);
         ASSERT_TRUE(World::SetName(original, "Unsaved change"));
-        ASSERT_TRUE(scenes.SerializeScene(database));
+        ASSERT_TRUE(scenes.SerializeScene());
 
         // 保存後に追加したScriptも、旧Entityの実体がある間に終了する
         ASSERT_TRUE(World::AddScript<DestroyScript>(original, EntityHandle{}, &m_destroyed));
         EndFrame();
         ASSERT_TRUE(scenes.LoadScene("Missing.scene"));
-        ASSERT_TRUE(scenes.LoadScene("Saved.scene"));
+        ASSERT_TRUE(scenes.LoadScene("NewScene.scene"));
         ASSERT_TRUE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
-        EXPECT_EQ(scenes.GetCurrentScenePath(), "Saved.scene");
+        EXPECT_EQ(scenes.GetCurrentScenePath(), "NewScene.scene");
         EXPECT_EQ(m_destroyed, (std::vector<EntityHandle>{ original }));
         EXPECT_EQ(ECSSystem::GetEntity(original), nullptr);
         const auto restored = World::FindFirstEntityByName("Saved spinner");
@@ -314,8 +313,8 @@ namespace
         ASSERT_EQ(current->m_scripts.size(), 1u);
         current->m_active = false;
         current->m_scripts.push_back({ { { 90, 1 } }, 0 });
-        ASSERT_TRUE(Hestia::EntityYamlWriter::SaveScene({ &*current, 1 }, directory / "Saved.scene"));
-        ASSERT_TRUE(scenes.LoadScene("Saved.scene"));
+        ASSERT_TRUE(Hestia::AssetSystem::Save(std::span<const Hestia::SerializedEntity>{ &*current, 1 }, "NewScene.scene"));
+        ASSERT_TRUE(scenes.LoadScene("NewScene.scene"));
         ASSERT_TRUE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
         EXPECT_EQ(ECSSystem::GetEntity(restored), nullptr);
         const auto reopened = World::FindFirstEntityByName("Saved spinner");
@@ -325,7 +324,7 @@ namespace
         EXPECT_FALSE(scenes.LoadScene("../Saved.scene"));
         ASSERT_TRUE(scenes.LoadScene("Missing.scene"));
         EXPECT_FALSE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
-        EXPECT_EQ(scenes.GetCurrentScenePath(), "Saved.scene");
+        EXPECT_EQ(scenes.GetCurrentScenePath(), "NewScene.scene");
         ECSSystem::BindScriptAttachmentQuery(nullptr, nullptr);
         std::filesystem::remove_all(directory);
     }

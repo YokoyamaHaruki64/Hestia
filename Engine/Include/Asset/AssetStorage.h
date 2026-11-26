@@ -77,6 +77,19 @@ namespace Hestia
             return Get(handle) != nullptr ? m_slots[handle.m_index].m_ref : AssetRef{};
         }
 
+        /// @brief 名前登録したAssetの索引名を保存時に取得する
+        /// @param handle 名前を検索するHandle
+        /// @return 登録名のView。ファイル由来または未登録のHandleは空
+        std::string_view GetRegisteredName(AssetHandle<T> handle) const
+        {
+            for (const auto& [name, entry] : m_nameToHandle)
+            {
+                if (entry.m_index == handle.m_index && entry.m_generation == handle.m_generation)
+                    return name;
+            }
+            return {};
+        }
+
         /// @brief Index と Generation が一致する Asset を借用する。
         /// @param handle 照合する Handle。
         /// @return Asset への非所有ポインタ。無効または不一致なら nullptr。

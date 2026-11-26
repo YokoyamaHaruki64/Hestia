@@ -29,6 +29,8 @@ Build/
 !/Assets/**/*.cpp.meta
 !/Assets/**/*.scene
 !/Assets/**/*.scene.meta
+!/Assets/**/*.material
+!/Assets/**/*.material.meta
 !/Assets/Scenes/StartupCube.obj
 !/Assets/Scenes/StartupCube.obj.meta
 !/Assets/Shaders/

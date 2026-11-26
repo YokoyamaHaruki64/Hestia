@@ -16,6 +16,8 @@
 
 #include "Graphics/GraphicsSystem.h"
 #include "Log/Logger.h"
+#include "Serialize/Serializer.h"
+#include "Serialize/YamlFile.h"
 
 #include <algorithm>
 #include <cmath>
@@ -34,6 +36,30 @@ namespace Hestia
             const std::string normalizedName = ToLowerAscii(name);
             return normalizedName == "cube" || normalizedName == "plane" ||
                 normalizedName == "quad" || normalizedName == "sphere";
+        }
+
+        template<class T>
+        constexpr AssetType GetAssetType()
+        {
+            if constexpr (std::is_same_v<T, Texture>)
+                return AssetType::Texture;
+            else
+                return AssetType::MaterialShader;
+        }
+
+        bool CanUseFileName(std::string_view name)
+        {
+            if (name.empty() || name.back() == ' ' || name.back() == '.' ||
+                name.find_first_of("<>:\"/\\|?*") != std::string_view::npos ||
+                std::ranges::any_of(name, [](unsigned char letter) { return letter < 32; }))
+                return false;
+
+            // 拡張子を付けてもWindowsのデバイス名として解釈される名前を避ける
+            const auto base = ToLowerAscii(name.substr(0, name.find('.')));
+            if (base == "con" || base == "prn" || base == "aux" || base == "nul")
+                return false;
+            return base.size() != 4 || (!base.starts_with("com") && !base.starts_with("lpt")) ||
+                base.back() < '1' || base.back() > '9';
         }
 
         template<class T>
@@ -329,6 +355,11 @@ namespace Hestia
                 if (info->m_type == AssetType::Prefab && ref.m_localId == 0)
                     return GetLoader<Prefab>().LoadYaml(*info, m_assetDB);
             }
+            else if constexpr (std::is_same_v<T, Material>)
+            {
+                if (info->m_type == AssetType::Material && ref.m_localId == 0)
+                    return GetLoader<Material>().Load(ref, m_assetDB.SourcePath(*info));
+            }
 
             constexpr bool isSubAsset = !std::is_same_v<T, Prefab>;
             if (info->m_type == AssetType::Model && isSubAsset == (ref.m_localId != 0))
@@ -353,6 +384,146 @@ namespace Hestia
 
         Logger::Error("Asset type or local ID does not match the request: " + info->m_path);
         return {};
+    }
+
+    std::optional<std::string> AssetSystem::ResolveSavePath(std::string_view path, std::string_view extension,
+        std::string_view name, std::string_view defaultName)
+    {
+        if (!path.empty())
+        {
+            // 明示パスは型とAssetルートを照合し、登録済みなら索引のパス表記に揃える
+            const auto normalized = PathFromUtf8(path).lexically_normal();
+            const auto relative = PathToUtf8(normalized);
+            if (ToLowerAscii(PathToUtf8(normalized.extension())) != extension ||
+                m_assetDB.SourcePath(relative).empty())
+            {
+                Logger::Error("Invalid Asset save path: " + std::string(path));
+                return std::nullopt;
+            }
+
+            const auto* info = m_assetDB.FindByPath(relative);
+            return info != nullptr ? info->m_path : relative;
+        }
+
+        // ファイル、.meta、索引のいずれかに残る名前は新規保存に使わない
+        const auto stem = CanUseFileName(name) ? name : defaultName;
+        for (size_t suffix = 0; ; ++suffix)
+        {
+            const auto candidate = suffix == 0
+                ? std::format("{}{}", stem, extension)
+                : std::format("{}_{}{}", stem, suffix, extension);
+            if (m_assetDB.FindByPath(candidate))
+                continue;
+
+            const auto output = m_assetDB.SourcePath(candidate);
+            auto metadata = output;
+            metadata += L".meta";
+            std::error_code error;
+            const bool exists = std::filesystem::exists(output, error);
+            const bool hasMetadata = !error && std::filesystem::exists(metadata, error);
+            if (error)
+            {
+                Logger::Error("Could not choose an Asset save path '" + candidate + "': " + error.message());
+                return std::nullopt;
+            }
+            if (!exists && !hasMetadata)
+                return candidate;
+        }
+    }
+
+    template<class T, class... Args>
+    std::optional<std::string> AssetSystem::SaveFile(const std::string& path, bool replaceExisting, Args&&... args)
+    {
+        const auto output = m_assetDB.SourcePath(path);
+        if (!replaceExisting)
+        {
+            // 新しいAssetに別ファイルの永続IDを引き継がせない
+            auto metadata = output;
+            metadata += L".meta";
+            std::error_code error;
+            if (std::filesystem::exists(metadata, error) || error)
+            {
+                Logger::Error("Could not save new Asset '" + path + "': destination metadata is unavailable or in use");
+                return std::nullopt;
+            }
+        }
+
+        // Serializerで型ごとの検証を済ませてからファイルを反映する
+        const auto tree = Serializer<T>::Serialize(std::forward<Args>(args)...);
+        if (!tree)
+        {
+            Logger::Error("Could not serialize Asset '" + path + "'");
+            return std::nullopt;
+        }
+        if (!YamlWriter::Write(*tree, output, replaceExisting))
+            return std::nullopt;
+
+        // ファイル反映後に索引へ登録し、同じ起動中のロードに使えるようにする
+        if (!m_assetDB.RegisterFile(path))
+        {
+            Logger::Error("Asset file was written but could not be registered: " + path);
+            return std::nullopt;
+        }
+        return path;
+    }
+
+    std::optional<std::string> AssetSystem::Save(AssetHandle<Material> handle, std::string_view path)
+    {
+        auto* system = s_instance;
+        const auto* material = Get(handle);
+        if (!material)
+        {
+            Logger::Error("Could not save Material: invalid handle");
+            return std::nullopt;
+        }
+
+        // 単独の.materialだけを上書き元として扱い、モデルのSubAssetは新規Assetへ保存する
+        const auto ref = GetReference(handle);
+        const auto* source = system->m_assetDB.FindByGuid(ref.m_guid);
+        const bool hasSource = source && source->m_type == AssetType::Material && ref.m_localId == 0;
+        if (path.empty() && hasSource)
+            path = source->m_path;
+
+        const auto name = path.empty() ? system->GetStorage<Material>().GetRegisteredName(handle) : std::string_view{};
+        const auto target = system->ResolveSavePath(path, ".material", name, "NewMaterial");
+        if (!target)
+            return std::nullopt;
+
+        const auto* existing = system->m_assetDB.FindByPath(*target);
+        const bool overwriteSource = hasSource && existing == source;
+        if (existing && !overwriteSource)
+        {
+            Logger::Error("A different Asset already owns the Material save path: " + *target);
+            return std::nullopt;
+        }
+        return system->SaveFile<Material>(*target, overwriteSource, *material);
+    }
+
+    std::optional<std::string> AssetSystem::Save(std::span<const SerializedEntity> roots, std::string_view path)
+    {
+        auto* system = s_instance;
+        if (!system)
+        {
+            Logger::Error("Could not save Scene: AssetSystem is unavailable");
+            return std::nullopt;
+        }
+
+        const auto target = system->ResolveSavePath(path, ".scene", {}, "NewScene");
+        return target ? system->SaveFile<std::span<const SerializedEntity>>(*target, !path.empty(), roots) : std::nullopt;
+    }
+
+    std::optional<std::string> AssetSystem::Save(const SerializedEntity& root, std::string_view prefabName,
+        std::string_view path)
+    {
+        auto* system = s_instance;
+        if (!system)
+        {
+            Logger::Error("Could not save Prefab: AssetSystem is unavailable");
+            return std::nullopt;
+        }
+
+        const auto target = system->ResolveSavePath(path, ".prefab", prefabName, "NewPrefab");
+        return target ? system->SaveFile<Prefab>(*target, !path.empty(), root, prefabName) : std::nullopt;
     }
 
     template<class T>

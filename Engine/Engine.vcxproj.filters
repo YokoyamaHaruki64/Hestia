@@ -95,6 +95,9 @@
     <ClCompile Include="Source\Asset\Material.cpp">
       <Filter>_Source\Asset</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Asset\MaterialSerialization.cpp">
+      <Filter>_Source\Asset</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Asset\MaterialShader.cpp">
       <Filter>_Source\Asset</Filter>
     </ClCompile>
@@ -182,7 +185,10 @@
     <ClCompile Include="Source\ECS\ECSWorld.cpp">
       <Filter>_Source\ECS</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Serialize\EntityYamlWriter.cpp">
+    <ClCompile Include="Source\Serialize\EntitySerializer.cpp">
+      <Filter>_Source\Serialize</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Serialize\YamlFile.cpp">
       <Filter>_Source\Serialize</Filter>
     </ClCompile>
     <ClCompile Include="Source\Serialize\PrefabLoader.cpp">
@@ -220,7 +226,10 @@
     <ClInclude Include="Include\Serialize\SerializedEntity.h">
       <Filter>_Include\Serialize</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Serialize\EntityYamlWriter.h">
+    <ClInclude Include="Include\Serialize\Serializer.h">
+      <Filter>_Include\Serialize</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Serialize\YamlFile.h">
       <Filter>_Include\Serialize</Filter>
     </ClInclude>
     <ClInclude Include="Include\Serialize\EntityYamlReader.h">

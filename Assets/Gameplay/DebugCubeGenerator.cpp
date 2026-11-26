@@ -36,7 +36,7 @@ namespace HestiaGame
     {
         // 全Cubeで同じMeshとMaterialを共有し、インスタンス描画にまとめる
         const auto mesh = Assets::Load<Hestia::Mesh>("Cube");
-        const auto material = Assets::LoadMaterial("DebugCubeMaterial");
+        const auto material = Assets::LoadMaterial("Materials/DebugCube.material");
         if (!mesh.IsValid() || !material.IsValid())
         {
             Logger::Error("DebugCubeGenerator: Cube mesh or DebugCubeMaterial is missing");

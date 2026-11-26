@@ -39,10 +39,10 @@ namespace HestiaGame
             return load != nullptr ? load(ref) : Hestia::AssetHandle<T>{};
         }
 
-        /// @brief 名前で登録済みの Material の Handle を返す。未接続・未登録時は無効 Handle。
-        static Hestia::AssetHandle<Hestia::Material> LoadMaterial(std::string_view name)
+        /// @brief Asset相対パスまたは登録名からMaterialを取得する。失敗時は無効Handle。
+        static Hestia::AssetHandle<Hestia::Material> LoadMaterial(std::string_view path)
         {
-            return s_api != nullptr ? s_api->LoadMaterial(name) : Hestia::AssetHandle<Hestia::Material>{};
+            return s_api != nullptr ? s_api->LoadMaterial(path) : Hestia::AssetHandle<Hestia::Material>{};
         }
 
         /// @brief Handle に対応する Asset を借用する。失敗・未接続時は nullptr。

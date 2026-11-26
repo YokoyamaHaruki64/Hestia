@@ -36,7 +36,6 @@
 #include "Log/LogStorage.h"
 #include "Game/Include/GameAssets.h"
 #include "Serialize/EntityYamlReader.h"
-#include "Serialize/EntityYamlWriter.h"
 #include "Transform/TransformData.h"
 #include "Transform/TransformProcess.h"
 
@@ -48,6 +47,128 @@ namespace
         file << source;
         file.close();
         ASSERT_TRUE(file.good());
+    }
+
+    class MaterialAssetTest : public ::testing::Test
+    {
+    protected:
+        void SetUp() override
+        {
+            const auto* test = ::testing::UnitTest::GetInstance()->current_test_info();
+            m_directory = std::filesystem::temp_directory_path() /
+                ("HestiaMaterial-" + std::to_string(GetCurrentProcessId()) + "-" + test->name());
+            ASSERT_TRUE(std::filesystem::create_directory(m_directory));
+            ASSERT_NO_FATAL_FAILURE(WriteAssetFile(m_directory / "Shader.matsh.meta",
+                "type: MaterialShader\nguid: b4c019ce-181f-46c4-bf5f-c6c2cdc634a2\n"));
+            ASSERT_NO_FATAL_FAILURE(WriteAssetFile(m_directory / "Shader.matsh", R"(
+MaterialShader "Tests/Material"
+{
+    RenderType = Forward;
+    RenderPhase = Opaque;
+    Properties
+    {
+        _Color ("Color", Color) = (1, 1, 1, 1)
+        _Roughness ("Roughness", Float) = 0.5
+        _Matrix ("Matrix", Matrix3x3) = (1, 0, 0, 0, 1, 0, 0, 0, 1)
+        _Albedo ("Albedo", Texture2D) = "white"
+    }
+    Pass "Forward"
+    {
+        HLSL_BEGIN
+        #pragma vertex VSMain
+        #pragma pixel PSMain
+        float4 VSMain(float3 position : POSITION) : SV_POSITION { return float4(position, 1); }
+        float4 PSMain() : SV_TARGET { return _Color; }
+        HLSL_END
+    }
+}
+)"));
+        }
+
+        void TearDown() override
+        {
+            m_assets.Finalize();
+            std::filesystem::remove_all(m_directory);
+        }
+
+        static constexpr std::string_view MATERIAL_HEADER =
+            "version: 1\nshader: { guid: b4c019ce-181f-46c4-bf5f-c6c2cdc634a2, localId: 0 }\n";
+
+        std::filesystem::path m_directory;
+        Hestia::GraphicsSystem m_graphics;
+        Hestia::AssetSystem m_assets;
+    };
+
+    TEST_F(MaterialAssetTest, LoadsOverridesAndRejectsInvalidProperties)
+    {
+        using namespace Hestia;
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(m_directory / "Valid.material", std::string(MATERIAL_HEADER) +
+            "properties:\n  _Color: [0.25, 0.5, 0.75, 1]\n  _Albedo: null\n"));
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(m_directory / "Invalid.material", std::string(MATERIAL_HEADER) +
+            "properties:\n  _Roughness: 0.25\n  _Roughness: 0.75\n"));
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(m_directory / "MissingTexture.material", std::string(MATERIAL_HEADER) +
+            "properties:\n  _Albedo: { guid: 8810ccc3-339e-4408-9dc2-57be100dad4a, localId: 0 }\n"));
+        ASSERT_TRUE(m_assets.Initialize(&m_graphics, m_directory));
+
+        // Shaderから継承した既定値と、ファイル側の上書きを同じMaterialから取得する
+        const auto handle = AssetSystem::Load<Material>("Valid.material");
+        const auto* material = AssetSystem::Get(handle);
+        ASSERT_NE(material, nullptr);
+        EXPECT_FLOAT_EQ(material->GetColor("_Color").r, 0.25f);
+        EXPECT_FLOAT_EQ(material->GetFloat("_Roughness"), 0.5f);
+        EXPECT_FALSE(material->GetTexture("_Albedo").IsValid());
+        EXPECT_EQ(AssetSystem::Get(AssetSystem::Load<Material>(AssetSystem::GetReference(handle))), material);
+
+        EXPECT_FALSE(AssetSystem::Load<Material>("Invalid.material").IsValid());
+        EXPECT_FALSE(AssetSystem::Load<Material>("MissingTexture.material").IsValid());
+    }
+
+    TEST_F(MaterialAssetTest, SavesOverridesToAnAvailablePathAndKeepsTheGuidOnOverwrite)
+    {
+        using namespace Hestia;
+        ASSERT_TRUE(m_assets.Initialize(&m_graphics, m_directory));
+        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Shader.matsh"));
+        ASSERT_NE(shader, nullptr);
+        auto material = std::make_unique<Material>();
+        material->SetShader(shader);
+        ASSERT_TRUE(material->SetColor("_Color", Color{ 0.25f, 0.75f, 0.5f, 1.0f }));
+        const Matrix3x3 matrix{ 1, 0, 0, 5, 1, 0, 0, 7, 1 };
+        ASSERT_TRUE(material->SetMatrix3x3("_Matrix", matrix));
+        const auto runtime = AssetSystem::Register<Material>("paint", material.release());
+        ASSERT_TRUE(runtime.IsValid());
+
+        // 同名のメタデータを保護し、空き名で登録されたMaterialをすぐにロードする
+        ASSERT_NO_FATAL_FAILURE(WriteAssetFile(m_directory / "paint.material.meta", "existing metadata"));
+        const auto path = AssetSystem::Save(runtime);
+        ASSERT_TRUE(path);
+        EXPECT_EQ(*path, "paint_1.material");
+        EXPECT_FALSE(std::filesystem::exists(m_directory / "paint.material"));
+        std::filesystem::remove(m_directory / "paint.material.meta");
+        const auto loaded = AssetSystem::Load<Material>(*path);
+        const auto* restored = AssetSystem::Get(loaded);
+        ASSERT_NE(restored, nullptr);
+        EXPECT_FLOAT_EQ(restored->GetColor("_Color").g, 0.75f);
+        EXPECT_FLOAT_EQ(restored->GetMatrix3x3("_Matrix").m[1][0], 5.0f);
+        EXPECT_FLOAT_EQ(restored->GetMatrix3x3("_Matrix").m[2][1], 7.0f);
+        EXPECT_FLOAT_EQ(restored->GetFloat("_Roughness"), 0.5f);
+        EXPECT_FALSE(AssetSystem::Save(runtime, *path));
+
+        // 既定値をYAMLへ固定せず、上書き後も同じ参照で再起動時に復元できる
+        std::ifstream file(m_directory / *path, std::ios::binary);
+        const std::string yaml((std::istreambuf_iterator<char>(file)), {});
+        file.close();
+        EXPECT_EQ(yaml.find("_Roughness"), std::string::npos);
+        const auto ref = AssetSystem::GetReference(loaded);
+        ASSERT_TRUE(ref.m_guid);
+        ASSERT_TRUE(AssetSystem::Get(loaded)->SetFloat("_Roughness", 0.75f));
+        EXPECT_EQ(AssetSystem::Save(loaded), path);
+        m_assets.Finalize();
+        ASSERT_TRUE(m_assets.Initialize(&m_graphics, m_directory));
+        const auto reopened = AssetSystem::Load<Material>(*path);
+        const auto* updated = AssetSystem::Get(reopened);
+        ASSERT_NE(updated, nullptr);
+        EXPECT_EQ(AssetSystem::GetReference(reopened), ref);
+        EXPECT_FLOAT_EQ(updated->GetFloat("_Roughness"), 0.75f);
     }
 
     TEST(Prefab, SavesLoadsAndInstantiatesIndependentHierarchies)
@@ -81,7 +202,10 @@ namespace
 
         const auto snapshot = ECSSystem::SaveEntity(root);
         ASSERT_TRUE(snapshot);
-        ASSERT_TRUE(EntityYamlWriter::Save(*snapshot, "Saved", directory / "Saved.prefab"));
+        const auto saved = AssetSystem::Save(*snapshot, "Saved");
+        ASSERT_TRUE(saved);
+        EXPECT_EQ(*saved, "Saved.prefab");
+        EXPECT_TRUE(AssetSystem::Load<Prefab>(*saved).IsValid());
         ECSSystem::DestroyEntity(root);
         ECSSystem::EndFrame();
         assets.Finalize();
@@ -174,9 +298,9 @@ namespace
         const auto directory = std::filesystem::temp_directory_path() /
             ("HestiaScene-" + std::to_string(GetCurrentProcessId()));
         std::filesystem::create_directories(directory);
-        AssetDB db;
-        ASSERT_TRUE(db.Initialize(directory));
-
+        GraphicsSystem graphics;
+        AssetSystem assets;
+        ASSERT_TRUE(assets.Initialize(&graphics, directory));
         ECSSystem ecs;
         ASSERT_TRUE(ecs.Initialize());
         const auto parent = ECSSystem::CreateEntity();
@@ -194,9 +318,8 @@ namespace
         const std::array roots{ std::move(*first), std::move(*second) };
 
         const auto path = directory / "Saved.scene";
-        ASSERT_TRUE(EntityYamlWriter::SaveScene(roots, path));
-        ASSERT_TRUE(db.RegisterFile("Saved.scene"));
-        ASSERT_NE(db.FindByPath("Saved.scene"), nullptr);
+        ASSERT_TRUE(AssetSystem::Save(roots, "Saved.scene"));
+        ASSERT_NE(assets.GetDatabase().FindByPath("Saved.scene"), nullptr);
         auto loaded = EntityYamlReader::LoadScene(path);
         ASSERT_TRUE(loaded);
         ASSERT_EQ(loaded->size(), 2u);
@@ -524,6 +647,7 @@ namespace
                 position[0] * position[0] + position[1] * position[1] + position[2] * position[2]);
             EXPECT_NEAR(radius, 1.0f, 0.00001f);
         }
+
     }
 
     TEST(AssetSystem, RejectsNullGraphicsAndSecondActiveInstance)
