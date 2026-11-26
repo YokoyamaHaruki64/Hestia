@@ -3,11 +3,11 @@ entities:
   - id: 1
     active: true
     components:
-      "Hestia::Name": { value: "Debug Cube Generator" }
+      "Hestia::Name": { value: "Field Generator" }
       "Hestia::Tag": {}
       "Hestia::Layer": {}
       "Hestia::Transform": {}
       "Hestia::TransformCache": {}
       "Hestia::TransformHierarchy": {}
     scripts:
-      - { guid: feb7a48d-7059-4edb-9dd3-646b29b6f37c, localId: 0 }
+      - { guid: 67ec80fe-5fb7-4744-8d8c-06a2e39ffbf1, localId: 0 }

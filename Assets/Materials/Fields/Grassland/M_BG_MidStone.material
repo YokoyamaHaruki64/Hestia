@@ -1,0 +1,4 @@
+version: 1
+shader: { guid: c62719cb-9329-42f4-a489-2a31dcb19b2a, localId: 0 }
+properties:
+  _BaseMap: { guid: a6c93f66-9247-4fa0-a66c-cf0b660dcfd4, localId: 0 }

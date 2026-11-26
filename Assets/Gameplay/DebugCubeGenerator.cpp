@@ -29,7 +29,7 @@ SOURCE_BEGIN
 #include "Game/Include/GameLogger.h"
 #include "Game/Include/World.h"
 #include "GeneratedScript/Scripts/Gameplay/RotateTransformScript.generated.h"
-
+#include "Engine/Include/Game/Transform.h"
 namespace HestiaGame
 {
     void DebugCubeGenerator::OnStart(Hestia::EntityHandle)

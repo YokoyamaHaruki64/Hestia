@@ -31,8 +31,6 @@ Build/
 !/Assets/**/*.scene.meta
 !/Assets/**/*.material
 !/Assets/**/*.material.meta
-!/Assets/Scenes/StartupCube.obj
-!/Assets/Scenes/StartupCube.obj.meta
 !/Assets/Shaders/
 !/Assets/Shaders/**/
 !/Assets/Shaders/**/*.hlsl
