@@ -26,6 +26,12 @@ namespace HestiaGame
         return api != nullptr ? api->CreateEntity() : Hestia::EntityHandle{};
     }
 
+    Hestia::EntityHandle World::Instantiate(Hestia::AssetHandle<Hestia::Prefab> prefab)
+    {
+        const auto* api = GetEntityAPI();
+        return api != nullptr && api->Instantiate != nullptr ? api->Instantiate(prefab) : Hestia::EntityHandle{};
+    }
+
     void World::DestroyEntity(Hestia::EntityHandle entity)
     {
         if (const auto* api = GetEntityAPI())

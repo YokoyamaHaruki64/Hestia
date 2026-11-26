@@ -18,7 +18,6 @@
 #include <utility>
 #include <vector>
 
-#include "Engine/Include/Game/Transform.h"
 #include "GameRuntime.h"
 
 namespace HestiaGame
@@ -30,6 +29,10 @@ namespace HestiaGame
     public:
         /// @brief Entity を生成する。失敗時は無効 Handle を返す。
         static Hestia::EntityHandle CreateEntity();
+
+        /// @brief Prefab の階層を即時展開する。
+        /// @return 成功時は生成したルート、失敗時は無効 Handle。
+        static Hestia::EntityHandle Instantiate(Hestia::AssetHandle<Hestia::Prefab> prefab);
 
         /// @brief Entity とその子孫の破棄を予約する。
         static void DestroyEntity(Hestia::EntityHandle entity);

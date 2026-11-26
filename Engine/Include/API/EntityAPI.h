@@ -16,9 +16,12 @@
 #include <cstddef>
 
 #include "Common/Include/EntityHandle.h"
+#include "Engine/Include/Asset/AssetHandle.h"
 
 namespace Hestia
 {
+    struct Prefab;
+
     /// @brief Game 向け Facade が利用できる登録済み Process。
     struct ProcessHandle
     {
@@ -69,6 +72,8 @@ namespace Hestia
         bool (*TryGetPendingDestroy)(std::size_t, EntityHandle*) = nullptr;
         /// @brief Entity の Active 設定の変更通知先を設定する。nullptr で解除する。
         void (*SetActiveChangedCallback)(void*, void (*)(void*, EntityHandle, bool)) = nullptr;
+        /// @brief Prefab を即時展開し、成功時はルート、失敗時は無効 Handle を返す。
+        EntityHandle (*Instantiate)(AssetHandle<Prefab>) = nullptr;
     };
 }
 

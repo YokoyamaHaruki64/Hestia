@@ -24,6 +24,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets\Gameplay\DebugCubeGenerator.cpp" />
+    <ClCompile Include="..\Assets\Gameplay\FieldGenerator.cpp" />
+    <ClCompile Include="..\Assets\Gameplay\Player.cpp" />
     <ClCompile Include="..\Assets\Gameplay\RotateTransformScript.cpp" />
   </ItemGroup>
   <ItemGroup>

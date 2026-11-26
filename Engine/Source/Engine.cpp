@@ -155,7 +155,7 @@ namespace Hestia
         GraphicsSystem::SetView(Matrix4x4_SIMD::LookAtLH(
             { 440.0f, 275.0f, -820.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }));
         GraphicsSystem::SetProj(Matrix4x4_SIMD::PerspectiveFovLH(
-            0.8f, 1600.0f / 900.0f, 10.0f, 1600.0f));
+            0.8f, 1600.0f / 900.0f, 0.2f, 1600.0f));
         if (!SceneSystem::LoadScene("Scenes/Startup.scene") ||
             !SceneSystem::CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
         {
