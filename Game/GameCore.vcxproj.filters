@@ -55,6 +55,9 @@
     <ClInclude Include="Include\GameAssets.h">
       <Filter>_Include</Filter>
     </ClInclude>
+    <ClInclude Include="Include\GameScene.h">
+      <Filter>_Include</Filter>
+    </ClInclude>
     <ClInclude Include="Include\World.h">
       <Filter>_Include</Filter>
     </ClInclude>

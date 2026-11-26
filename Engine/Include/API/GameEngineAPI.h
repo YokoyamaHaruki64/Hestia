@@ -21,6 +21,7 @@ namespace Hestia
     class TimeAPI;
     class LogAPI;
     class AssetAPI;
+    struct SceneAPI;
 
     /// @brief GameRuntime の生存中に利用できる Engine 所有 API の借用。
     struct GameEngineAPI
@@ -30,6 +31,7 @@ namespace Hestia
         const ECSProcessAPI* m_ecsProcess = nullptr;
         const LogAPI* m_log = nullptr;
         const AssetAPI* m_asset = nullptr;
+        const SceneAPI* m_scene = nullptr;
     };
 }
 

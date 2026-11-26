@@ -89,6 +89,9 @@
     <ClCompile Include="Source\API\TimeAPI.cpp">
       <Filter>_Source\API</Filter>
     </ClCompile>
+    <ClCompile Include="Source\API\SceneAPI.cpp">
+      <Filter>_Source\API</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Time\TimeSystem.cpp">
       <Filter>_Source\Time</Filter>
     </ClCompile>
@@ -287,6 +290,9 @@
       <Filter>_Include\Time</Filter>
     </ClInclude>
     <ClInclude Include="Include\API\TimeAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\SceneAPI.h">
       <Filter>_Include\API</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\AssetHandle.h">

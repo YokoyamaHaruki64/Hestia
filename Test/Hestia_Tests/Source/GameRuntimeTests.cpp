@@ -19,6 +19,7 @@
 
 #include "Common/Include/GameRuntimeAPI.h"
 #include "Engine/Include/API/AssetAPI.h"
+#include "Engine/Include/API/SceneAPI.h"
 #include "Engine/Include/Asset/AssetSystem.h"
 #include "Engine/Include/ECS/ECSSystem.h"
 #include "Engine/Include/Game/MeshRenderer.h"
@@ -27,6 +28,7 @@
 #include "Engine/Include/API/TimeAPI.h"
 #include "Engine/Include/Time/TimeSystem.h"
 #include "Engine/Include/Scene/SceneSystem.h"
+#include "Game/Include/GameScene.h"
 #include "Game/Include/GameTime.h"
 #include "Game/Include/World.h"
 
@@ -34,6 +36,7 @@ namespace
 {
     using Hestia::ECSSystem;
     using Hestia::EntityHandle;
+    using Hestia::SceneSystem;
     using HestiaGame::Time;
     using HestiaGame::World;
 
@@ -147,6 +150,7 @@ namespace
             // Engine が Runtime に渡すものと同じ API で、描画環境なしに境界を検証する
             m_entityAPI = ECSSystem::CreateEntityAPI();
             m_engineAPI = { &m_time, &m_entityAPI, &m_ecs.GetProcessAPI() };
+            m_engineAPI.m_scene = &Hestia::SceneAPI::Get();
             m_runtimeAPI = GetGameRuntimeAPI();
             ASSERT_NE(m_runtimeAPI, nullptr);
             m_runtime = HestiaGame::Detail::GameRuntime::Create(&m_engineAPI, []
@@ -166,6 +170,7 @@ namespace
         {
             if (m_runtime != nullptr)
                 m_runtimeAPI->Destroy(m_runtime);
+            SceneSystem::Finalize();
             if (m_ecsInitialized)
                 m_ecs.Finalize();
             m_time.Finalize();
@@ -239,13 +244,17 @@ namespace
         assetAPI.Initialize(&assets);
         GameEngineAPI engineAPI{ &time, &entityAPI, &ecs.GetProcessAPI(), nullptr, &assetAPI };
         const auto* runtimeAPI = GetGameRuntimeAPI();
-        std::unique_ptr<void, decltype(runtimeAPI->Destroy)> runtime(runtimeAPI->Create(&engineAPI), runtimeAPI->Destroy);
+        const auto destroyRuntime = [runtimeAPI](void* instance)
+        {
+            runtimeAPI->Destroy(instance);
+            SceneSystem::Finalize();
+        };
+        std::unique_ptr<void, decltype(destroyRuntime)> runtime(runtimeAPI->Create(&engineAPI), destroyRuntime);
         ASSERT_TRUE(runtime);
         ECSSystem::BindScriptAttachmentQuery(runtime.get(), runtimeAPI->QueryScriptAttachments);
 
-        SceneSystem scenes;
-        ASSERT_TRUE(scenes.LoadScene("Scenes/Startup.scene"));
-        ASSERT_TRUE(scenes.CheckScene(assets.GetDatabase(), *runtimeAPI, runtime.get()));
+        ASSERT_TRUE(SceneSystem::LoadScene("Scenes/Startup.scene"));
+        ASSERT_TRUE(SceneSystem::CheckScene(assets.GetDatabase(), *runtimeAPI, runtime.get()));
         const auto generator = World::FindFirstEntityByName("Debug Cube Generator");
         ASSERT_TRUE(generator.IsValid());
         const auto snapshot = ECSSystem::SaveEntity(generator);
@@ -278,28 +287,27 @@ namespace
         Hestia::AssetSystem assets;
         ASSERT_TRUE(assets.Initialize(&graphics, directory));
         const auto& database = assets.GetDatabase();
-        Hestia::SceneSystem scenes;
         ECSSystem::BindScriptAttachmentQuery(m_runtime, m_runtimeAPI->QueryScriptAttachments);
 
         const auto original = World::CreateEntity();
         ASSERT_TRUE(World::SetName(original, "Saved spinner"));
         ASSERT_TRUE(World::AddScript<ValueScript>(original, 42));
         EndFrame();
-        ASSERT_TRUE(scenes.SaveScene());
-        ASSERT_TRUE(scenes.SaveScene());
-        ASSERT_TRUE(scenes.SerializeScene());
-        EXPECT_EQ(scenes.GetLastSavedScenePath(), "NewScene.scene");
+        ASSERT_TRUE(SceneSystem::SaveScene());
+        ASSERT_TRUE(SceneSystem::SaveScene());
+        ASSERT_TRUE(SceneSystem::SerializeScene());
+        EXPECT_EQ(SceneSystem::GetLastSavedScenePath(), "NewScene.scene");
         ASSERT_NE(database.FindByPath("NewScene.scene"), nullptr);
         ASSERT_TRUE(World::SetName(original, "Unsaved change"));
-        ASSERT_TRUE(scenes.SerializeScene());
+        ASSERT_TRUE(SceneSystem::SerializeScene());
 
         // 保存後に追加したScriptも、旧Entityの実体がある間に終了する
         ASSERT_TRUE(World::AddScript<DestroyScript>(original, EntityHandle{}, &m_destroyed));
         EndFrame();
-        ASSERT_TRUE(scenes.LoadScene("Missing.scene"));
-        ASSERT_TRUE(scenes.LoadScene("NewScene.scene"));
-        ASSERT_TRUE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
-        EXPECT_EQ(scenes.GetCurrentScenePath(), "NewScene.scene");
+        ASSERT_TRUE(SceneSystem::LoadScene("Missing.scene"));
+        ASSERT_TRUE(SceneSystem::LoadScene("NewScene.scene"));
+        ASSERT_TRUE(SceneSystem::CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(SceneSystem::GetCurrentScenePath(), "NewScene.scene");
         EXPECT_EQ(m_destroyed, (std::vector<EntityHandle>{ original }));
         EXPECT_EQ(ECSSystem::GetEntity(original), nullptr);
         const auto restored = World::FindFirstEntityByName("Saved spinner");
@@ -314,18 +322,54 @@ namespace
         current->m_active = false;
         current->m_scripts.push_back({ { { 90, 1 } }, 0 });
         ASSERT_TRUE(Hestia::AssetSystem::Save(std::span<const Hestia::SerializedEntity>{ &*current, 1 }, "NewScene.scene"));
-        ASSERT_TRUE(scenes.LoadScene("NewScene.scene"));
-        ASSERT_TRUE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
+        ASSERT_TRUE(SceneSystem::LoadScene("NewScene.scene"));
+        ASSERT_TRUE(SceneSystem::CheckScene(database, *m_runtimeAPI, m_runtime));
         EXPECT_EQ(ECSSystem::GetEntity(restored), nullptr);
         const auto reopened = World::FindFirstEntityByName("Saved spinner");
         ASSERT_TRUE(reopened.IsValid());
         EXPECT_FALSE(World::IsActive(reopened));
         EXPECT_TRUE(World::GetScript<ValueScript>(reopened));
-        EXPECT_FALSE(scenes.LoadScene("../Saved.scene"));
-        ASSERT_TRUE(scenes.LoadScene("Missing.scene"));
-        EXPECT_FALSE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
-        EXPECT_EQ(scenes.GetCurrentScenePath(), "NewScene.scene");
+        EXPECT_FALSE(SceneSystem::LoadScene("../Saved.scene"));
+        ASSERT_TRUE(SceneSystem::LoadScene("Missing.scene"));
+        EXPECT_FALSE(SceneSystem::CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(SceneSystem::GetCurrentScenePath(), "NewScene.scene");
         ECSSystem::BindScriptAttachmentQuery(nullptr, nullptr);
+        std::filesystem::remove_all(directory);
+    }
+
+    TEST_F(GameRuntimeTests, ExposesCurrentSceneAfterDeferredSwitch)
+    {
+        using HestiaGame::Scene;
+        const auto directory = std::filesystem::temp_directory_path() /
+            ("HestiaGameSceneAPI-" + std::to_string(GetCurrentProcessId()));
+        std::filesystem::create_directories(directory);
+        Hestia::GraphicsSystem graphics;
+        Hestia::AssetSystem assets;
+        ASSERT_TRUE(assets.Initialize(&graphics, directory));
+        const auto& database = assets.GetDatabase();
+        const std::span<const Hestia::SerializedEntity> roots;
+        ASSERT_TRUE(Hestia::AssetSystem::Save(roots, "Maps/Hub.scene"));
+        ASSERT_TRUE(Hestia::AssetSystem::Save(roots, "Maps/Final.Level.scene"));
+
+        // 初回の復元が完了してから名前とパスを取得できる
+        EXPECT_TRUE(Scene::GetCurrentSceneName().empty());
+        EXPECT_TRUE(Scene::GetCurrentScenePath().empty());
+        ASSERT_TRUE(Scene::LoadScene("Maps/./Hub.scene"));
+        EXPECT_TRUE(Scene::GetCurrentSceneName().empty());
+        EXPECT_TRUE(Scene::GetCurrentScenePath().empty());
+        ASSERT_TRUE(SceneSystem::CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(Scene::GetCurrentSceneName(), "Hub");
+        EXPECT_EQ(Scene::GetCurrentScenePath(), "Maps/Hub.scene");
+
+        // 無効な要求を拒否し、有効な要求の処理までは現在の Scene を返す
+        ASSERT_TRUE(Scene::LoadScene("Maps/Final.Level.scene"));
+        EXPECT_FALSE(Scene::LoadScene("../Outside.scene"));
+        EXPECT_FALSE(Scene::LoadScene("Maps/Final.Level.prefab"));
+        EXPECT_EQ(Scene::GetCurrentSceneName(), "Hub");
+        EXPECT_EQ(Scene::GetCurrentScenePath(), "Maps/Hub.scene");
+        ASSERT_TRUE(SceneSystem::CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(Scene::GetCurrentSceneName(), "Final.Level");
+        EXPECT_EQ(Scene::GetCurrentScenePath(), "Maps/Final.Level.scene");
         std::filesystem::remove_all(directory);
     }
 

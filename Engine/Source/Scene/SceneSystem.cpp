@@ -26,6 +26,12 @@
 
 namespace Hestia
 {
+    std::string SceneSystem::s_currentScenePath;
+    std::string SceneSystem::s_nextScenePath;
+    std::string SceneSystem::s_saveScenePath;
+    std::string SceneSystem::s_lastSavedScenePath;
+    bool SceneSystem::s_saveRequested = false;
+
     namespace
     {
         std::string NormalizeScenePath(std::string_view input)
@@ -39,17 +45,37 @@ namespace Hestia
         }
     }
 
+    void SceneSystem::Finalize() noexcept
+    {
+        // Engine の再初期化に前回の Scene や要求を引き継がないようにする
+        s_currentScenePath.clear();
+        s_nextScenePath.clear();
+        s_saveScenePath.clear();
+        s_lastSavedScenePath.clear();
+        s_saveRequested = false;
+    }
+
+    std::string_view SceneSystem::GetCurrentSceneName() noexcept
+    {
+        // 正規化済みの相対パスからファイル名を切り出す
+        auto name = GetCurrentScenePath();
+        const auto separator = name.rfind('/');
+        if (separator != std::string_view::npos)
+            name.remove_prefix(separator + 1);
+        return name.substr(0, name.rfind('.'));
+    }
+
     bool SceneSystem::SaveScene(std::string_view path)
     {
         // 空の要求はロード済みSceneか直近に保存した未ロードのSceneを対象にする
         auto normalized = path.empty()
-            ? (m_currentScenePath.empty() ? m_lastSavedScenePath : m_currentScenePath)
+            ? (s_currentScenePath.empty() ? s_lastSavedScenePath : s_currentScenePath)
             : NormalizeScenePath(path);
         if (!path.empty() && normalized.empty())
             return false;
 
-        m_saveScenePath = std::move(normalized);
-        m_saveRequested = true;
+        s_saveScenePath = std::move(normalized);
+        s_saveRequested = true;
         return true;
     }
 
@@ -59,16 +85,16 @@ namespace Hestia
         if (normalized.empty())
             return false;
 
-        m_nextScenePath = std::move(normalized);
+        s_nextScenePath = std::move(normalized);
         return true;
     }
 
     bool SceneSystem::SerializeScene()
     {
-        if (!std::exchange(m_saveRequested, false))
+        if (!std::exchange(s_saveRequested, false))
             return true;
 
-        const auto path = std::exchange(m_saveScenePath, {});
+        const auto path = std::exchange(s_saveScenePath, {});
         const auto fail = [&](std::string_view reason)
         {
             Logger::Error("Could not save Scene '" + path + "': " + std::string(reason));
@@ -118,13 +144,13 @@ namespace Hestia
         auto saved = AssetSystem::Save(snapshots, path);
         if (!saved)
             return false;
-        m_lastSavedScenePath = std::move(*saved);
+        s_lastSavedScenePath = std::move(*saved);
         return true;
     }
 
     bool SceneSystem::CheckScene(const AssetDB& database, const GameRuntimeAPI& runtimeAPI, void* runtime)
     {
-        auto path = std::exchange(m_nextScenePath, {});
+        auto path = std::exchange(s_nextScenePath, {});
         if (path.empty())
             return true;
 
@@ -164,7 +190,7 @@ namespace Hestia
         if (!runtimeAPI.FlushScripts(runtime))
             return fail("Could not commit Script attachments");
 
-        m_currentScenePath = std::move(path);
+        s_currentScenePath = std::move(path);
         return true;
     }
 }

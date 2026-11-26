@@ -23,7 +23,6 @@
 #include "Asset/AssetSystem.h"
 #include "API/AssetAPI.h"
 #include "ECS/ECSSystem.h"
-#include "Scene/SceneSystem.h"
 
 namespace Hestia
 {
@@ -75,7 +74,6 @@ namespace Hestia
         AssetSystem m_assets;
         AssetAPI m_assetAPI;
         ECSSystem m_ecs;
-        SceneSystem m_scenes;
         EntityAPI m_entityAPI;
         GameEngineAPI m_gameEngineAPI;
         HMODULE m_gameModule = nullptr;

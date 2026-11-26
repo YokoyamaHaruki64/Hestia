@@ -71,6 +71,7 @@
     <ClCompile Include="Source\Graphics\MeshRenderer.cpp" />
     <ClCompile Include="Source\Time\TimeSystem.cpp" />
     <ClCompile Include="Source\API\TimeAPI.cpp" />
+    <ClCompile Include="Source\API\SceneAPI.cpp" />
     <ClCompile Include="Source\Log\LogStorage.cpp" />
     <ClCompile Include="Source\Log\Logger.cpp" />
     <ClCompile Include="Source\Log\LogProcess.cpp" />
@@ -141,6 +142,7 @@
     <ClInclude Include="Include\Time\TimeData.h" />
     <ClInclude Include="Include\Time\TimeSystem.h" />
     <ClInclude Include="Include\API\TimeAPI.h" />
+    <ClInclude Include="Include\API\SceneAPI.h" />
     <ClInclude Include="Include\Log\LogData.h" />
     <ClInclude Include="Include\Log\LogStorage.h" />
     <ClInclude Include="Include\Log\Logger.h" />

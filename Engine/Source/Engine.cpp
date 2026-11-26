@@ -15,6 +15,9 @@
 
 #include <filesystem>
 
+#include "API/SceneAPI.h"
+#include "Scene/SceneSystem.h"
+
 namespace Hestia
 {
     Engine::~Engine()
@@ -72,8 +75,8 @@ namespace Hestia
             { 440.0f, 275.0f, -820.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }));
         GraphicsSystem::SetProj(Matrix4x4_SIMD::PerspectiveFovLH(
             0.8f, 1600.0f / 900.0f, 10.0f, 1600.0f));
-        if (!m_scenes.LoadScene("Scenes/Startup.scene") ||
-            !m_scenes.CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
+        if (!SceneSystem::LoadScene("Scenes/Startup.scene") ||
+            !SceneSystem::CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
         {
             Finalize();
             return false;
@@ -136,8 +139,9 @@ namespace Hestia
             return false;
         }
 
+        // GameRuntime の生成中から使えるように Engine 所有の API を接続する
         m_entityAPI = ECSSystem::CreateEntityAPI();
-        m_gameEngineAPI = { &m_timeAPI, &m_entityAPI, &m_ecs.GetProcessAPI(), &m_logAPI, &m_assetAPI };
+        m_gameEngineAPI = { &m_timeAPI, &m_entityAPI, &m_ecs.GetProcessAPI(), &m_logAPI, &m_assetAPI, &SceneAPI::Get() };
         m_gameRuntime = runtimeAPI->Create(&m_gameEngineAPI);
         if (m_gameRuntime == nullptr)
         {
@@ -178,6 +182,7 @@ namespace Hestia
     {
         // Facade の参照先を解放する前に Game を終了する
         UnloadGame();
+        SceneSystem::Finalize();
 
         if (m_ecsInitialized)
         {
@@ -216,7 +221,6 @@ namespace Hestia
             m_timeInitialized = false;
         }
 
-        m_scenes = {};
         m_applicationAPI = ApplicationAPI{};
 
         if (m_logInitialized)
@@ -284,8 +288,8 @@ namespace Hestia
             ECSSystem::EndFrame();
 
             // 反映済みWorldを保存してから、保留されたSceneを切り替える
-            m_scenes.SerializeScene();
-            if (m_gameRuntime && !m_scenes.CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
+            SceneSystem::SerializeScene();
+            if (m_gameRuntime && !SceneSystem::CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
                 m_applicationAPI.RequestQuit();
         }
     }
