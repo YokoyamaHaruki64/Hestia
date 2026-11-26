@@ -221,12 +221,12 @@ LRESULT Application::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         }
     }
 
-    // Windowのメッセージ処理
-    // 基本的にEngineやEditorのメッセージ処理に委譲する
-
+    // Engine が処理済みのメッセージは、その結果を WindowProc から返す
     if (s_instance && s_instance->m_engineAPI && s_instance->m_engine)
     {
-        s_instance->m_engineAPI->ProcessMessage(s_instance->m_engine, hwnd, msg, wParam, lParam);
+        const auto result = s_instance->m_engineAPI->ProcessMessage(s_instance->m_engine, hwnd, msg, wParam, lParam);
+        if (result.m_handled)
+            return result.m_value;
     }
 
     switch (msg)

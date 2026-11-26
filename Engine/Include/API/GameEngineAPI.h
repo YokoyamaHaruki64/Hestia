@@ -22,6 +22,7 @@ namespace Hestia
     class LogAPI;
     class AssetAPI;
     struct SceneAPI;
+    struct InputAPI;
 
     /// @brief GameRuntime の生存中に利用できる Engine 所有 API の借用。
     struct GameEngineAPI
@@ -32,6 +33,7 @@ namespace Hestia
         const LogAPI* m_log = nullptr;
         const AssetAPI* m_asset = nullptr;
         const SceneAPI* m_scene = nullptr;
+        const InputAPI* m_input = nullptr;
     };
 }
 

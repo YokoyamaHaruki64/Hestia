@@ -45,6 +45,7 @@
     <ClInclude Include="Include\GameLogger.h" />
     <ClInclude Include="Include\GameAssets.h" />
     <ClInclude Include="Include\GameScene.h" />
+    <ClInclude Include="Include\GameInput.h" />
     <ClInclude Include="Include\World.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

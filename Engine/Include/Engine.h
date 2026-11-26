@@ -49,7 +49,7 @@ namespace Hestia
         /// @param message Window Message 識別子。
         /// @param wParam メッセージの追加情報。
         /// @param lParam メッセージの追加情報。
-        void ProcessMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+        WindowMessageResult ProcessMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
         /// @brief 固定刻みの更新を有効な System へ配送する。
         /// @param deltaTime 固定更新の経過時間（秒）。

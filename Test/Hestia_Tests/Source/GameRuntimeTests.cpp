@@ -23,11 +23,14 @@
 #include "Engine/Include/Asset/AssetSystem.h"
 #include "Engine/Include/ECS/ECSSystem.h"
 #include "Engine/Include/Game/MeshRenderer.h"
+#include "Engine/Include/Game/Transform.h"
 #include "Engine/Include/Graphics/GraphicsSystem.h"
 #include "Engine/Include/Graphics/MeshRenderer.h"
+#include "Engine/Include/Input/InputSystem.h"
 #include "Engine/Include/API/TimeAPI.h"
 #include "Engine/Include/Time/TimeSystem.h"
 #include "Engine/Include/Scene/SceneSystem.h"
+#include "Game/Include/GameInput.h"
 #include "Game/Include/GameScene.h"
 #include "Game/Include/GameTime.h"
 #include "Game/Include/World.h"
@@ -36,7 +39,10 @@ namespace
 {
     using Hestia::ECSSystem;
     using Hestia::EntityHandle;
+    using Hestia::InputSystem;
     using Hestia::SceneSystem;
+    using HestiaGame::Input;
+    using HestiaGame::Key;
     using HestiaGame::Time;
     using HestiaGame::World;
 
@@ -151,6 +157,7 @@ namespace
             m_entityAPI = ECSSystem::CreateEntityAPI();
             m_engineAPI = { &m_time, &m_entityAPI, &m_ecs.GetProcessAPI() };
             m_engineAPI.m_scene = &Hestia::SceneAPI::Get();
+            m_engineAPI.m_input = &InputSystem::GetAPI();
             m_runtimeAPI = GetGameRuntimeAPI();
             ASSERT_NE(m_runtimeAPI, nullptr);
             m_runtime = HestiaGame::Detail::GameRuntime::Create(&m_engineAPI, []
@@ -171,6 +178,7 @@ namespace
             if (m_runtime != nullptr)
                 m_runtimeAPI->Destroy(m_runtime);
             SceneSystem::Finalize();
+            InputSystem::Reset();
             if (m_ecsInitialized)
                 m_ecs.Finalize();
             m_time.Finalize();
@@ -371,6 +379,71 @@ namespace
         EXPECT_EQ(Scene::GetCurrentSceneName(), "Final.Level");
         EXPECT_EQ(Scene::GetCurrentScenePath(), "Maps/Final.Level.scene");
         std::filesystem::remove_all(directory);
+    }
+
+    TEST_F(GameRuntimeTests, InputKeepsBothTransitionsForAShortTap)
+    {
+        // 更新前に押して離したキーも、両方の遷移を Game 側から取得できる
+        InputSystem::KeyboardHook(WM_KEYDOWN, 'W', 0);
+        InputSystem::KeyboardHook(WM_KEYUP, 'W', 0);
+        EXPECT_FALSE(Input::KeyHold(Key::W));
+        EXPECT_TRUE(Input::KeyDown(Key::W));
+        EXPECT_TRUE(Input::KeyRelease(Key::W));
+        InputSystem::EndFrame();
+        EXPECT_FALSE(Input::KeyDown(Key::W));
+        EXPECT_FALSE(Input::KeyRelease(Key::W));
+
+        // フレームをまたいだ押下とオートリピートは遷移扱いにしない
+        InputSystem::KeyboardHook(WM_KEYDOWN, 'W', 0);
+        InputSystem::EndFrame();
+        InputSystem::KeyboardHook(WM_KEYDOWN, 'W', 0x40000001);
+        EXPECT_TRUE(Input::KeyHold(Key::W));
+        EXPECT_FALSE(Input::KeyDown(Key::W));
+        EXPECT_FALSE(Input::KeyRelease(Key::W));
+
+        // フォーカス喪失前の入力を次の操作に引き継がない
+        InputSystem::KeyboardHook(WM_KEYDOWN, 'A', 0);
+        InputSystem::KeyboardHook(WM_KILLFOCUS, 0, 0);
+        EXPECT_FALSE(Input::KeyHold(Key::W));
+        EXPECT_FALSE(Input::KeyHold(Key::A));
+        EXPECT_FALSE(Input::KeyDown(Key::A));
+        EXPECT_FALSE(Input::KeyRelease(Key::W));
+    }
+
+    TEST_F(GameRuntimeTests, InputKeepsCombinedModifierHeldUntilBothSidesAreReleased)
+    {
+        // Win32 の共通コードとスキャンコードから左右の Shift に分ける
+        constexpr LPARAM leftShift = 0x002A0001;
+        constexpr LPARAM rightShift = 0x00360001;
+        InputSystem::KeyboardHook(WM_KEYDOWN, VK_SHIFT, leftShift);
+        EXPECT_TRUE(Input::KeyDown(Key::LeftShift));
+        EXPECT_TRUE(Input::KeyDown(Key::Shift));
+        EXPECT_FALSE(Input::KeyHold(Key::RightShift));
+        InputSystem::EndFrame();
+
+        InputSystem::KeyboardHook(WM_KEYDOWN, VK_SHIFT, rightShift);
+        EXPECT_TRUE(Input::KeyDown(Key::RightShift));
+        EXPECT_FALSE(Input::KeyDown(Key::Shift));
+        InputSystem::KeyboardHook(WM_KEYUP, VK_SHIFT, leftShift);
+        EXPECT_TRUE(Input::KeyRelease(Key::LeftShift));
+        EXPECT_TRUE(Input::KeyHold(Key::RightShift));
+        EXPECT_TRUE(Input::KeyHold(Key::Shift));
+        EXPECT_FALSE(Input::KeyRelease(Key::Shift));
+
+        InputSystem::KeyboardHook(WM_KEYUP, VK_SHIFT, rightShift);
+        EXPECT_TRUE(Input::KeyRelease(Key::RightShift));
+        EXPECT_TRUE(Input::KeyRelease(Key::Shift));
+        EXPECT_FALSE(Input::KeyHold(Key::Shift));
+
+        // 拡張キーフラグとシステムキー通知で右 Ctrl・Alt を区別する
+        InputSystem::KeyboardHook(WM_KEYDOWN, VK_CONTROL, 0x011D0001);
+        InputSystem::KeyboardHook(WM_SYSKEYDOWN, VK_MENU, 0x01380001);
+        EXPECT_TRUE(Input::KeyHold(Key::RightCtrl));
+        EXPECT_TRUE(Input::KeyHold(Key::RightAlt));
+        EXPECT_FALSE(Input::KeyHold(Key::LeftCtrl));
+        EXPECT_FALSE(Input::KeyHold(Key::LeftAlt));
+        InputSystem::KeyboardHook(WM_SYSKEYUP, VK_MENU, 0x01380001);
+        EXPECT_TRUE(Input::KeyRelease(Key::RightAlt));
     }
 
     TEST_F(GameRuntimeTests, QueriesOnlyRequestedAttachmentsAfterFlush)

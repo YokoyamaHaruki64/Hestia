@@ -17,6 +17,7 @@
 
 #include "API/SceneAPI.h"
 #include "Graphics/Camera.h"
+#include "Input/InputSystem.h"
 #include "Scene/SceneSystem.h"
 
 #if HESTIA_EDITOR
@@ -115,10 +116,19 @@ namespace Hestia
         m_logInitialized = true;
         m_applicationAPI = applicationAPI;
 
+        // GameRuntime が入力 API を使う前に、App の Window へマウス入力を登録する
+        const HWND window = m_applicationAPI.GetWindowHandle();
+        if (!InputSystem::Initialize(window))
+        {
+            Logger::Error("Could not register mouse Raw Input");
+            Finalize();
+            return false;
+        }
+
         m_time.Initialize();
         m_timeInitialized = true;
 
-        if (!m_graphics.Initialize(m_applicationAPI.GetWindowHandle(), 1600, 900))
+        if (!m_graphics.Initialize(window, 1600, 900))
         {
             Finalize();
             return false;
@@ -260,7 +270,8 @@ namespace Hestia
 
         // GameRuntime の生成中から使えるように Engine 所有の API を接続する
         m_entityAPI = ECSSystem::CreateEntityAPI();
-        m_gameEngineAPI = { &m_timeAPI, &m_entityAPI, &m_ecs.GetProcessAPI(), &m_logAPI, &m_assetAPI, &SceneAPI::Get() };
+        m_gameEngineAPI = { &m_timeAPI, &m_entityAPI, &m_ecs.GetProcessAPI(), &m_logAPI, &m_assetAPI,
+            &SceneAPI::Get(), &InputSystem::GetAPI() };
         m_gameRuntime = runtimeAPI->Create(&m_gameEngineAPI);
         if (m_gameRuntime == nullptr)
         {
@@ -302,6 +313,7 @@ namespace Hestia
         // Facade の参照先を解放する前に Game を終了する
         UnloadGame();
         SceneSystem::Finalize();
+        InputSystem::Finalize();
 
         if (m_ecsInitialized)
         {
@@ -351,8 +363,12 @@ namespace Hestia
         }
     }
 
-    void Engine::ProcessMessage(HWND, UINT, WPARAM, LPARAM)
+    WindowMessageResult Engine::ProcessMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
+        InputSystem::KeyboardHook(message, wParam, lParam);
+        WindowMessageResult result;
+        result.m_handled = InputSystem::MouseHook(hwnd, message, wParam, lParam, result.m_value);
+        return result;
     }
 
     void Engine::FixedUpdate(float deltaTime)
@@ -411,5 +427,8 @@ namespace Hestia
             if (m_gameRuntime && !SceneSystem::CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
                 m_applicationAPI.RequestQuit();
         }
+
+        // Scene 復元時の OnStart まで現フレームの遷移を参照できるようにする
+        InputSystem::EndFrame();
     }
 }
