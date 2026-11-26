@@ -13,6 +13,8 @@
 #include "pch.h"
 #include "Application.h"
 
+#include <format>
+
 bool Application::Initialize(int nCmdShow)
 {
     // Windowの初期化
@@ -44,6 +46,9 @@ bool Application::Initialize(int nCmdShow)
 
 int Application::Run()
 {
+    double titleSampleSeconds = 0.0;
+    unsigned int titleFrameCount = 0;
+
     while (m_running)
     {
         ProcessMessages();
@@ -73,6 +78,19 @@ int Application::Run()
         OutputDebugString((L"DeltaTime= " + std::to_wstring(deltaTime) + L"\n").c_str());
         // Editorの更新処理
 
+        // 約1秒分のフレームを集計してタイトルに表示する
+        titleSampleSeconds += deltaTime;
+        ++titleFrameCount;
+        if (titleSampleSeconds >= 0.25)
+        {
+            const double averageFrameTime = titleSampleSeconds / titleFrameCount;
+            const auto title = std::format(L"FPS {:.1f} | FrameTime {:.2f} ms",
+                1.0 / averageFrameTime, averageFrameTime * 1000.0);
+            SetWindowTextW(m_window.GetHandle(), title.c_str());
+
+            titleSampleSeconds = 0.0;
+            titleFrameCount = 0;
+        }
 
         // フレームレート制御
         if (!m_unlimitedFrameRate)

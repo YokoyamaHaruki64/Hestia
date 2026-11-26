@@ -45,7 +45,7 @@ class Application
     double m_fixedDeltaTime = 1.0 / 60.0;
     double m_accumulatedTime = 0.0;
 
-    bool m_unlimitedFrameRate = false;
+    bool m_unlimitedFrameRate = true;
     bool m_running = false;
 
     Clock::time_point m_lastFrameTime;
