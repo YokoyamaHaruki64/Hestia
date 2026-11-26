@@ -45,13 +45,15 @@ EngineはTime更新後に各phaseを呼ぶ。FixedUpdateでは同名phase、Fram
 
 ## Prefabの保存と展開
 
-1. `ECSSystem::SaveEntity(root)` は `TransformHierarchy` をたどり、Componentの保存値と子孫を所有する `SerializedEntity` を返す。 `EntityYamlWriter::Save` はそのツリーを受け取り、ファイル内の `id` と `parent` を振ってYAMLに出力する。 [ECSSystem.cpp](../../../Engine/Source/ECS/ECSSystem.cpp) ・ [EntityYamlWriter.cpp](../../../Engine/Source/Serialize/EntityYamlWriter.cpp)
+1. `ECSSystem::SaveEntity(root)` は `TransformHierarchy` をたどり、Componentの保存値と子孫を所有する `SerializedEntity` を返す。 `AssetSystem::Save` がそのスナップショットをPrefab用Serializerへ渡す。Serializerはファイル内の `id` と `parent` を振り、`YamlWriter` が出力する。 [ECSSystem.cpp](../../../Engine/Source/ECS/ECSSystem.cpp) ・ [EntitySerializer.cpp](../../../Engine/Source/Serialize/EntitySerializer.cpp)
 2. `AssetSystem::Load<Prefab>` は `.prefab` のComponent名と保存フィールドをRegistryに照合し、YAMLの `id` と `parent` からツリーを組み直す。ファイルパスは `Prefabs/Character.prefab` のようにAssetルートから指定する。 [PrefabLoader.cpp](../../../Engine/Source/Serialize/PrefabLoader.cpp) ・ [Asset参照の解決](../Asset/README.md#所有とasset参照の解決)
 3. Engine内部の `ECSSystem::Instantiate` は `const Prefab&` または `AssetHandle<Prefab>` を受け取り、保存されたComponent構成でEntityを親から順に生成する。子は `KeepLocal` で接続する。位置・回転・スケールを指定した場合はルートのLocal TRSに適用する。成功時はルートのHandleを返す。
 
 Process実行中、構造変更の適用中、EndFrameの破棄処理中は即時展開できないため、無効Handleを返す。展開途中で失敗した場合は生成済みの階層を破棄予約する。
 
-MeshRendererはMesh参照と、Slot順のMaterial参照を保存する。モデル由来のMeshとMaterialは `{guid, localId}` で記録し、未設定の参照や手動登録の資源は `null` になる。往復テストでは親子関係・名前・Local TRS・Mesh参照の復元と、2回展開した階層の独立性を確認済み。 [MeshRendererAPI.cpp](../../../Engine/Source/API/ECSProcess/MeshRendererAPI.cpp) ・ [AssetTests.cpp](../../../Test/Hestia_Tests/Source/AssetTests.cpp) ・ [Prefabの設計](../../Design/Serialize/ComponentSerialization.md)
+MeshRendererはMesh参照と、Slot順のMaterial参照を保存する。モデル由来の資源、組み込みMesh、単独Materialは `{guid, localId}` で記録し、未設定の参照や名前だけで登録した資源は `null` になる。往復テストでは親子関係・名前・Local TRS・Mesh参照の復元と、2回展開した階層の独立性を確認済み。 [MeshRendererAPI.cpp](../../../Engine/Source/API/ECSProcess/MeshRendererAPI.cpp) ・ [AssetTests.cpp](../../../Test/Hestia_Tests/Source/AssetTests.cpp) ・ [Prefabの設計](../../Design/Serialize/ComponentSerialization.md)
+
+Scene も同じ `SerializedEntity` を使い、複数ルート、Active と型 GUID を保存する。展開時は `InstantiateScene` が新しい Entity と Script 型の対応を SceneSystem へ返す。 [Scene の保存と切り替え](../Engine/README.md#scene-の保存と切り替え)
 
 ## エラーと未実装範囲
 

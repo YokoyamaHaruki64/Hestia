@@ -1,6 +1,6 @@
 ﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 680" role="img" aria-labelledby="system-title system-desc">
 <title id="system-title">Application、Engine、GameRuntimeの所有と接続</title>
-<desc id="system-desc">ApplicationはWindowを所有し、EngineAPIとHandleでDLLを操作する。EngineはLog、Time、Graphics、Asset、ECSを所有する。Game.dllにあるGameRuntimeがScriptを所有し、Engineの操作テーブルを借りる。</desc>
+<desc id="system-desc">ApplicationはWindowを所有し、EngineAPIとHandleでDLLを操作する。EngineはLog、Time、Graphics、Asset、ECS、SceneSystemを所有する。Game.dllにあるGameRuntimeがScriptを所有し、Engineの操作テーブルを借りる。</desc>
 <defs><marker id="system-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#52675d"/></marker></defs>
 <style>text{font-family:'Yu Gothic UI',Meiryo,sans-serif;fill:#24362d;font-size:15px}.box{fill:white;stroke:#a8bbb0;stroke-width:1.4}.label{font-weight:600;font-size:18px}.small{font-size:13px;fill:#586b60}.line{fill:none;stroke:#52675d;stroke-width:1.5;marker-end:url(#system-arrow)}.borrow{stroke-dasharray:6 4}</style>
 <rect x="275" y="25" width="660" height="492" rx="8" fill="#f1f5f1" stroke="#cad6cd"/>
@@ -14,13 +14,14 @@
 <text x="410" y="125" class="label">Engine</text><text x="410" y="153" class="small">Systemを値所有・更新と終了を調停</text><text x="410" y="176" class="small">ApplicationAPIを値で保持</text>
 <path class="line borrow" d="M231 124H388"/><text x="246" y="108" class="small">EngineAPI</text>
 <path class="line borrow" d="M388 172H231"/><text x="244" y="198" class="small">ApplicationAPI</text><text x="242" y="219" class="small">contextは非所有</text>
-<path d="M564 195V237H379M564 237H832M379 237V273M605 237V273M832 237V273" fill="none" stroke="#52675d" stroke-width="1.5"/>
+<path d="M564 195V237H369M564 237H839M369 237V273M525 237V273M681 237V273M839 237V273" fill="none" stroke="#52675d" stroke-width="1.5"/>
 <text x="579" y="226" class="small">所有</text>
-<rect class="box" x="299" y="273" width="162" height="66" rx="4"/><text x="318" y="312" class="label">LogSystem</text>
-<rect class="box" x="517" y="273" width="176" height="66" rx="4"/><text x="535" y="312" class="label">TimeSystem</text>
-<rect class="box" x="739" y="273" width="173" height="66" rx="4"/><text x="754" y="312" class="label">ECSSystem</text>
-<path d="M489 237V370H413V398M489 370H718V398" fill="none" stroke="#52675d" stroke-width="1.5"/>
-<rect class="box" x="299" y="398" width="229" height="79" rx="4"/><text x="319" y="429" class="label">AssetSystem</text><text x="319" y="455" class="small">CPU実体・名前索引を所有</text>
+<rect class="box" x="299" y="273" width="140" height="66" rx="4"/><text x="313" y="312" class="label">LogSystem</text>
+<rect class="box" x="455" y="273" width="140" height="66" rx="4"/><text x="469" y="312" class="label">TimeSystem</text>
+<rect class="box" x="611" y="273" width="140" height="66" rx="4"/><text x="625" y="312" class="label">ECSSystem</text>
+<rect class="box" x="767" y="273" width="145" height="66" rx="4"/><text x="781" y="301" class="label">SceneSystem</text><text x="781" y="324" class="small">保存と切り替え</text>
+<path d="M447 237V370H413V398M447 370H718V398" fill="none" stroke="#52675d" stroke-width="1.5"/>
+<rect class="box" x="299" y="398" width="229" height="79" rx="4"/><text x="319" y="429" class="label">AssetSystem</text><text x="319" y="455" class="small">CPU実体・AssetDBを所有</text>
 <rect class="box" x="614" y="398" width="298" height="79" rx="4"/><text x="634" y="429" class="label">GraphicsSystem</text><text x="634" y="455" class="small">DX12Backend・GPU資源を所有</text>
 <path class="line borrow" d="M528 447H614"/><text x="537" y="433" class="small">借用</text>
 <rect class="box" x="388" y="542" width="353" height="86" rx="5"/>

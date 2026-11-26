@@ -27,11 +27,11 @@ Assetの永続参照に使うGUIDを元ファイルの隣の `.meta` に保存�
 | `AssetRef`                 | `{guid, localId}` を持つ永続参照。主Assetは `localId: 0`、SubAssetは正の整数で指定する                             |
 | `AssetSystem` / `AssetAPI` | `Load<T>(path)` と `Load<T>(AssetRef)` を提供する。パス指定は主Assetの `AssetRef` に解決し、同じロード経路で型付きHandleを返す |
 | 型別Loader / Model Importer  | DBで解決した元ファイルを読み、生成したCPU Assetを `AssetRef` で登録する。Model ImporterはPrefab・個別Mesh・Materialを生成する |
-| `AssetStorage<T>`          | ファイル由来のAssetは `AssetRef → AssetHandle<T>` でキャッシュする。組み込みMeshと手動登録には名前の索引を使う                    |
+| `AssetStorage<T>`          | ファイル由来のAssetと組み込みMeshは `AssetRef → AssetHandle<T>` でキャッシュする。手動登録には名前の索引を使う                    |
 | Prefab / Scene             | 保存時はロード済みHandleに対応する `AssetRef` を記録し、復元時に型付きHandleへ解決する。保存用の対応はStorageのスロットから取得する             |
 | Graphics                   | `AssetHandle<T>` のIndexを添字としてGPU資源を取得し、Generationを照合する                                        |
 
-コードからのロード例は `Assets::Load<Texture>("Textures/Icon.png")`。PrefabやSceneのAsset参照は `{ guid: 2db48ec9-7a6f-49a2-8c79-73639d0a8572, localId: 0 }` のように保存する。組み込みMeshを永続参照するためのID割り当ては、Prefab・Sceneの保存で扱う段階に決める。
+コードからのロード例は `Assets::Load<Texture>("Textures/Icon.png")`。PrefabやSceneのAsset参照は `{ guid: 2db48ec9-7a6f-49a2-8c79-73639d0a8572, localId: 0 }` のように保存する。組み込みMeshの参照は、AssetSystemがコード内の固定GUIDから解決する。 [組み込みMesh](../AssetSystem.md#組み込みmesh)
 
 ## モデルのSubAsset ID
 

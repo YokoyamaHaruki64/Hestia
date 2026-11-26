@@ -8,7 +8,7 @@ DX12 の Forward 描画は MaterialShader の Pass を使う。
 
 | 型・処理 | 現行の契約 |
 | --- | --- |
-| [AssetSystem](../../../Engine/Source/Asset/AssetSystem.cpp) | `MaterialShader` は名前から .matsh をロードできる。 `Material` は Shader を設定して手動登録する。Material ファイルの Loader はない。 |
+| [AssetSystem](../../../Engine/Source/Asset/AssetSystem.cpp) | `MaterialShader` は `.matsh`、`Material` は `.material` をパスまたは AssetRef からロードできる。Shader を設定した Material の名前登録も受け付ける。 [Material の保存・読み込み](../../Design/Asset/MaterialSerialization.md) |
 | [MaterialShader](../../../Engine/Include/Asset/MaterialShader.h) | Shader 名、共通 Property、CBuffer サイズ、宣言順の Pass、参照中の Material の逆索引を保持する。Create は Property 名・ハッシュ衝突・SRV Slot の重複・CBuffer 範囲と重なり・Pass の要求 Stream を検証する。 |
 | [Material](../../../Engine/Include/Asset/Material.h) | 型ごとの `SetBool`、`SetInt`、`SetFloat`、`SetFloat2/3/4`、`SetColor`、`SetMatrix3x3/4x4`、`SetTexture` と対応する Getter を提供する。名前と ID の両方を受ける。Setter は成功時に true、取得に失敗した Getter はログを出して型の既定値を返す。 |
 | [MaterialPropertyDesc](../../../Engine/Include/Asset/MaterialProperty.h) | 名前、型付き既定値、CBuffer の Offset とサイズ、SRV Slot、Reflection 上の行列方向。定数・SRV として使われない項目の Offset／Slot は `UINT32_MAX`。 |

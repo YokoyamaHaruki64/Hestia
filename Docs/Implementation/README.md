@@ -1,6 +1,6 @@
 ﻿# 実装仕様書
 
-2026-11-02の実装調査を基に、2026-11-05にECSとEngine接続、2026-11-07にMaterialShaderとDX12 Forward描画、2026-11-17にGameRuntimeと公開API、2026-11-25にAssetDBの `.meta` 管理、モデルの読み込み、Prefabの保存と展開を反映した。
+2026-11-26に、Scene の保存・切り替え、Script の GUID 復元・コード生成・保存監視、共通の YAML 保存経路、単独 Material と組み込み Mesh の永続参照を反映した。
 
 ## 読み方
 
@@ -9,7 +9,7 @@
 | システム | 処理・構造 | 型・開発手引き |
 | --- | --- | --- |
 | Application / Window | [Application](Application/README.md) | [Types](Application/Types.md) |
-| Engine / DLL境界 | [Engine](Engine/README.md) | [Types](Engine/Types.md) |
+| Engine / DLL境界 / Scene | [Engine](Engine/README.md)、[Scene の保存と切り替え](Engine/README.md#scene-の保存と切り替え) | [Types](Engine/Types.md) |
 | GameRuntime / Game向けAPI | [GameRuntime](GameRuntime/README.md) | [型とAPI](GameRuntime/Types.md)、[Processの登録と公開](ECS/DevelopmentGuide.md#公開processのapiとfacade) |
 | Time | [Time](Time/README.md) | [Types](Time/Types.md) |
 | Log | [Log](Log/README.md) | [Types](Log/Types.md) |
@@ -21,7 +21,7 @@
 
 ## 全体の接続
 
-ApplicationがWindowとフレーム進行を管理し、Engine.dllのAPIテーブルを取得してEngineを生成する。EngineはLog、Time、Graphics、Asset、ECSを所有し、Game.dllからGameRuntimeを生成する。GameRuntimeはScriptを所有し、Engineから借りたAPIでEntityやProcessを操作する。AssetのCPU実体とGraphicsのGPU実体は型付きHandleで対応付ける。ECSは現在単一Worldで、Engineがphaseを進める。
+ApplicationがWindowとフレーム進行を管理し、Engine.dllのAPIテーブルを取得してEngineを生成する。EngineはLog、Time、Graphics、Asset、ECSを所有し、Game.dllからGameRuntimeを生成する。GameRuntimeはScriptを所有し、Engineから借りたAPIでEntityやProcessを操作する。AssetのCPU実体とGraphicsのGPU実体は型付きHandleで対応付ける。ECSは単一Worldを使い、SceneSystemの静的関数がフレーム末尾に保存と切り替えを処理する。
 
 既存の [Architecture](../Architecture.md)、[DesignSources](../DesignSources.md)、[OpenDecisions](../OpenDecisions.md) は設計資料の整理である。一部に現在より前の実装状態の記述があるため、現在の動作は本書のリンク先コードで確認する。
 

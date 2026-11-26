@@ -1,6 +1,6 @@
 ﻿# Game.dll
 ---
-Hestia の起動経路に `Game.dll` を加え、通常の C++ `.h/.cpp` で書いたゲームコードを初期化・更新・終了できるようにする。初版では `HestiaGame::Time` を通して更新を確認し、GameRuntime が型ごとの Script を実行する。
+GameRuntime は `Game.dll` に含まれ、型ごとの C++ Script を所有・実行する。Engine は関数テーブルで初期化、更新、Scene の Script 復元、終了を呼び出す。
 
 [全体構造](../../Architecture.md) ・ [Script の設計](./Script.md) ・ [World](./World.md) ・ [Engine と Game の API 構成](./APIArchitecture.md)
 
@@ -10,9 +10,9 @@ Hestia の起動経路に `Game.dll` を加え、通常の C++ `.h/.cpp` で書�
 | プロジェクト | 責務 | 成果物 |
 | --- | --- | --- |
 | GameCore | Engine との接続、DLL の入口、GameRuntime、Script の Storage、World などの共通 Facade を提供する | 静的ライブラリ `GameCore.lib` |
-| Game | 具象 Script と、ゲーム固有の型登録・初期配置を定義する | `GameCore.lib` を組み込んだ `Game.dll` |
+| Game | 具象 Script と、生成されたゲーム固有の型登録をコンパイルする | `GameCore.lib` を組み込んだ `Game.dll` |
 
-GameCore から Game のセットアップを呼ぶ接続点は、型登録の `RegisterScripts()` と初期配置の `SetupScene()` とする。GameCore が Facade の接続、型登録、初期配置、保留分の反映の順を決める。具象 Script を扱う登録・追加のテンプレートは Game のコードから使えるようにする。`.cppsc` への移行では Script の C++ コードと `RegisterScripts()` を生成する。起動時の配置をSceneから復元できるようになった時点で、手書きの `SetupScene()` を外す。 [Script の型登録と所有](./Script.md#型登録と所有) ・ [C++ Script のコード生成](CppScript.md)
+GameCore は Facade を接続した後、Game が生成・コンパイルする `RegisterScripts()` を呼ぶ。初期配置は型登録が済んだ Runtime を使い、Engine の SceneSystem が起動 Scene から復元する。 [Script の型登録と所有](./Script.md#型登録と所有) ・ [C++ Script のコード生成](CppScript.md) ・ [起動Scene](../SceneSystem.md#起動scene)
 
 ## DLL 境界と所有
 ---
@@ -31,6 +31,7 @@ namespace Hestia
     class TimeAPI;
     class LogAPI;
     class AssetAPI;
+    struct SceneAPI;
     struct EntityAPI;
     struct ECSProcessAPI;
 
@@ -41,8 +42,10 @@ namespace Hestia
         const ECSProcessAPI* m_ecsProcess = nullptr;
         const LogAPI* m_log = nullptr;
         const AssetAPI* m_asset = nullptr;
+        const SceneAPI* m_scene = nullptr;
     };
 
+    // ScriptAttachmentQuery、SceneScriptResult、EntityHandle、AssetGuid は共有ヘッダーで定義
     struct GameRuntimeAPI
     {
         void* (*Create)(const GameEngineAPI* engineAPI);
@@ -51,6 +54,10 @@ namespace Hestia
         void (*Update)(void* runtime);
         void (*LateUpdate)(void* runtime);
         void (*EndFrame)(void* runtime);
+        ScriptAttachmentQuery QueryScriptAttachments;
+        SceneScriptResult (*AttachSceneScript)(void* runtime, EntityHandle entity, AssetGuid guid);
+        bool (*FlushScripts)(void* runtime);
+        void (*ClearSceneScripts)(void* runtime);
     };
 }
 
@@ -74,10 +81,10 @@ GameCore と Game は共有 Header と、Engine が渡すデータおよび関�
 ## 起動・更新・終了
 ---
 
-1. **起動**。Engine は既存の System と Boundary API を準備し、`GameEngineAPI` を構成する。App の実行ファイルと同じディレクトリに配置した `Game.dll` をロードし、`GetGameRuntimeAPI` とテーブル内の関数ポインタを確認する。`Create` は受け取った必須 API を確認し、GameRuntime の生成、Facade の Bind、ゲームの初期化を行う。成功時は初期化済みのハンドルを返す。
+1. **起動**。Engine は System と Boundary API を準備し、`GameEngineAPI` を構成する。App の実行ファイルと同じディレクトリに配置した `Game.dll` をロードし、`GetGameRuntimeAPI` とテーブル内の関数ポインタを確認する。`Create` は必須 API を確認し、Runtime の生成、Facade の Bind、Script の型登録を行う。Engine は初期化済みのハンドルを使い、起動 Scene を復元する。
 2. **固定更新**。`TimeSystem::UpdateFixed` → ECS `FixedUpdate` → GameRuntime `FixedUpdate`。ゲーム側は必要な刻みを `HestiaGame::Time::FixedDeltaTime` から取得する。
 3. **通常更新**。`TimeSystem::Update` → ECS `FrameBegin` → ECS `Update` → GameRuntime `Update` → ECS `LateUpdate` → GameRuntime `LateUpdate` → ECS `PreRender` → 描画。ゲーム側は通常の経過時間を `HestiaGame::Time::DeltaTime` から取得する。Script の `LateUpdate` で変更した Transform は同じフレームの `PreRender` で参照できる。
-4. **フレーム末尾**。Engine は ECS が予約済み Entity の実体を破棄する前に GameRuntime の `EndFrame` を呼ぶ。GameRuntime は所属 Script を取り除き、次のフレームの更新対象を確定する。
+4. **フレーム末尾**。GameRuntime の `EndFrame` が所属 Script の除去と保留分の反映を行い、ECS が予約済み Entity の実体を破棄する。続いて SceneSystem が保存要求と切り替え要求を順に処理する。
 5. **終了**。Engine は System が利用できる間に `Destroy` を呼ぶ。GameRuntime はゲームの終了処理と残っている Script の破棄を行い、Facade を Unbind して実体を破棄する。Engine はハンドルと関数テーブルの参照を解除して `Game.dll` をアンロードし、その後で各 System を終了する。
 
 Editor・Game の両構成で `Game.dll` を必須とする。DLL のロード、エクスポートの取得、関数テーブルの確認、`Create` のいずれかで失敗したら、Engine が失敗した段階をログに残し、既存の初期化失敗経路で App に返す。GameRuntime の生成や初期化が失敗した場合、Game.dll 内で Bind と生成済みの状態を解放し、`Create` は `nullptr` を返す。Engine は取得済みの DLL と初期化済みの System を解放する。
@@ -93,4 +100,4 @@ Editor・Game 構成では同じ出力先に App、Engine.dll、Game.dll を揃�
 - Game のリンク入力と Game.dll のインポートを確認し、`Engine.lib` が不要で、`Engine.dll` への静的インポートがないことを確認する。
 - `Game.dll` が未配置の場合は、Editor・Game の両構成で原因をログから確認でき、起動に失敗することを確認する。
 
-立方体ベンチマークの配置と描画は Engine 側で行い、Game の Script が `World` から対象を見つけて Transform Facade で回転させる。生成・破棄まで含めた Game 側の動作は、最初のプレイアブルで確認する。 [最初のプレイアブルでの確認](./World.md#最初のプレイアブルでの確認)
+動作確認用の立方体は、起動Sceneから復元した `DebugCubeGenerator` がGame側で生成する。回転には `RotateTransformScript` がTransform Facadeを使う。 [生成と描画](../../Implementation/ECSProcess/MeshRenderer.md#動作確認用シーン)

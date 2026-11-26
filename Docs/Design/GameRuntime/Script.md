@@ -1,6 +1,6 @@
 ﻿# Sparse Script
 ---
-通常の C++ 型で書いた Script を Entity に関連付け、GameRuntime が Game.dll 内で所有・実行する。現行の `.h/.cpp` と手書きの型登録から `.cppsc` へ移行し、Script の C++ ヘッダー・ソースと `RegisterScripts()` を同じ処理で生成する。Scene は `.cppsc.meta` の GUID で型を参照する。 [C++ Script のコード生成](CppScript.md)
+通常の C++ 型で書いた Script を Entity に関連付け、GameRuntime が Game.dll 内で所有・実行する。`Assets/` 内の登録済み `.cpp` から Script の C++ ヘッダー・ソースと `RegisterScripts()` を生成する。Scene は `.cpp.meta` の GUID で型を参照する。 [C++ Script のコード生成](CppScript.md)
 
 [Game.dll の境界](./GameDLL.md) ・ [World](./World.md) ・ [GameRuntime の実装仕様](../../Implementation/GameRuntime/README.md)
 
@@ -9,7 +9,7 @@
 
 Script の具象型は Game プロジェクトでビルドする。生成した Setup は `World::RegisterScript<T>(guid)` を呼び、GameCore は GameRuntime 初期化時の型登録中だけ登録を受け付ける。登録には有効かつ一意のGUIDを必須とし、登録後は `World::AddScript<T>()` でアタッチできる。Storage は `requires` で `script.Update(self)` の式が有効かをコンパイル時に確認する。各コールバックは省略でき、呼び出し結果は使わない。`self` は所属 Entity の Handle で、Script は `World` から Facade や Script を取得できる。時間は `HestiaGame::Time` から取得する。
 
-GameRuntime は `typeid(T)` をキーに登録済み Storage を引き、更新時は登録順に Storage を呼ぶ。登録情報はStorageごとにGUIDと生成関数を持ち、Scene復元ではGUIDから登録情報を引く。`IScriptStorage` による仮想呼び出しは Storage 単位で行い、ページ走査では `T` のメソッドを直接呼ぶ。Script 本体は Game.dll が所有し、Engine は phase 単位で GameRuntime を呼ぶ。
+GameRuntime は `typeid(T)` と GUID を同じ Storage の添字に結び付け、更新時は登録順に Storage を呼ぶ。Scene復元ではGUIDでStorageを引き、`IScriptStorage::AddDefault()` で具象Scriptを生成する。`IScriptStorage` による仮想呼び出しは Storage 単位で行い、ページ走査では `T` のメソッドを直接呼ぶ。Script 本体は Game.dll が所有し、Engine は phase 単位で GameRuntime を呼ぶ。
 
 ```text
 ScriptStorage<Enemy>
@@ -82,7 +82,7 @@ GameRuntime は初期配置前に ECS の Active 設定変更の通知先を登�
 
 GameRuntimeは `EntityHandle → Storageインデックス列` を `std::unordered_map` で持つ。HandleのハッシュにはIndexとGenerationを使う。値には登録済みStorageの `std::size_t` インデックスを格納し、GUIDはStorageの登録情報から引く。
 
-索引は `Flush()` でScriptの追加・削除を反映したときに更新する。追加の反映に成功した時点でStorageインデックスを加え、削除を反映した時点で取り除く。最後のScriptが外れたEntityの項目は消す。Scene切り替えでScript実体を全削除するときも索引を空にする。
+索引は `GameRuntime::FlushScripts()` が各Storageの `Flush()` を呼び、Scriptの追加・削除を反映したときに更新する。追加の反映に成功した時点でStorageインデックスを加え、削除を反映した時点で取り除く。最後のScriptが外れたEntityの項目は消す。Scene切り替えでScript実体を全削除するときも索引を空にする。
 
 Engine側の `QueryScriptAttachments` は `std::span<const EntityHandle>` で対象Handle列を受け取り、成功時は `std::unordered_map<EntityHandle, std::vector<AssetGuid>, EntityHandleHash>` を返す。入力には `std::vector<EntityHandle>` を渡せる。Scriptが付いているEntityだけをmapに入れ、値にはそのEntityに付いているScript型のGUIDを格納する。
 

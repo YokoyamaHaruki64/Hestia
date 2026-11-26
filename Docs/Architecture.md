@@ -31,10 +31,10 @@ System ごとに必要な初期化・終了処理を持つ。Game に公開す�
 
 ## 起動・更新・終了
 
-1. Application は Window とタイマーを準備し、Engine.dll をロードして Engine を生成する。Engine は各 System と境界 API の後に Game.dll と GameRuntime を起動する。失敗時は準備済み資源を解放し、無効 Handle を返す。
+1. Application は Window とタイマーを準備し、Engine.dll をロードして Engine を生成する。Engine は各 System と境界 API の後に Game.dll と GameRuntime を起動し、Script の型登録が完了してから起動 Scene を復元する。失敗時は準備済み資源を解放し、無効 Handle を返す。
 2. Application はメッセージを処理し、実経過時間の蓄積に応じて固定更新を呼び、通常フレームを一度実行する。
 3. Engine は Time を先に更新する。固定更新は ECS の後に GameRuntime。通常更新は FrameBegin、ECS Update、GameRuntime Update、ECS LateUpdate、GameRuntime LateUpdate、ECS PreRender、描画の順に進む。PreRender で Transform が World 行列を確定し、MeshRenderer が描画データを提出する。
-4. 描画後、GameRuntime の EndFrame で破棄予約 Entity の Script を除き、保留 Script 変更を反映する。その後 ECS が Entity 実体を破棄する。
+4. 描画後、GameRuntime の EndFrame で破棄予約 Entity の Script を除き、保留 Script 変更を反映する。ECS が Entity 実体を破棄した後、SceneSystem は保存要求、切り替え要求の順に処理する。
 5. Engine は Script の終了処理、Facade の切断、GameRuntime 破棄、Game.dll アンロードを済ませてから各 System を終了する。Graphics が借りる CPU Asset は Graphics の終了後に解放する。Application は Engine.dll をアンロードし、Window を終了する。
 
 現行の挙動は [実装仕様書](Implementation/README.md)、未決事項は [OpenDecisions](OpenDecisions.md) を参照する。

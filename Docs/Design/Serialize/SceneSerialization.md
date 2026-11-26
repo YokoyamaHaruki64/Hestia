@@ -42,7 +42,7 @@ entities:
 2. 一致したArchetypeごとに `TransformHierarchy` の列を引き、各Chunkの `Entity` 列と対応する行を順に読む。全EntityのHandleを照会用に集め、親Handleが空のEntityをルート一覧にも入れる。非ActiveのEntityも含める。
 3. 照会用のHandle一覧を `QueryScriptAttachments` に一度渡し、`EntityHandle → Script GUID列` のmapを取得する。 [Script参照の取得](../GameRuntime/Script.md#scene保存用の逆引き)
 4. ルートごとに `SaveEntity(root, scriptRefsByEntity)` を呼び、同じmapを渡す。`SaveEntity()` は各ノードのComponent値とActive設定を取り込み、ルートと子孫それぞれのHandleでmapを引いてScript参照も `SerializedEntity` に格納する。 [SaveEntityのオーバーロード](ComponentSerialization.md#スナップショットの取得と保存)
-5. 全ルート分を取得できたらYAMLを書き出す。既存のSceneを上書きするときはGUIDを引き継ぐ。新規保存では `.meta` を共通処理で作成し、その1件をAssetDBの索引に登録する。
+5. 全ルート分を取得できたら、`SceneSystem` がスナップショットと保存先を `AssetSystem::Save` に渡す。Scene 用 Serializer がツリーを組み立て、共通の `YamlWriter` で出力する。既存のSceneを上書きするときはGUIDを引き継ぐ。新規保存では `.meta` を作成してAssetDBの索引に登録し、確定した相対パスを返す。 [YAML Asset の保存](../AssetSystem.md#yaml-asset-の保存)
 
 ルート収集とScript照会は、反映と破棄が済んだ状態を読む。スナップショットの取得、書き込み、メタデータの登録のいずれかが失敗した場合は、保存先と理由を報告する。
 
