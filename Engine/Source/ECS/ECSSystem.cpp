@@ -17,6 +17,7 @@
 #include "API/ECSProcess/TransformAPI.h"
 #include "Asset/AssetSystem.h"
 #include "ECS/Component.h"
+#include "Graphics/Camera.h"
 #include "Graphics/MeshRenderer.h"
 #include "Log/Logger.h"
 #include "Transform/TransformData.h"
@@ -122,10 +123,12 @@ namespace Hestia
         REGISTER_COMPONENT(Transform, "Hestia::Transform");
         REGISTER_COMPONENT(TransformCache, "Hestia::TransformCache");
         REGISTER_COMPONENT(TransformHierarchy, "Hestia::TransformHierarchy");
+        REGISTER_COMPONENT(CameraComponent, "Hestia::CameraComponent");
         REGISTER_COMPONENT(MeshRenderer, "Hestia::MeshRenderer");
 
-        // PreRenderではWorld行列を更新してから描画を収集
+        // World 行列を確定し、視点を更新してから描画を収集する
         REGISTER_GAME_PROCESS(TransformAPI, &TransformProcess::Run, PreRender);
+        REGISTER_PROCESS(&CameraProcess::Run, PreRender);
         REGISTER_GAME_PROCESS(MeshRendererAPI, &MeshRendererProcess::Run, PreRender);
         // REGISTER_PROCESS(&MoveTransform, Update);
 

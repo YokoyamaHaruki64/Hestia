@@ -161,6 +161,9 @@
     <ClCompile Include="Source\Graphics\MeshRenderer.cpp">
       <Filter>_Source\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\Camera.cpp">
+      <Filter>_Source\Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine.cpp">
       <Filter>_Source\Core</Filter>
     </ClCompile>
@@ -364,6 +367,9 @@
     <ClInclude Include="Include\Graphics\MeshRenderer.h">
       <Filter>_Include\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\Camera.h">
+      <Filter>_Include\Graphics</Filter>
+    </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Object.h">
       <Filter>_Include\Graphics</Filter>
     </ClInclude>
@@ -375,6 +381,9 @@
     </ClInclude>
     <ClInclude Include="Include\pch.h">
       <Filter>Bootstrap</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\ECSProcess\CameraAPI.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

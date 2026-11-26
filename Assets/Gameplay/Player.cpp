@@ -25,6 +25,7 @@ namespace HestiaGame
 
     private:
         Transform m_transform;
+        Transform m_camera;
         float time = 0.0f;
     };
 }
@@ -38,11 +39,27 @@ namespace HestiaGame
     void Player::OnStart(Hestia::EntityHandle self)
     {
         m_transform = World::GetProcess<Transform>(self);
-        m_transform.SetLocalScale({ 50.0f, 50.0f,50.0f });
+        auto camera = World::FindFirstEntityByName("Camera");
+        m_transform.SetLocalPosition({ 0.0f, 0.0f, 0.0f });
+
+        if (camera.IsValid())
+        {
+            m_camera = World::GetProcess<Transform>(camera);
+        }
     }
 
     void Player::Update(Hestia::EntityHandle)
     {
+        time += Time::DeltaTime();
+        const float speed = Math::PI_DIV4;
+
+        Vector3 cameraOffset = { std::sin(time * speed) * 5.0f, 1.0f, std::cos(time * speed) * 5.0f };
+        Vector3 playerPosition = m_transform.GetLocalPosition(); 
+        m_camera.SetLocalPosition(m_transform.GetLocalPosition() + cameraOffset);
+
+        // プレイヤーへ向かう方向を向くようにカメラを回転させる
+        Quaternion lookPlayer = Quaternion::LookRotation(playerPosition + Vector3(0.0f,1.5f, 0.0f) - m_camera.GetLocalPosition(), { 0.0f, 1.0f, 0.0f });
+        m_camera.SetLocalRotation(lookPlayer);
     }
 }
 SOURCE_END

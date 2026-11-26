@@ -69,6 +69,7 @@
     <ClCompile Include="Source\Graphics\DXMaterialShaderCompiler.cpp" />
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp" />
     <ClCompile Include="Source\Graphics\MeshRenderer.cpp" />
+    <ClCompile Include="Source\Graphics\Camera.cpp" />
     <ClCompile Include="Source\Time\TimeSystem.cpp" />
     <ClCompile Include="Source\API\TimeAPI.cpp" />
     <ClCompile Include="Source\API\SceneAPI.cpp" />
@@ -86,6 +87,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Include\API\ECSProcess\CameraAPI.h" />
     <ClInclude Include="Include\Engine.h" />
     <ClInclude Include="Include\API\EngineAPI.h" />
     <ClInclude Include="Include\API\EntityAPI.h" />
@@ -138,6 +140,7 @@
     <ClInclude Include="Include\Graphics\DXMaterialShaderCompiler.h" />
     <ClInclude Include="Include\Graphics\GraphicsSystem.h" />
     <ClInclude Include="Include\Graphics\MeshRenderer.h" />
+    <ClInclude Include="Include\Graphics\Camera.h" />
     <ClInclude Include="Include\Graphics\GPUResourceStorage.h" />
     <ClInclude Include="Include\Time\TimeData.h" />
     <ClInclude Include="Include\Time\TimeSystem.h" />
@@ -348,8 +351,7 @@
       <AssimpRuntimeDir>$(OutDir)</AssimpRuntimeDir>
       <AssimpRuntimeDir Condition="'$(Configuration)'=='Test'">$(HestiaTestBinDir)</AssimpRuntimeDir>
     </PropertyGroup>
-    <Copy SourceFiles="$(ProjectDir)..\ThirdParty\Library\Assimp\assimp-vc145-mt.dll;$(ProjectDir)..\ThirdParty\Library\Assimp\Assimp-LICENSE.txt"
-          DestinationFolder="$(AssimpRuntimeDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(ProjectDir)..\ThirdParty\Library\Assimp\assimp-vc145-mt.dll;$(ProjectDir)..\ThirdParty\Library\Assimp\Assimp-LICENSE.txt" DestinationFolder="$(AssimpRuntimeDir)" SkipUnchangedFiles="true" />
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -2,9 +2,15 @@
 ---
 Engine内部の描画段階を `Build → Sort → Record` に分け、各段階で受け渡すデータを定義する。初版は既存のForward描画をこの構成へ移し、同じスレッドとCommandListで実行する。
 
-ECS の `PreRender` で Transform が World 行列を確定し、MeshRenderer が `RenderData` を提出する。Graphics はそのフレームの提出列を Backend に渡す。
+ECS の `PreRender` は Transform、Camera、MeshRenderer の順に実行する。Transform が World 行列を確定し、Camera が描画用の View と Projection を設定し、MeshRenderer が `RenderData` を提出する。Graphics はそのフレームの提出列と2つの行列を Backend に渡す。
 
 [Graphics の実装仕様](../Implementation/Graphics/README.md) ・ [MaterialShader](./MaterialShader.md)
+
+## Camera
+
+初版は有効な Camera Entity 1台を使う。`CameraComponent` は描画用の `view` と `proj` を保持する。`CameraProcess` は Transform の World 位置と回転から、カメラの拡縮を含まない View を計算し、既存の `GraphicsSystem::SetView()` と `SetProj()` に渡す。Projection は固定の透視投影設定で初期化する。
+
+Scene は CameraComponent の有無と Transform を保存する。起動 Scene の Camera は従来の固定視点と同じ位置・向きで置く。Camera のない Scene では Graphics が保持している最後の View と Projection を使う。
 
 ## IRenderPass
 ---

@@ -16,6 +16,7 @@
 #include <filesystem>
 
 #include "API/SceneAPI.h"
+#include "Graphics/Camera.h"
 #include "Scene/SceneSystem.h"
 
 #if HESTIA_EDITOR
@@ -151,11 +152,12 @@ namespace Hestia
             return false;
         }
 
-        // 起動Sceneの表示と復元を、最初の更新より前に確定する
+        // Camera を含まない Scene でも描画できるよう初回の行列を用意する
         GraphicsSystem::SetView(Matrix4x4_SIMD::LookAtLH(
             { 440.0f, 275.0f, -820.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }));
-        GraphicsSystem::SetProj(Matrix4x4_SIMD::PerspectiveFovLH(
-            0.8f, 1600.0f / 900.0f, 0.2f, 1600.0f));
+        GraphicsSystem::SetProj(CameraComponent{}.m_proj);
+
+        // 起動 Scene の Entity と Script を最初の更新までに復元する
         if (!SceneSystem::LoadScene("Scenes/Startup.scene") ||
             !SceneSystem::CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
         {

@@ -325,9 +325,6 @@ namespace HestiaGame
             "/" + std::to_string(placements.size()) + ", shared models " + std::to_string(models.size()) +
             ", materials " + std::to_string(materials.size()));
 
-        auto player = World::Instantiate(Assets::Load<Hestia::Prefab>("Models/Y-Bot.fbx"));
-        if (!player.IsValid()) return;
-        World::AddScript<Player>(player);
     }
 }
 SOURCE_END
