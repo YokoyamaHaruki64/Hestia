@@ -115,7 +115,7 @@ namespace Hestia
         std::optional<std::string> SaveFile(const std::string& path, bool replaceExisting, Args&&... args);
 
         template<class T>
-        AssetHandle<T> LoadFile(const AssetRef& ref, const AssetInfo* info);
+        AssetHandle<T> LoadReference(const AssetRef& ref, const AssetInfo* info);
 
         template<class T>
         AssetHandle<T> RegisterNamed(std::string_view name, std::unique_ptr<T> asset);

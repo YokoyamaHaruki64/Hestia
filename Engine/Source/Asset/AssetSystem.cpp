@@ -20,6 +20,7 @@
 #include "Serialize/YamlFile.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <format>
 #include <numbers>
@@ -31,22 +32,6 @@ namespace Hestia
 {
     namespace
     {
-        bool IsPrimitiveMeshName(std::string_view name)
-        {
-            const std::string normalizedName = ToLowerAscii(name);
-            return normalizedName == "cube" || normalizedName == "plane" ||
-                normalizedName == "quad" || normalizedName == "sphere";
-        }
-
-        template<class T>
-        constexpr AssetType GetAssetType()
-        {
-            if constexpr (std::is_same_v<T, Texture>)
-                return AssetType::Texture;
-            else
-                return AssetType::MaterialShader;
-        }
-
         bool CanUseFileName(std::string_view name)
         {
             if (name.empty() || name.back() == ' ' || name.back() == '.' ||
@@ -237,21 +222,37 @@ namespace Hestia
             return mesh;
         }
 
-        std::unique_ptr<Mesh> CreatePrimitiveMesh(std::string_view name)
+        struct PrimitiveMeshDefinition
         {
-            // Asset 名と同じ規則で ASCII 英字を小文字化
-            const std::string normalizedName = ToLowerAscii(name);
+            std::string_view m_name;
+            AssetRef m_ref;
+            std::unique_ptr<Mesh> (*m_create)();
+        };
 
-            // 予約名に対応する Mesh を生成
-            if (normalizedName == "cube")
-                return CreateCubeMesh();
-            if (normalizedName == "plane")
-                return CreatePlaneMesh();
-            if (normalizedName == "quad")
-                return CreateQuadMesh();
-            if (normalizedName == "sphere")
-                return CreateSphereMesh();
-            return {};
+        const auto& GetPrimitiveMeshes()
+        {
+            // SceneやPrefabが保持する永続IDなので、形状を修正しても変更しない
+            static const std::array definitions{
+                PrimitiveMeshDefinition{ "cube", { AssetGuid::Parse("e9bba8da-8941-4ec8-9b7a-90ff8eee3708"), 0 }, &CreateCubeMesh },
+                PrimitiveMeshDefinition{ "plane", { AssetGuid::Parse("52454a7c-e91c-44c5-87b9-54f088acd1af"), 0 }, &CreatePlaneMesh },
+                PrimitiveMeshDefinition{ "quad", { AssetGuid::Parse("90dabd42-8892-454e-8ba3-8f69759f873e"), 0 }, &CreateQuadMesh },
+                PrimitiveMeshDefinition{ "sphere", { AssetGuid::Parse("d1e730d4-44f4-4897-bca2-8901c97c2684"), 0 }, &CreateSphereMesh }
+            };
+            return definitions;
+        }
+
+        const PrimitiveMeshDefinition* FindPrimitiveMesh(std::string_view name)
+        {
+            const auto& definitions = GetPrimitiveMeshes();
+            const auto found = std::ranges::find(definitions, ToLowerAscii(name), &PrimitiveMeshDefinition::m_name);
+            return found != definitions.end() ? &*found : nullptr;
+        }
+
+        const PrimitiveMeshDefinition* FindPrimitiveMesh(const AssetRef& ref)
+        {
+            const auto& definitions = GetPrimitiveMeshes();
+            const auto found = std::ranges::find(definitions, ref, &PrimitiveMeshDefinition::m_ref);
+            return found != definitions.end() ? &*found : nullptr;
         }
     }
 
@@ -304,15 +305,15 @@ namespace Hestia
         if (system == nullptr)
             return {};
 
-        // 手動登録と組み込みMeshは従来の名前で取得する
+        // 手動登録は名前で引き、組み込みMeshの予約名は永続参照に変換する
         auto& storage = system->GetStorage<T>();
         if (const auto cached = storage.Find(path); cached.IsValid())
             return cached;
 
         if constexpr (std::is_same_v<T, Mesh>)
         {
-            if (auto primitive = CreatePrimitiveMesh(path))
-                return system->RegisterNamed<Mesh>(path, std::move(primitive));
+            if (const auto* primitive = FindPrimitiveMesh(path))
+                return system->LoadReference<Mesh>(primitive->m_ref, nullptr);
         }
 
         const auto* info = system->m_assetDB.FindByPath(path);
@@ -322,22 +323,37 @@ namespace Hestia
             return {};
         }
 
-        return system->LoadFile<T>({ info->m_guid, 0 }, info);
+        return system->LoadReference<T>({ info->m_guid, 0 }, info);
     }
 
     template<class T>
     AssetHandle<T> AssetSystem::Load(const AssetRef& ref)
     {
         auto* system = s_instance;
-        return system != nullptr ? system->LoadFile<T>(ref, nullptr) : AssetHandle<T>{};
+        return system != nullptr ? system->LoadReference<T>(ref, nullptr) : AssetHandle<T>{};
     }
 
     template<class T>
-    AssetHandle<T> AssetSystem::LoadFile(const AssetRef& ref, const AssetInfo* info)
+    AssetHandle<T> AssetSystem::LoadReference(const AssetRef& ref, const AssetInfo* info)
     {
         auto& storage = GetStorage<T>();
         if (const auto cached = storage.Find(ref); cached.IsValid())
             return cached;
+
+        // 組み込みMeshも同じ永続参照の索引を使い、初回のみ生成と登録を行う
+        if constexpr (std::is_same_v<T, Mesh>)
+        {
+            if (const auto* primitive = FindPrimitiveMesh(ref))
+            {
+                auto mesh = primitive->m_create();
+                if (!mesh->IsValid())
+                {
+                    Logger::Error("Built-in Mesh contains invalid CPU data: " + std::string(primitive->m_name));
+                    return {};
+                }
+                return RegisterFromLoader(ref, std::move(mesh));
+            }
+        }
 
         // PathとGUIDを共通の登録経路へ渡し、モデルのAssetをまとめて生成する
         if (info == nullptr)
@@ -542,7 +558,7 @@ namespace Hestia
     AssetHandle<T> AssetSystem::Register(std::string_view name, T* asset)
     {
         std::unique_ptr<T> owner(asset);
-        if (IsPrimitiveMeshName(name))
+        if (FindPrimitiveMesh(name))
         {
             Logger::Error("Primitive mesh name is reserved");
             return {};
@@ -610,7 +626,7 @@ namespace Hestia
     template<class T>
     AssetHandle<T> AssetSystem::RegisterFromLoader(const AssetRef& ref, std::unique_ptr<T> asset)
     {
-        // Loader側でファイルと変換結果の検証が済んだAssetを登録する
+        // 生成・検証済みのCPU Assetを永続参照で登録する
         T& registered = *asset;
         const auto handle = s_instance->GetStorage<T>().Register(ref, std::move(asset));
         if constexpr (std::is_same_v<T, Mesh>)

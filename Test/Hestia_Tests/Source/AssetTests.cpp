@@ -310,6 +310,11 @@ MaterialShader "Tests/Material"
         ECSSystem::GetComponent<TransformHierarchy>(child)->m_parent = parent;
         ASSERT_TRUE(ECSSystem::SetActive(child, false));
         ECSSystem::GetComponent<Name>(other)->m_value = "Second root";
+        ECSSystem::AddProcess<&MeshRendererProcess::Run>(child);
+        auto* renderer = ECSSystem::GetComponent<MeshRenderer>(child);
+        ASSERT_NE(renderer, nullptr);
+        renderer->m_mesh = AssetSystem::Get(AssetSystem::Load<Mesh>("Cube"));
+        ASSERT_NE(renderer->m_mesh, nullptr);
         const AssetGuid guid{ { 8, 1 } };
         const ScriptGuidsByEntity scriptGuids{ { child, { guid } } };
         auto first = ECSSystem::SaveEntity(parent, scriptGuids);
@@ -320,6 +325,11 @@ MaterialShader "Tests/Material"
         const auto path = directory / "Saved.scene";
         ASSERT_TRUE(AssetSystem::Save(roots, "Saved.scene"));
         ASSERT_NE(assets.GetDatabase().FindByPath("Saved.scene"), nullptr);
+
+        // キャッシュを初期化し直し、Sceneの参照だけから組み込みMeshを生成できるようにする
+        ASSERT_TRUE(ECSSystem::ClearSceneEntities(nullptr, nullptr));
+        assets.Finalize();
+        ASSERT_TRUE(assets.Initialize(&graphics, directory));
         auto loaded = EntityYamlReader::LoadScene(path);
         ASSERT_TRUE(loaded);
         ASSERT_EQ(loaded->size(), 2u);
@@ -331,6 +341,16 @@ MaterialShader "Tests/Material"
         EXPECT_EQ(savedChild.m_scripts.front(), (AssetRef{ guid, 0 }));
         EXPECT_FALSE(savedChild.m_source.IsValid());
         EXPECT_TRUE(loaded->at(1).m_children.empty());
+
+        std::vector<SceneScriptAttachment> restoredScripts;
+        ASSERT_TRUE(ECSSystem::InstantiateScene(*loaded, restoredScripts));
+        ASSERT_EQ(restoredScripts.size(), 1u);
+        const auto* restoredRenderer = ECSSystem::GetComponent<MeshRenderer>(restoredScripts.front().m_entity);
+        ASSERT_TRUE(restoredRenderer && restoredRenderer->m_mesh);
+        const auto* restoredMesh = restoredRenderer->m_mesh;
+        const AssetRef cubeRef{ AssetGuid::Parse("e9bba8da-8941-4ec8-9b7a-90ff8eee3708"), 0 };
+        EXPECT_EQ(AssetSystem::GetReference(restoredMesh->m_handle), cubeRef);
+        EXPECT_EQ(AssetSystem::Get(AssetSystem::Load<Mesh>("Cube")), restoredMesh);
         std::filesystem::remove_all(directory);
     }
 
@@ -648,6 +668,20 @@ MaterialShader "Tests/Material"
             EXPECT_NEAR(radius, 1.0f, 0.00001f);
         }
 
+        // 名前と永続参照で同じHandleを引き、組み込み間でGUIDが重複しないことを確認する
+        std::vector<Hestia::AssetGuid> guids;
+        for (const auto handle : { cube, plane, quad, sphere })
+        {
+            const auto ref = Hestia::AssetSystem::GetReference(handle);
+            ASSERT_TRUE(ref.m_guid);
+            EXPECT_EQ(ref.m_localId, 0u);
+            EXPECT_EQ(std::ranges::find(guids, ref.m_guid), guids.end());
+            guids.push_back(ref.m_guid);
+            const auto reloaded = Hestia::AssetSystem::Load<Hestia::Mesh>(ref);
+            EXPECT_EQ(reloaded.m_index, handle.m_index);
+            EXPECT_EQ(reloaded.m_generation, handle.m_generation);
+            EXPECT_FALSE(Hestia::AssetSystem::Load<Hestia::Mesh>(Hestia::AssetRef{ ref.m_guid, 1 }).IsValid());
+        }
     }
 
     TEST(AssetSystem, RejectsNullGraphicsAndSecondActiveInstance)
