@@ -31,7 +31,7 @@ Editor 構成では Window の生成時に Win32 のメニューバーを割り�
 
 ## Window Messageと終了
 
-`WindowProc` はメニューとして処理したメッセージを除き、接続済み Engine に通知してから App の処理に進む。`WM_CLOSE` は `PostQuitMessage(0)` を呼んで `0` を返す。`WM_DESTROY` も `PostQuitMessage(0)` を呼び、`DefWindowProc` へ進む。Engine 側の `ProcessMessage` の本体は空。
+`WindowProc` はメニューとして処理したメッセージを除き、接続済み Engine の `ProcessMessage` を呼ぶ。結果の `m_handled` が真なら `m_value` を返す。App 側に進んだ `WM_CLOSE` は `PostQuitMessage(0)` を呼んで `0` を返す。`WM_DESTROY` も `PostQuitMessage(0)` を呼び、その他のメッセージと同様に `DefWindowProc` へ進む。 [Application.cpp](../../../Application/Source/Application.cpp) ・ [InputSystem の入力経路](../Engine/Input.md#入力経路と寿命)
 
 `RequestQuit` は `PostQuitMessage` を呼ぶ。`Application::Finalize` はメニューコールバックの解除、Engine の `Destroy`、API 参照の解除、Engine.dll のアンロードを済ませ、その後に Timer を閉じ、Window を終了する。
 

@@ -15,7 +15,7 @@ Editor・Game 構成では Game のリンク時に `GetGameRuntimeAPI` を参照
 
 Editor・Game 構成では、Engine が App と同じディレクトリの `Game.dll` をロードし、`GetGameRuntimeAPI` を取得する。`GetGameRuntimeAPI` は Game.dll 内の `static const GameRuntimeAPI` を返す。`Test` 構成では、静的 `Game.lib` から同じ関数を直接呼ぶ。GameRuntime の生成・破棄は Game 側が行い、Engine は API テーブルと不透明なハンドルを持つ。 [Engine のロード処理](../../../Engine/Source/Engine.cpp) ・ [GameRuntimeAPI](../../../Common/Include/GameRuntimeAPI.h)
 
-`Create` は `GameEngineAPI` と Time・Entity・ECSProcess のポインタ、および EntityAPI の必須関数を確認する。同じ Game 側で Runtime がすでに接続済みの場合も `nullptr` を返す。生成後は `World`、`Time`、`Logger`、`Assets` を接続し、ECS の Active 変更通知を購読する。Game で借りる API の寿命は Engine が管理する。 [GameRuntime の生成](../../../Game/Source/GameRuntime.cpp) ・ [GameEngineAPI](../../../Engine/Include/API/GameEngineAPI.h)
+`Create` は `GameEngineAPI` と Time・Entity・ECSProcess のポインタ、および EntityAPI の必須関数を確認する。同じ Game 側で Runtime がすでに接続済みの場合も `nullptr` を返す。生成後は `World`、`Time`、`Logger`、`Assets`、`Scene`、`Input` を接続し、ECS の Active 変更通知を購読する。Game で借りる API の寿命は Engine が管理する。 [GameRuntime の生成](../../../Game/Source/GameRuntime.cpp) ・ [GameEngineAPI](../../../Engine/Include/API/GameEngineAPI.h)
 
 1. GameCore の DLL 入口は `GameRuntime::Create` に生成された `HestiaGame::Setup::RegisterScripts` を渡す。GameRuntime はこの呼び出し中だけ `World::RegisterScript<T>(guid)` を受け付け、重複する型や GUID、空の GUID を拒否する。
 2. Engine は Runtime の生成後に `QueryScriptAttachments` を ECS に接続し、起動 Scene を復元する。SceneSystem が Entity を展開し、`AttachSceneScript` と `FlushScripts` で Script の追加を反映してから最初のフレームへ進む。 [DLL 入口](../../../Game/Source/GameEntry.cpp) ・ [Scene の保存と切り替え](../Engine/README.md#scene-の保存と切り替え)

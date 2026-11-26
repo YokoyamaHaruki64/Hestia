@@ -34,6 +34,7 @@
     "Design/Serialize/ComponentSerialization.md": { "category": "design", "order": 41, "label": "Componentのシリアライズ", "summary": "保存フィールド宣言、Prefabの取得とYAML入出力、Worldへの展開。" },
     "Design/Serialize/SceneSerialization.md": { "category": "design", "order": 42, "summary": "複数ルートとActive・Script型参照のYAML保存、Worldからの取得と復元。" },
     "Design/SceneSystem.md": { "category": "design", "order": 43, "summary": "起動Scene、フレーム末尾の保存と切り替え、EntityとScriptの入れ替え。" },
+    "Design/InputSystem.md": { "category": "design", "order": 44, "summary": "キーボードとマウスのフレーム内入力、Gameへの公開、カーソルの制限と表示。" },
     "Design/AssetSystem.md": { "category": "design", "order": 45, "label": "AssetSystemの設計", "summary": "型付きHandleによる資源管理、YAML Assetの共通保存、組み込みMesh。" },
     "Design/Asset/AssetDB.md": { "category": "design", "order": 46, "summary": ".metaの生成と検証、GUIDの解決、モデル内のSubAsset ID。" },
     "Design/Asset/MeshLoader.md": { "category": "design", "order": 47, "summary": "モデルのノード階層、Prefabと個別Mesh、SubMeshとMaterialSlotの割当。" },
@@ -48,12 +49,13 @@
     "Implementation/ECSProcess/Transform.md": { "label": "Transform", "summary": "必須Component、親子関係、World行列の更新順とDLL公開Facadeの現行仕様。" },
     "Implementation/ECSProcess/MeshRenderer.md": { "label": "MeshRenderer", "summary": "描画提出と、Game向けのMesh、MaterialSlot、インスタンス色の設定。" },
     "Implementation/README.md": { "category": "runtime", "label": "全体概要", "summary": "実装仕様書の索引、全体の接続、実装済みの対象範囲を確認する。", "diagrams": ["system"] },
-    "Implementation/Application/README.md": { "summary": "WindowとEngineの起動、フレーム進行、現在の終了処理を確認する。" },
+    "Implementation/Application/README.md": { "summary": "WindowとEngineの起動、メッセージ配送、フレーム進行、終了処理。" },
     "Implementation/Engine/README.md": {
       "summary": "Systemの初期化・終了、固定・通常更新の呼出順、Sceneの保存と切り替え。",
       "diagrams": ["frame"],
       "notes": [{ "text": "2026-11-26のApp Debug_EditorビルドとSceneの保存・再読込・Script復元の関連テストは成功。起動デモの確認はGPUを使わないテストで行った。", "sources": ["Docs/Implementation/Engine/README.md", "Test/Hestia_Tests/Source/GameRuntimeTests.cpp"] }]
     },
+    "Implementation/Engine/Input.md": { "label": "InputSystem", "summary": "キーボードとマウスの入力経路、Game向けAPI、カーソル制御、フレーム末尾のクリア。" },
     "Implementation/ECS/README.md": {
       "summary": "Entityの識別とSoA配置、構造変更の反映時点、破棄までの寿命を確認する。",
       "diagrams": ["ecs-process", "ecs-layout", "ecs-life"],
@@ -76,7 +78,7 @@
   "diagrams": {
     "ecs-process": { "title": "Processの生成・登録から実行まで", "caption": "RegisterProcessでProcessを生成してWorldへ登録し、要求Componentが揃うArchetypeをキャッシュする。Run(phase)は登録順・Chunk単位で関数を呼ぶ。AddProcessはEntityのComponent構成を変更する。RegisterECSはTransformProcessをPreRenderに登録する。", "sources": ["Docs/Implementation/ECS/Process.md", "Docs/Implementation/ECSProcess/Transform.md", "Engine/Include/ECS/ECSWorld.h", "Engine/Include/ECS/ECSProcess.h", "Engine/Include/ECS/ECSProcessExecution.h", "Engine/Source/ECS/ECSWorld.cpp", "Engine/Source/ECS/ECSProcess.cpp"] },
     "system": { "title": "Systemの所有とDLL境界", "caption": "実線は所有、破線はAPI接続。EngineはGameRuntimeの生成・破棄を呼び、GameRuntimeはEngineから操作テーブルを借りる。", "sources": ["Docs/Implementation/README.md", "Engine/Include/Engine.h", "Application/Include/Application.h", "Game/Include/GameRuntime.h"] },
-    "frame": { "title": "コードに記述されたフレーム進行", "caption": "固定更新は蓄積時間に応じて0回以上。描画後の反映を終えてから、Sceneの保存と切り替えを順に処理する。", "sources": ["Docs/Implementation/Engine/README.md", "Application/Source/Application.cpp", "Engine/Source/Engine.cpp", "Engine/Source/Scene/SceneSystem.cpp", "Game/Source/GameRuntime.cpp"] },
+    "frame": { "title": "コードに記述されたフレーム進行", "caption": "固定更新は蓄積時間に応じて0回以上。描画後はSceneの保存・切り替えを済ませてから、入力の遷移と差分をクリアする。", "sources": ["Docs/Implementation/Engine/README.md", "Application/Source/Application.cpp", "Engine/Source/Engine.cpp", "Engine/Source/Scene/SceneSystem.cpp", "Engine/Source/Input/InputSystem.cpp", "Game/Source/GameRuntime.cpp"] },
     "asset": { "title": "CPU登録とGPU転送", "caption": "CPU AssetのHandleが有効でもGPU転送成功とは限らない。GetはCPU実体を借用する。", "sources": ["Docs/Implementation/Asset/README.md", "Engine/Source/Asset/AssetSystem.cpp", "Engine/Source/Asset/AssetLoader.cpp"] },
     "ecs-layout": { "title": "HandleからSoA列への参照", "caption": "同じrowが同じEntityに対応する。構造変更で位置が変わるため、生ポインタを長期保持せずHandleから再取得する。", "sources": ["Docs/Implementation/ECS/README.md", "Engine/Include/ECS/Entity.h", "Engine/Source/ECS/Archetype.cpp", "Engine/Source/ECS/Chunk.cpp"] },
     "ecs-life": { "title": "Entityの生成と破棄", "caption": "破棄予約はAliveのEntityに付くbitで、独立したslot状態ではない。Process後の変更反映とEndFrameの破棄確定を区別する。", "sources": ["Docs/Implementation/ECS/README.md", "Engine/Include/ECS/Entity.h", "Engine/Source/ECS/ECSWorld.cpp"] }

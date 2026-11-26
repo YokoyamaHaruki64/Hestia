@@ -6,7 +6,8 @@
 | --- | --- |
 | Editor | 編集対象、描画との接続、構成ごとの配置、初期化・終了順を決める |
 | Game から Application への操作 | FPS 設定や終了要求など、用途に応じた公開範囲と API を決める |
-| Game 向けサブシステム | Input、Audio、Physics の利用ケースと公開操作を決める |
+| Game 向けサブシステム | Audio、Physics の利用ケースと公開操作を決める |
+| Input の拡張 | ゲームパッドと操作割り当ての公開範囲を決める。キーボードとマウスは [InputSystem の設計](Design/InputSystem.md) に定める |
 | Asset の拡張 | Game からの Material 作成・Property 操作、個別アンロード時の Handle と CPU／GPU 資源の寿命を決める |
 | 描画の拡張 | RenderGraph、描画スレッド、Record の分割を機能要件と計測結果から決める。初期 Pass は [RenderPass](Design/RenderPass.md) に定める |
 | Transform の並列化 | 更新起点、親子間の順序、書き込みと描画参照の同期点を決める。現行設計は [Transform](Design/Transform.md) に定める |

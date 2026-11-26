@@ -2,6 +2,8 @@
 
 2026-11-26に、Scene の保存・切り替え、Script の GUID 復元・コード生成・保存監視、共通の YAML 保存経路、単独 Material と組み込み Mesh の永続参照を反映した。
 
+2026-11-27に、キーボード・マウス入力とカーソル制御を反映した。
+
 ## 読み方
 
 各フォルダの `README.md` は責務、所有関係、処理の流れ、制約を説明し、`Types.md` は型と利用上の契約を説明する。ソースへのリンクは仕様の確認先であり、実行確認済みを意味しない。
@@ -10,6 +12,7 @@
 | --- | --- | --- |
 | Application / Window | [Application](Application/README.md) | [Types](Application/Types.md) |
 | Engine / DLL境界 / Scene | [Engine](Engine/README.md)、[Scene の保存と切り替え](Engine/README.md#scene-の保存と切り替え) | [Types](Engine/Types.md) |
+| Input | [InputSystem](Engine/Input.md) | [Game 向け入力 API](Engine/Input.md#game-向け-api) |
 | GameRuntime / Game向けAPI | [GameRuntime](GameRuntime/README.md) | [型とAPI](GameRuntime/Types.md)、[Processの登録と公開](ECS/DevelopmentGuide.md#公開processのapiとfacade) |
 | Time | [Time](Time/README.md) | [Types](Time/Types.md) |
 | Log | [Log](Log/README.md) | [Types](Log/Types.md) |
@@ -21,13 +24,13 @@
 
 ## 全体の接続
 
-ApplicationがWindowとフレーム進行を管理し、Engine.dllのAPIテーブルを取得してEngineを生成する。EngineはLog、Time、Graphics、Asset、ECSを所有し、Game.dllからGameRuntimeを生成する。GameRuntimeはScriptを所有し、Engineから借りたAPIでEntityやProcessを操作する。AssetのCPU実体とGraphicsのGPU実体は型付きHandleで対応付ける。ECSは単一Worldを使い、SceneSystemの静的関数がフレーム末尾に保存と切り替えを処理する。
+ApplicationがWindowとフレーム進行を管理し、Engine.dllのAPIテーブルを取得してEngineを生成する。EngineはLog、Time、Graphics、Asset、ECSを所有し、Game.dllからGameRuntimeを生成する。GameRuntimeはScriptを所有し、Engineから借りたAPIでEntityやProcessを操作する。AssetのCPU実体とGraphicsのGPU実体は型付きHandleで対応付ける。ECSは単一Worldを使う。フレーム末尾にはSceneSystemが保存と切り替えを処理し、InputSystemが入力の遷移と差分をクリアする。
 
 既存の [Architecture](../Architecture.md)、[DesignSources](../DesignSources.md)、[OpenDecisions](../OpenDecisions.md) は設計資料の整理である。一部に現在より前の実装状態の記述があるため、現在の動作は本書のリンク先コードで確認する。
 
 ## 対象の境界
 
-Gameは `World` を通じて `HestiaGame::Transform` と `HestiaGame::MeshRenderer` を取得する。Game向けの公開面にはEntity、Process、Time、Log、Assetが含まれる。Input、Audio、Physics、Editorは未接続。PCH、DLL入口、Windows Header、DLL exportマクロはEngine/Commonの補助部分として扱う。
+Gameは `World` を通じて `HestiaGame::Transform` と `HestiaGame::MeshRenderer` を取得する。Game向けの公開面にはEntity、Process、Time、Log、Asset、Scene、Inputが含まれる。Audio、Physics、Editorは未接続。PCH、DLL入口、Windows Header、DLL exportマクロはEngine/Commonの補助部分として扱う。
 
 各文書はソースの静的調査を根拠とする。2026-11-05のEngineビルドとECS関連19件の成功、当時の全体テスト5件の失敗は[ECSの検証記録](ECS/README.md#検証記録2026-11-05)を参照。2026-11-07のAppビルドとForward描画を含む関連テスト7件の成功は[MaterialShaderの検証記録](Graphics/MaterialShader.md#検証記録)を参照。
 

@@ -8,7 +8,7 @@
 
 GetEngineAPIはDLL内の固定APIテーブルを返す。Createはnull ApplicationAPIを拒否し、nothrow newでEngineを生成する。Initialize失敗時はdeleteしnullを返す。
 
-EngineはApplicationAPIをコピーし、Log → Time → Graphics（1600×900）→ Asset → API接続 → ECSの順に初期化する。GraphicsはApplicationAPIからHWNDを取得する。初期化済みフラグを持ち、途中の失敗ではFinalizeで準備済みのSystemを解放する。
+EngineはLogの初期化後にApplicationAPIをコピーし、Input → Time → Graphics（1600×900）→ Asset → API接続 → ECSの順に初期化する。InputとGraphicsにはApplicationAPIから取得したHWNDを渡す。途中の失敗ではFinalizeで準備済みのSystemを解放する。 [InputSystem の入力経路と寿命](Input.md#入力経路と寿命)
 
 ECS の初期化後に Game.dll をロードし、`GetGameRuntimeAPI`、必須関数、Runtime の生成結果を順に確認する。型登録を終えてから固定のビュー・射影を設定し、`Scenes/Startup.scene` の Entity と Script を復元する。Editor 構成では復元の成功後に File メニューのコマンドを登録する。DLL の接続や起動 Scene の復元に失敗した場合は Engine の初期化も失敗する。 [GameRuntime の初期化](../GameRuntime/README.md)
 
@@ -21,8 +21,9 @@ ECS の初期化後に Game.dll をロードし、`GetGameRuntimeAPI`、必須�
 3. ECS の `PreRender` で Transform を更新し、MeshRenderer が描画データを提出する。続いて Graphics の `Render` を呼ぶ。
 4. GameRuntime の `EndFrame` で Script を除去・反映してから、ECS の `EndFrame` で Entity の実体を破棄する。
 5. `SceneSystem::SerializeScene()` で保存要求を処理してから、`CheckScene()` で切り替え要求を処理する。
+6. `InputSystem::EndFrame()` でキーとボタンの遷移、マウスの移動・スクロール量をクリアする。
 
-`ProcessMessage` の本体は空。 [Engine の更新処理](../../../Engine/Source/Engine.cpp)
+`ProcessMessage` はキーボードとマウスの Hook に委譲し、マウス側の処理結果を Application に返す。 [Engine の更新処理](../../../Engine/Source/Engine.cpp) ・ [InputSystem の実装](Input.md)
 
 ## Scene の保存と切り替え
 
@@ -51,6 +52,6 @@ Engine 内の `ShowFileDialog` は App の HWND を親にし、指定された�
 
 ## 終了
 
-GameRuntime を破棄して Game.dll をアンロードした後、Scene の状態をリセットし、ECS → AssetAPI → Graphics → Asset → TimeAPI → Time → LogAPI → Log の順で解放する。Graphics の描画提出が借用する Asset は Graphics の終了後に破棄する。デストラクタも `Finalize` を呼び、フラグで解放済み部分を除く。`Destroy` は null を許容し、`Finalize` と `delete` を DLL 内部で実行する。
+GameRuntime を破棄して Game.dll をアンロードした後、Scene → Input → ECS → AssetAPI → Graphics → Asset → TimeAPI → Time → LogAPI → Log の順で終了する。Input は Window が有効な間にカーソル制限と Raw Input 登録を解除する。Graphics の描画提出が借用する Asset は Graphics の終了後に破棄する。デストラクタも `Finalize` を呼び、解放済み部分を除く。`Destroy` は null を許容し、`Finalize` と `delete` を DLL 内部で実行する。
 
 Application の終了順序は [Application の Window Message と終了](../Application/README.md#window-messageと終了) を参照。
