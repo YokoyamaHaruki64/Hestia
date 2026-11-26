@@ -62,6 +62,9 @@ namespace Hestia
     private:
         bool LoadGame();
         void UnloadGame();
+#if HESTIA_EDITOR
+        void SaveSceneAs();
+#endif
 
         ApplicationAPI m_applicationAPI;
 

@@ -18,8 +18,89 @@
 #include "API/SceneAPI.h"
 #include "Scene/SceneSystem.h"
 
+#if HESTIA_EDITOR
+#include <shobjidl.h>
+#include <wrl/client.h>
+
+#include <memory>
+#include <span>
+
+#include "Common/Include/StringUtils.h"
+#endif
+
 namespace Hestia
 {
+#if HESTIA_EDITOR
+    namespace
+    {
+        constexpr const wchar_t* SCENE_EXTENSIONS[] = { L"scene" };
+
+        std::string ShowFileDialog(HWND owner, REFCLSID dialogClass, const std::filesystem::path& root,
+            std::span<const wchar_t* const> extensions)
+        {
+            // フィルターと初期フォルダを用意し、選択結果はこのルートに対する相対パスで返す
+            std::error_code error;
+            const auto directory = std::filesystem::weakly_canonical(root, error);
+            if (error || !directory.is_absolute() || extensions.empty())
+            {
+                Logger::Warning("Could not resolve the file dialog root or extensions");
+                return {};
+            }
+            std::wstring pattern;
+            for (const auto* extension : extensions)
+            {
+                if (!pattern.empty())
+                    pattern += L';';
+                pattern += L"*.";
+                pattern += extension;
+            }
+
+            // 開く・保存それぞれの既定オプションを保ち、保存では拡張子をフィルターに限定する
+            Microsoft::WRL::ComPtr<IFileDialog> dialog;
+            Microsoft::WRL::ComPtr<IShellItem> folder;
+            FILEOPENDIALOGOPTIONS options{};
+            const auto saveOptions = IsEqualCLSID(dialogClass, CLSID_FileSaveDialog) ? FOS_STRICTFILETYPES : 0;
+            const COMDLG_FILTERSPEC filter{ pattern.c_str(), pattern.c_str() };
+            if (FAILED(CoCreateInstance(dialogClass, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog))) ||
+                FAILED(dialog->GetOptions(&options)) ||
+                FAILED(dialog->SetOptions(options | FOS_FORCEFILESYSTEM | saveOptions)) ||
+                FAILED(dialog->SetFileTypes(1, &filter)) ||
+                FAILED(dialog->SetDefaultExtension(extensions.front())) ||
+                FAILED(SHCreateItemFromParsingName(directory.c_str(), nullptr, IID_PPV_ARGS(&folder))) ||
+                FAILED(dialog->SetFolder(folder.Get())))
+            {
+                Logger::Warning("Could not prepare the file dialog");
+                return {};
+            }
+            const auto result = dialog->Show(owner);
+            if (result == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+                return {};
+            if (FAILED(result))
+            {
+                Logger::Warning("Could not open the file dialog");
+                return {};
+            }
+
+            // ダイアログでルート外へ移動しても、選択結果は既存の相対パス契約に収める
+            Microsoft::WRL::ComPtr<IShellItem> selected;
+            PWSTR path = nullptr;
+            if (FAILED(dialog->GetResult(&selected)) || FAILED(selected->GetDisplayName(SIGDN_FILESYSPATH, &path)))
+            {
+                Logger::Warning("Could not retrieve the file dialog path");
+                return {};
+            }
+            const std::unique_ptr<wchar_t, decltype(&CoTaskMemFree)> ownedPath(path, CoTaskMemFree);
+            const auto relative = std::filesystem::relative(std::filesystem::path(ownedPath.get()), directory, error);
+            if (error || relative.empty() || relative.has_root_path() || *relative.begin() == L"..")
+            {
+                Logger::Warning("Choose a file inside the file dialog root");
+                return {};
+            }
+            return PathToUtf8(relative);
+        }
+    }
+#endif
+
     Engine::~Engine()
     {
         Finalize();
@@ -81,8 +162,44 @@ namespace Hestia
             Finalize();
             return false;
         }
+
+#if HESTIA_EDITOR
+        // Scene の読み込みと保存は、メニューからフレーム末尾の処理を予約する
+        const bool openRegistered = m_applicationAPI.RegisterMenuItem("File/OpenScene...", [](void* context)
+        {
+            const auto engine = static_cast<Engine*>(context);
+            const auto path = ShowFileDialog(engine->m_applicationAPI.GetWindowHandle(), CLSID_FileOpenDialog,
+                engine->m_assets.GetDatabase().SourcePath("."), SCENE_EXTENSIONS);
+            if (!path.empty())
+                SceneSystem::LoadScene(path);
+        }, this);
+        const bool saveRegistered = m_applicationAPI.RegisterMenuItem("File/SaveScene", [](void* context)
+        {
+            const auto path = SceneSystem::GetCurrentScenePath();
+            if (path.empty())
+                static_cast<Engine*>(context)->SaveSceneAs();
+            else
+                SceneSystem::SaveScene(path);
+        }, this);
+        const bool saveAsRegistered = m_applicationAPI.RegisterMenuItem("File/SaveSceneAs...", [](void* context)
+        {
+            static_cast<Engine*>(context)->SaveSceneAs();
+        }, this);
+        if (!openRegistered || !saveRegistered || !saveAsRegistered)
+            Logger::Warning("Could not register Scene menu items");
+#endif
         return true;
     }
+
+#if HESTIA_EDITOR
+    void Engine::SaveSceneAs()
+    {
+        const auto path = ShowFileDialog(m_applicationAPI.GetWindowHandle(), CLSID_FileSaveDialog,
+            m_assets.GetDatabase().SourcePath("."), SCENE_EXTENSIONS);
+        if (!path.empty())
+            SceneSystem::SaveScene(path);
+    }
+#endif
 
     bool Engine::LoadGame()
     {

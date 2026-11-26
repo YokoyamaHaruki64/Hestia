@@ -64,6 +64,11 @@ Hestia::ApplicationAPI Application::CreateApplicationAPI()
             return static_cast<Application*>(context)->GetWindowHandle();
         };
 
+    api.m_registerMenuItem = [](void* application, std::string_view path, void (*execute)(void*), void* context)
+        {
+            return static_cast<Application*>(application)->m_window.RegisterMenuItem(path, execute, context);
+        };
+
     return api;
 }
 

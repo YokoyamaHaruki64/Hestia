@@ -46,12 +46,12 @@ int Application::Run()
 {
     while (m_running)
     {
-        Clock::time_point currentTime = Clock::now();
-
         ProcessMessages();
 
         if (!m_running) break;
 
+        // メニューコマンドの処理時間を除いた時刻差を使う
+        const auto currentTime = Clock::now();
         double deltaTime =
             std::chrono::duration_cast<std::chrono::duration<double>>(currentTime - m_lastFrameTime).count();
 
@@ -190,6 +190,19 @@ void Application::RequestQuit()
 
 LRESULT Application::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    // App のメニュー操作は Window が登録したコマンドへ配送する
+    if (msg == WM_COMMAND && HIWORD(wParam) == 0 && lParam == 0 && s_instance &&
+        s_instance->m_window.GetHandle() == hwnd)
+    {
+        // コマンドがモーダル表示で待機しても、次のフレームで待機分を進めない
+        const auto startedAt = Clock::now();
+        if (s_instance->m_window.ExecuteMenuCommand(LOWORD(wParam)))
+        {
+            s_instance->m_lastFrameTime += Clock::now() - startedAt;
+            return 0;
+        }
+    }
+
     // Windowのメッセージ処理
     // 基本的にEngineやEditorのメッセージ処理に委譲する
 
@@ -244,6 +257,8 @@ bool Application::LoadEngine()
 
 void Application::UnloadEngine()
 {
+    // メニューは Engine.dll の関数を借用しているため、先に解除する
+    m_window.ClearMenuCommands();
     if (m_engine)
     {
         if (m_engineAPI)
