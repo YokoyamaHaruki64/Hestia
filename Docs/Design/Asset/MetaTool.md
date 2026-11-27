@@ -28,10 +28,11 @@ guid: 2db48ec9-7a6f-49a2-8c79-73639d0a8572
 | --- | --- |
 | `.png` | `Texture` |
 | `.matsh` | `MaterialShader` |
+| `.material` | `Material` |
 | `.fbx`、`.obj`、`.gltf`、`.glb` | `Model` |
 | `.prefab` | `Prefab` |
 | `.scene` | `Scene` |
-| `.cppsc` | `Script` |
+| `.cpp` | `Script` |
 
 ## 共通処理の責務
 
@@ -59,10 +60,10 @@ guid: 2db48ec9-7a6f-49a2-8c79-73639d0a8572
 | コマンド | 対象 |
 | --- | --- |
 | `MetaTool.exe` | 対応表の全拡張子 |
-| `MetaTool.exe --ext .cppsc` | `Assets/` 配下の `.cppsc` |
-| `MetaTool.exe --ext .cppsc --ext .scene` | `Assets/` 配下の `.cppsc` と `.scene` |
+| `MetaTool.exe --ext .cpp` | `Assets/` 配下の `.cpp` |
+| `MetaTool.exe --ext .cpp --ext .scene` | `Assets/` 配下の `.cpp` と `.scene` |
 
-Gameビルドでは `.cppsc` に絞ってGUIDを確定し、それからGeneratorを実行する。拡張子を絞った場合の重複検査はその走査対象に適用し、Asset全体での重複は全拡張子の走査で検出する。
+GameビルドではGeneratorが `MetaTool.exe --ext .cpp` を実行してGUIDを確定し、プロジェクトに登録されたScriptの生成に進む。拡張子を絞った場合の重複検査はその走査対象に適用し、Asset全体での重複は全拡張子の走査で検出する。
 
 ### AssetDB
 

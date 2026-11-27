@@ -13,6 +13,8 @@
 #include "pch.h"
 #include "Application.h"
 
+#include <format>
+
 bool Application::Initialize(int nCmdShow)
 {
     // Windowの初期化
@@ -44,14 +46,17 @@ bool Application::Initialize(int nCmdShow)
 
 int Application::Run()
 {
+    double titleSampleSeconds = 0.0;
+    unsigned int titleFrameCount = 0;
+
     while (m_running)
     {
-        Clock::time_point currentTime = Clock::now();
-
         ProcessMessages();
 
         if (!m_running) break;
 
+        // メニューコマンドの処理時間を除いた時刻差を使う
+        const auto currentTime = Clock::now();
         double deltaTime =
             std::chrono::duration_cast<std::chrono::duration<double>>(currentTime - m_lastFrameTime).count();
 
@@ -73,6 +78,19 @@ int Application::Run()
         OutputDebugString((L"DeltaTime= " + std::to_wstring(deltaTime) + L"\n").c_str());
         // Editorの更新処理
 
+        // 約1秒分のフレームを集計してタイトルに表示する
+        titleSampleSeconds += deltaTime;
+        ++titleFrameCount;
+        if (titleSampleSeconds >= 0.25)
+        {
+            const double averageFrameTime = titleSampleSeconds / titleFrameCount;
+            const auto title = std::format(L"FPS {:.1f} | FrameTime {:.2f} ms",
+                1.0 / averageFrameTime, averageFrameTime * 1000.0);
+            SetWindowTextW(m_window.GetHandle(), title.c_str());
+
+            titleSampleSeconds = 0.0;
+            titleFrameCount = 0;
+        }
 
         // フレームレート制御
         if (!m_unlimitedFrameRate)
@@ -190,12 +208,25 @@ void Application::RequestQuit()
 
 LRESULT Application::WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    // Windowのメッセージ処理
-    // 基本的にEngineやEditorのメッセージ処理に委譲する
+    // App のメニュー操作は Window が登録したコマンドへ配送する
+    if (msg == WM_COMMAND && HIWORD(wParam) == 0 && lParam == 0 && s_instance &&
+        s_instance->m_window.GetHandle() == hwnd)
+    {
+        // コマンドがモーダル表示で待機しても、次のフレームで待機分を進めない
+        const auto startedAt = Clock::now();
+        if (s_instance->m_window.ExecuteMenuCommand(LOWORD(wParam)))
+        {
+            s_instance->m_lastFrameTime += Clock::now() - startedAt;
+            return 0;
+        }
+    }
 
+    // Engine が処理済みのメッセージは、その結果を WindowProc から返す
     if (s_instance && s_instance->m_engineAPI && s_instance->m_engine)
     {
-        s_instance->m_engineAPI->ProcessMessage(s_instance->m_engine, hwnd, msg, wParam, lParam);
+        const auto result = s_instance->m_engineAPI->ProcessMessage(s_instance->m_engine, hwnd, msg, wParam, lParam);
+        if (result.m_handled)
+            return result.m_value;
     }
 
     switch (msg)
@@ -244,6 +275,8 @@ bool Application::LoadEngine()
 
 void Application::UnloadEngine()
 {
+    // メニューは Engine.dll の関数を借用しているため、先に解除する
+    m_window.ClearMenuCommands();
     if (m_engine)
     {
         if (m_engineAPI)

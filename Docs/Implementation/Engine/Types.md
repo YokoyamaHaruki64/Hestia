@@ -5,8 +5,11 @@
 | 型・入口 | 役割 | 根拠 |
 | --- | --- | --- |
 | `Hestia::Engine` | 各 System と API を値所有し、Game.dll のロード状態、GameRuntimeAPI の借用、不透明な Runtime Handle を保持。ApplicationAPI の context は非所有 | [Engine.h](../../../Engine/Include/Engine.h) |
+| `SceneSystem` | 現在・次回・直近保存の Scene パスと保存要求を静的に保持し、フレーム末尾のスナップショット取得・切り替えを調停する | [SceneSystem.h](../../../Engine/Include/Scene/SceneSystem.h) |
+| `InputSystem` | キーボード・マウスの状態とカーソル設定を静的に保持する。Engine が初期化・フレーム末尾・終了を管理する | [InputSystem の実装](Input.md) |
 | `EngineHandle` | Engine実体を隠すvoid*。生成したDLLのDestroyへ戻す。任意のvoid*を渡せる契約ではない | [EngineAPI.h](../../../Engine/Include/API/EngineAPI.h) |
 | `EngineAPI` | Create、Destroy、ProcessMessage、FixedUpdate、FrameExecuteの関数テーブル。Engine実体の代わりにApplicationが保持する | 同上 |
+| `WindowMessageResult` | `ProcessMessage` が返す値。`m_handled` が真なら Application は `m_value` を WindowProc の戻り値に使う | 同上 |
 | `GetEngineAPI` | C linkageのexport入口。テーブルはDLL所有で、呼び出し側はdeleteしない | [EngineAPI.cpp](../../../Engine/Source/API/EngineAPI.cpp) |
 
 更新・通知用wrapperはnull Handleなら何もしない。Create時のnull APIは失敗になる。非null HandleについてはEngineへのcastを行うため、型・生成元・寿命が正しいことは利用側の前提となる。

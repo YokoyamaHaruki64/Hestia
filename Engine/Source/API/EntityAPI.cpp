@@ -76,6 +76,7 @@ namespace Hestia
                     s_instance->m_world.TryGetPendingDestroy(index, *handle);
             },
             .SetActiveChangedCallback = &ECSSystem::SetEntityActiveChangedCallback,
+            .Instantiate = &ECSSystem::Instantiate,
         };
     }
 

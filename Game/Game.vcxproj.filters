@@ -9,9 +9,15 @@
     <ClCompile Include="..\Assets\Gameplay\DebugCubeGenerator.cpp">
       <Filter>Scripts</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\Gameplay\FieldGenerator.cpp">
+      <Filter>Scripts</Filter>
+    </ClCompile>
     <ClCompile Include="..\Assets\Gameplay\RotateTransformScript.cpp">
       <Filter>Scripts</Filter>
     </ClCompile>
     <ClCompile Include="$(GameGeneratedRoot)\GameSetup.generated.cpp" />
+    <ClCompile Include="..\Assets\Gameplay\Player.cpp">
+      <Filter>Scripts</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

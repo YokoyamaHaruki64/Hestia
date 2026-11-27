@@ -1,5 +1,6 @@
 ﻿HEADER_BEGIN
 #include "Game/Include/World.h"
+#include "Engine/Include/Game/Transform.h"
 
 namespace HestiaGame
 {
@@ -10,7 +11,7 @@ namespace HestiaGame
         void Update(Hestia::EntityHandle);
 
     private:
-        inline static const Quaternion ROTATION_PER_UPDATE = Quaternion::EulerToQuat({ 0.0f, 0.05f, 0.05f });
+        inline static const Quaternion ROTATION_PER_UPDATE = Quaternion::EulerToQuat({ 0.05f, 0.0f, 0.08f });
         Transform m_transform;
         float time = 0.0f;
     };
@@ -29,10 +30,7 @@ namespace HestiaGame
 
     void RotateTransformScript::Update(Hestia::EntityHandle)
     {
-        time += Time::DeltaTime();
-        const Vector3 deltaPos = Vector3 { 3.0f,3.0f, 3.0f } * Math::Sin(time * Math::PI_2);
         m_transform.SetLocalRotation(ROTATION_PER_UPDATE * m_transform.GetLocalRotation());
-        m_transform.SetLocalPosition(deltaPos + m_transform.GetLocalPosition());
     }
 }
 SOURCE_END

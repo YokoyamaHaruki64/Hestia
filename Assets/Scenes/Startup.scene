@@ -3,11 +3,23 @@ entities:
   - id: 1
     active: true
     components:
-      "Hestia::Name": { value: "Debug Cube Generator" }
+      "Hestia::Name": { value: "Field Generator" }
       "Hestia::Tag": {}
       "Hestia::Layer": {}
       "Hestia::Transform": {}
       "Hestia::TransformCache": {}
       "Hestia::TransformHierarchy": {}
     scripts:
-      - { guid: feb7a48d-7059-4edb-9dd3-646b29b6f37c, localId: 0 }
+      - { guid: 67ec80fe-5fb7-4744-8d8c-06a2e39ffbf1, localId: 0 }
+  - id: 2
+    active: true
+    components:
+      "Hestia::Name": { value: "Camera" }
+      "Hestia::Tag": {}
+      "Hestia::Layer": {}
+      "Hestia::Transform":
+        position: [440.0, 275.0, -820.0]
+        rotation: [0.138854212, -0.241250590, 0.034900126, 0.959843551]
+      "Hestia::TransformCache": {}
+      "Hestia::TransformHierarchy": {}
+      "Hestia::CameraComponent": {}

@@ -42,10 +42,12 @@ namespace Hestia
             delete engine;
         }
 
-        void ProcessEngineMessage(EngineHandle engineHandle, HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+        WindowMessageResult ProcessEngineMessage(EngineHandle engineHandle, HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
-            if (engineHandle != nullptr)
-                static_cast<Engine*>(engineHandle)->ProcessMessage(hwnd, message, wParam, lParam);
+            if (engineHandle == nullptr)
+                return {};
+
+            return static_cast<Engine*>(engineHandle)->ProcessMessage(hwnd, message, wParam, lParam);
         }
 
         void FixedUpdateEngine(EngineHandle engineHandle, float deltaTime)

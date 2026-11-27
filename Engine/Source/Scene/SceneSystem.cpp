@@ -13,13 +13,12 @@
 #include "pch.h"
 #include "Scene/SceneSystem.h"
 
-#include "Asset/AssetDB.h"
+#include "Asset/AssetSystem.h"
 #include "Common/Include/GameRuntimeAPI.h"
 #include "Common/Include/StringUtils.h"
 #include "ECS/ECSSystem.h"
 #include "Log/Logger.h"
 #include "Serialize/EntityYamlReader.h"
-#include "Serialize/EntityYamlWriter.h"
 #include "Transform/TransformData.h"
 
 #include <array>
@@ -27,6 +26,12 @@
 
 namespace Hestia
 {
+    std::string SceneSystem::s_currentScenePath;
+    std::string SceneSystem::s_nextScenePath;
+    std::string SceneSystem::s_saveScenePath;
+    std::string SceneSystem::s_lastSavedScenePath;
+    bool SceneSystem::s_saveRequested = false;
+
     namespace
     {
         std::string NormalizeScenePath(std::string_view input)
@@ -40,14 +45,37 @@ namespace Hestia
         }
     }
 
+    void SceneSystem::Finalize() noexcept
+    {
+        // Engine の再初期化に前回の Scene や要求を引き継がないようにする
+        s_currentScenePath.clear();
+        s_nextScenePath.clear();
+        s_saveScenePath.clear();
+        s_lastSavedScenePath.clear();
+        s_saveRequested = false;
+    }
+
+    std::string_view SceneSystem::GetCurrentSceneName() noexcept
+    {
+        // 正規化済みの相対パスからファイル名を切り出す
+        auto name = GetCurrentScenePath();
+        const auto separator = name.rfind('/');
+        if (separator != std::string_view::npos)
+            name.remove_prefix(separator + 1);
+        return name.substr(0, name.rfind('.'));
+    }
+
     bool SceneSystem::SaveScene(std::string_view path)
     {
-        auto normalized = NormalizeScenePath(path);
-        if (normalized.empty())
+        // 空の要求はロード済みSceneか直近に保存した未ロードのSceneを対象にする
+        auto normalized = path.empty()
+            ? (s_currentScenePath.empty() ? s_lastSavedScenePath : s_currentScenePath)
+            : NormalizeScenePath(path);
+        if (!path.empty() && normalized.empty())
             return false;
 
-        m_saveScenePath = std::move(normalized);
-        m_saveRequested = true;
+        s_saveScenePath = std::move(normalized);
+        s_saveRequested = true;
         return true;
     }
 
@@ -57,25 +85,24 @@ namespace Hestia
         if (normalized.empty())
             return false;
 
-        m_nextScenePath = std::move(normalized);
+        s_nextScenePath = std::move(normalized);
         return true;
     }
 
-    bool SceneSystem::SerializeScene(AssetDB& database)
+    bool SceneSystem::SerializeScene()
     {
-        if (!std::exchange(m_saveRequested, false))
+        if (!std::exchange(s_saveRequested, false))
             return true;
 
-        const auto path = std::exchange(m_saveScenePath, {});
+        const auto path = std::exchange(s_saveScenePath, {});
         const auto fail = [&](std::string_view reason)
         {
             Logger::Error("Could not save Scene '" + path + "': " + std::string(reason));
             return false;
         };
         const auto* registry = ECSSystem::GetRegistry();
-        const auto output = database.SourcePath(path);
-        if (!registry || output.empty())
-            return fail("Scene storage is unavailable");
+        if (!registry)
+            return fail("ComponentRegistry is unavailable");
 
         // 反映済みのWorldをChunk単位で読み、ルートと照会用のHandleを同時に集める
         const std::array required{ *registry->GetId<TransformHierarchy>() };
@@ -113,25 +140,17 @@ namespace Hestia
             snapshots.push_back(std::move(*snapshot));
         }
 
-        // 書き込みが完了してから保存先を置き換え、即時ロード用の索引を登録する
-        std::error_code error;
-        std::filesystem::create_directories(output.parent_path(), error);
-        if (error)
-            return fail(error.message());
-        auto temporary = output;
-        temporary += L".tmp";
-        if (!EntityYamlWriter::SaveScene(snapshots, temporary) ||
-            !MoveFileExW(temporary.c_str(), output.c_str(), MOVEFILE_REPLACE_EXISTING))
-        {
-            std::filesystem::remove(temporary, error);
-            return fail("Could not write Scene file");
-        }
-        return database.RegisterFile(path) || fail("Could not register Scene metadata");
+        // 永続化はAssetSystemに任せ、自動命名したパスも次の保存で選べるようにする
+        auto saved = AssetSystem::Save(snapshots, path);
+        if (!saved)
+            return false;
+        s_lastSavedScenePath = std::move(*saved);
+        return true;
     }
 
     bool SceneSystem::CheckScene(const AssetDB& database, const GameRuntimeAPI& runtimeAPI, void* runtime)
     {
-        auto path = std::exchange(m_nextScenePath, {});
+        auto path = std::exchange(s_nextScenePath, {});
         if (path.empty())
             return true;
 
@@ -171,7 +190,7 @@ namespace Hestia
         if (!runtimeAPI.FlushScripts(runtime))
             return fail("Could not commit Script attachments");
 
-        m_currentScenePath = std::move(path);
+        s_currentScenePath = std::move(path);
         return true;
     }
 }

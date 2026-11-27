@@ -1,6 +1,6 @@
 ﻿# SceneSystemの設計
 
-Engineは `SceneSystem` を所有する。`SceneSystem` は現在のSceneと保存・切り替え要求をAssetルートからの相対パスで管理する。実行中のEntityは既存の単一 `ECSWorld` に置き、Sceneの切り替えでは全Entityを入れ替える。
+`SceneSystem` は単一 `ECSWorld` の現在の Scene と保留要求を静的に管理し、パスは Asset ルートからの相対パスで保持する。Scene の切り替えでは全 Entity を入れ替える。Engine の終了時は GameRuntime を破棄してから Scene の状態をリセットする。
 
 [Sceneの保存・読み込み](Serialize/SceneSerialization.md) ・ [ECSの設計](ECS.md) ・ [Scriptの設計](GameRuntime/Script.md)
 
@@ -9,10 +9,26 @@ Engineは `SceneSystem` を所有する。`SceneSystem` は現在のSceneと保�
 | 操作・状態 | 契約 |
 | --- | --- |
 | `currentScenePath` | 最後に復元が完了したSceneのパス。初回の復元までは空とする。 |
-| `SaveScene(path)` | Engine側の開発機能が指定した保存先を保持し、保存要求のフラグを立てる。フラグが立っている間に繰り返し呼んでも、次のフレーム末尾に保存するのは1回とする。 |
+| `SaveScene(path)` | Engine側の開発機能が指定した保存先を保持し、保存要求のフラグを立てる。パス省略時は `currentScenePath`、最後に保存が成功したパス、自動命名の順に使う。保存要求が複数あっても、次のフレーム末尾に保存するのは1回とする。 |
 | `LoadScene(path)` | `.scene` の相対パスで `nextScenePath` を更新する。処理前に複数回呼ばれた場合は、最後に指定されたパスを使う。 |
 
 保存とロードはそれぞれの処理を始める時点でフラグやパスを取り出す。`nextScenePath` が空の場合は切り替えを省き、パスが現在と同じ場合もファイルを読み直してWorldを再構築する。
+
+Editor の `File/SaveScene` は現在の Scene パスに保存する。パスが空の場合と `File/SaveSceneAs...` では保存ダイアログを開き、選択した `.scene` の Asset ルート相対パスで保存を予約する。ダイアログをキャンセルした場合は要求を残さない。新規保存・別名保存後も現在の Scene パスはロード済みの Scene を指す。
+
+`File/OpenScene...` は読み込みダイアログで選んだ `.scene` の Asset ルート相対パスを `LoadScene` に渡す。現在の Scene はフレーム末尾の復元が成功した時点で更新する。
+
+## Game への公開
+
+Game Script は `HestiaGame::Scene` の3つの操作を使う。`SceneAPI` は対応する `SceneSystem` の静的関数を GameRuntime に渡す。Scene の保存要求は Engine 側で扱う。
+
+| 操作 | 契約 |
+| --- | --- |
+| `GetCurrentSceneName()` | 現在のパスのファイル名から拡張子を除いた名前を返す。名前が同じ Scene はパスで区別できる。 |
+| `GetCurrentScenePath()` | 復元が完了した最新の Scene の `Assets/` 基準の相対パスを返す。 |
+| `LoadScene(path)` | `.scene` の相対パスを検証し、受理できればフレーム末尾の切り替えを予約して `true` を返す。読み込みと復元の結果はフレーム末尾で確定する。 |
+
+現在の名前とパスは初回の復元まで空で、切り替え要求を受理した時点では変化しない。取得した `std::string_view` は Scene の切り替え完了か GameRuntime 終了まで借用でき、それ以降も使う場合はコピーする。
 
 ## フレーム末尾での処理
 
@@ -20,7 +36,7 @@ Engineは `SceneSystem` を所有する。`SceneSystem` は現在のSceneと保�
 
 1. `GameRuntime::EndFrame()` で破棄対象のScriptを除去し、保留中のScript変更と保存用の逆引き索引を反映する。
 2. `ECSSystem::EndFrame()` で構造変更とEntityの破棄を確定する。
-3. `SceneSystem::SerializeScene()` は保存要求のフラグを確認する。フラグが立っていれば解除し、確定済みWorldのスナップショットを保存する。フラグが立っていなければ関数から戻る。
+3. `SceneSystem::SerializeScene()` は保存要求のフラグを確認する。フラグが立っていれば解除し、確定済みWorldのスナップショットと保存先を `AssetSystem::Save` に渡す。フラグが立っていなければ関数から戻る。 [YAML Asset の保存](AssetSystem.md#yaml-asset-の保存)
 4. `SceneSystem::CheckScene()` は `nextScenePath` の有無を確認し、要求があれば切り替える。
 
 ## 切り替え
@@ -38,7 +54,7 @@ Engineは `SceneSystem` を所有する。`SceneSystem` は現在のSceneと保�
 
 初版の起動パスは `Engine::Initialize()` 内に `Assets/` 基準の相対パスとして記述する。Asset・ECSを初期化し、GameRuntimeの生成とScript型の登録を済ませてから、`SceneSystem` で最初のSceneを復元する。起動時は最初の更新前に完了させ、失敗は `Engine::Initialize()` の失敗として返す。[Engineの起動実装](../../Engine/Source/Engine.cpp)
 
-起動用 `.scene` から初期配置とScriptを復元できるようになった時点で、手書きの `CreateDebugScene()` と `SetupScene()` を外す。現在 `CreateDebugScene()` が行う描画のView・Projection設定は、起動Sceneの表示に必要な描画初期化として扱う。将来的には起動パスの取得元を `ProjectSettings` に移す。
+起動用の `Scenes/Startup.scene` は生成役のEntityとScript参照を保持する。`DebugCubeGenerator::OnStart` が組み込みCubeとファイル由来の共有Materialを取得し、立方体を生成する。描画のView・ProjectionはEngineの起動処理で設定する。将来的には起動パスの取得元を `ProjectSettings` に移す。 [起動Scene](../../Assets/Scenes/Startup.scene) ・ [生成Script](../../Assets/Gameplay/DebugCubeGenerator.cpp)
 
 ## 初版の確認項目
 

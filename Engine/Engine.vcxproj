@@ -33,7 +33,10 @@
     <ClCompile Include="Source\ECS\Chunk.cpp" />
     <ClCompile Include="Source\ECS\ECSProcess.cpp" />
     <ClCompile Include="Source\ECS\ECSWorld.cpp" />
-    <ClCompile Include="Source\Serialize\EntityYamlWriter.cpp" />
+    <ClCompile Include="Source\Serialize\EntitySerializer.cpp" />
+    <ClCompile Include="Source\Serialize\YamlFile.cpp">
+      <ExceptionHandling>Sync</ExceptionHandling>
+    </ClCompile>
     <ClCompile Include="Source\Serialize\PrefabLoader.cpp" />
     <ClCompile Include="Source\Scene\SceneSystem.cpp" />
     <ClCompile Include="Source\ECS\ECSSystem.cpp" />
@@ -43,6 +46,7 @@
     <ClCompile Include="Source\API\ECSProcess\MeshRendererAPI.cpp" />
     <ClCompile Include="Source\API\Generated\ECSProcessAPI.generated.cpp" />
     <ClCompile Include="Source\Asset\Material.cpp" />
+    <ClCompile Include="Source\Asset\MaterialSerialization.cpp" />
     <ClCompile Include="Source\Asset\MaterialShader.cpp" />
     <ClCompile Include="Source\Asset\MaterialShaderLoader.cpp" />
     <ClCompile Include="Source\Asset\MaterialShaderParser.cpp" />
@@ -65,8 +69,11 @@
     <ClCompile Include="Source\Graphics\DXMaterialShaderCompiler.cpp" />
     <ClCompile Include="Source\Graphics\GraphicsSystem.cpp" />
     <ClCompile Include="Source\Graphics\MeshRenderer.cpp" />
+    <ClCompile Include="Source\Graphics\Camera.cpp" />
     <ClCompile Include="Source\Time\TimeSystem.cpp" />
     <ClCompile Include="Source\API\TimeAPI.cpp" />
+    <ClCompile Include="Source\API\SceneAPI.cpp" />
+    <ClCompile Include="Source\Input\InputSystem.cpp" />
     <ClCompile Include="Source\Log\LogStorage.cpp" />
     <ClCompile Include="Source\Log\Logger.cpp" />
     <ClCompile Include="Source\Log\LogProcess.cpp" />
@@ -81,13 +88,15 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Include\API\ECSProcess\CameraAPI.h" />
     <ClInclude Include="Include\Engine.h" />
     <ClInclude Include="Include\API\EngineAPI.h" />
     <ClInclude Include="Include\API\EntityAPI.h" />
     <ClInclude Include="Include\ECS\ComponentRegistry.h" />
     <ClInclude Include="Include\Serialize\SerializeFields.h" />
     <ClInclude Include="Include\Serialize\SerializedEntity.h" />
-    <ClInclude Include="Include\Serialize\EntityYamlWriter.h" />
+    <ClInclude Include="Include\Serialize\Serializer.h" />
+    <ClInclude Include="Include\Serialize\YamlFile.h" />
     <ClInclude Include="Include\Serialize\EntityYamlReader.h" />
     <ClInclude Include="Include\Scene\SceneSystem.h" />
     <ClInclude Include="Include\ECS\Component.h" />
@@ -132,10 +141,14 @@
     <ClInclude Include="Include\Graphics\DXMaterialShaderCompiler.h" />
     <ClInclude Include="Include\Graphics\GraphicsSystem.h" />
     <ClInclude Include="Include\Graphics\MeshRenderer.h" />
+    <ClInclude Include="Include\Graphics\Camera.h" />
     <ClInclude Include="Include\Graphics\GPUResourceStorage.h" />
     <ClInclude Include="Include\Time\TimeData.h" />
     <ClInclude Include="Include\Time\TimeSystem.h" />
     <ClInclude Include="Include\API\TimeAPI.h" />
+    <ClInclude Include="Include\API\SceneAPI.h" />
+    <ClInclude Include="Include\API\InputAPI.h" />
+    <ClInclude Include="Include\Input\InputSystem.h" />
     <ClInclude Include="Include\Log\LogData.h" />
     <ClInclude Include="Include\Log\LogStorage.h" />
     <ClInclude Include="Include\Log\Logger.h" />
@@ -341,8 +354,7 @@
       <AssimpRuntimeDir>$(OutDir)</AssimpRuntimeDir>
       <AssimpRuntimeDir Condition="'$(Configuration)'=='Test'">$(HestiaTestBinDir)</AssimpRuntimeDir>
     </PropertyGroup>
-    <Copy SourceFiles="$(ProjectDir)..\ThirdParty\Library\Assimp\assimp-vc145-mt.dll;$(ProjectDir)..\ThirdParty\Library\Assimp\Assimp-LICENSE.txt"
-          DestinationFolder="$(AssimpRuntimeDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(ProjectDir)..\ThirdParty\Library\Assimp\assimp-vc145-mt.dll;$(ProjectDir)..\ThirdParty\Library\Assimp\Assimp-LICENSE.txt" DestinationFolder="$(AssimpRuntimeDir)" SkipUnchangedFiles="true" />
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

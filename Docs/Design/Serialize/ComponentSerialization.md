@@ -66,11 +66,13 @@ World上の `TransformHierarchy` は実行中のEntityをHandleで結び付け�
 
 引数1つの呼び出しで使う照会はEngineが接続し、GameRuntimeの破棄前に切断する。GameRuntime未接続時はScript参照を空としてスナップショットを作る。Scene保存は、Scriptの追加・削除を反映した後の状態を使う。 [Script参照の取得](../GameRuntime/Script.md#scene保存用の逆引き) ・ [Scene保存の手順](SceneSerialization.md#worldからの保存)
 
-PrefabのWriterは取得済みのルート、Prefab名、出力先を受け取り、書き出し結果を `bool` で返す。ルートから `m_children` の順に深さ優先でたどり、`id: 1` から採番する。子の `parent` には直近の親のIDを出力する。子がいなければルート1件を出力する。
+Prefabの `AssetSystem::Save` は取得済みのルート、Prefab名、任意の保存先を受け取る。Editorなどが元のPrefabへ上書きする場合は、保存先を指定する。保存先を省略した新規保存では共通の規則で `Assets/` 直下に自動命名し、ファイル名として使える場合はPrefab名を使う。Scene上のインスタンスと元Prefabの関係を持つ `PrefabInstance` は後続作業とする。 [YAML Asset の保存](../AssetSystem.md#yaml-asset-の保存)
+
+Prefab用Serializerはルートから `m_children` の順に深さ優先でたどり、`id: 1` から採番する。子の `parent` には直近の親のIDを出力する。子がいなければルート1件を出力する。この階層変換はScene用Serializerとも共有する。
 
 Componentはスナップショットの配列順に、フィールドはRegistryの宣言順に出力する。保存対象がないComponentは `{}`、空の配列値は `[]` とする。
 
-RegistryにないComponentやフィールドはログに出し、ファイルを開く前に失敗として返す。YAMLファイルはUTF-8で書き出し、開けない場合や書き込みが失敗した場合はPathをログに出して `false` を返す。
+RegistryにないComponentやフィールドはログに出し、ツリーの生成に失敗したことを返す。完成したツリーは共通の `YamlWriter` へ渡す。
 
 ## PrefabのYAML
 

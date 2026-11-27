@@ -17,6 +17,9 @@
     <Filter Include="_Include\Time">
       <UniqueIdentifier>{4844d9e7-f340-4bfc-b483-629e01eabdb6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="_Include\Input">
+      <UniqueIdentifier>{b7df9632-74bd-4e7c-b1f0-54b7b46baa05}</UniqueIdentifier>
+    </Filter>
     <Filter Include="_Include\Graphics">
       <UniqueIdentifier>{9d932c7d-b547-4f94-bd3c-74958c0e9867}</UniqueIdentifier>
     </Filter>
@@ -47,6 +50,9 @@
     </Filter>
     <Filter Include="_Source\Time">
       <UniqueIdentifier>{6d3c2107-ca89-46cb-be45-d0d363db06d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_Source\Input">
+      <UniqueIdentifier>{2cae2440-e2d8-4fc1-a7c5-7bc0f0b9ff3e}</UniqueIdentifier>
     </Filter>
     <Filter Include="_Source\Graphics">
       <UniqueIdentifier>{fe012d92-e77d-4e08-a76b-29a92e6ea7b2}</UniqueIdentifier>
@@ -89,10 +95,19 @@
     <ClCompile Include="Source\API\TimeAPI.cpp">
       <Filter>_Source\API</Filter>
     </ClCompile>
+    <ClCompile Include="Source\API\SceneAPI.cpp">
+      <Filter>_Source\API</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Input\InputSystem.cpp">
+      <Filter>_Source\Input</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Time\TimeSystem.cpp">
       <Filter>_Source\Time</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\Material.cpp">
+      <Filter>_Source\Asset</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Asset\MaterialSerialization.cpp">
       <Filter>_Source\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Source\Asset\MaterialShader.cpp">
@@ -155,6 +170,9 @@
     <ClCompile Include="Source\Graphics\MeshRenderer.cpp">
       <Filter>_Source\Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Graphics\Camera.cpp">
+      <Filter>_Source\Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine.cpp">
       <Filter>_Source\Core</Filter>
     </ClCompile>
@@ -182,7 +200,10 @@
     <ClCompile Include="Source\ECS\ECSWorld.cpp">
       <Filter>_Source\ECS</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Serialize\EntityYamlWriter.cpp">
+    <ClCompile Include="Source\Serialize\EntitySerializer.cpp">
+      <Filter>_Source\Serialize</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Serialize\YamlFile.cpp">
       <Filter>_Source\Serialize</Filter>
     </ClCompile>
     <ClCompile Include="Source\Serialize\PrefabLoader.cpp">
@@ -220,7 +241,10 @@
     <ClInclude Include="Include\Serialize\SerializedEntity.h">
       <Filter>_Include\Serialize</Filter>
     </ClInclude>
-    <ClInclude Include="Include\Serialize\EntityYamlWriter.h">
+    <ClInclude Include="Include\Serialize\Serializer.h">
+      <Filter>_Include\Serialize</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Serialize\YamlFile.h">
       <Filter>_Include\Serialize</Filter>
     </ClInclude>
     <ClInclude Include="Include\Serialize\EntityYamlReader.h">
@@ -279,6 +303,15 @@
     </ClInclude>
     <ClInclude Include="Include\API\TimeAPI.h">
       <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\SceneAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\InputAPI.h">
+      <Filter>_Include\API</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\Input\InputSystem.h">
+      <Filter>_Include\Input</Filter>
     </ClInclude>
     <ClInclude Include="Include\Asset\AssetHandle.h">
       <Filter>_Include\Asset</Filter>
@@ -349,6 +382,9 @@
     <ClInclude Include="Include\Graphics\MeshRenderer.h">
       <Filter>_Include\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="Include\Graphics\Camera.h">
+      <Filter>_Include\Graphics</Filter>
+    </ClInclude>
     <ClInclude Include="Include\Graphics\DX12Object.h">
       <Filter>_Include\Graphics</Filter>
     </ClInclude>
@@ -360,6 +396,9 @@
     </ClInclude>
     <ClInclude Include="Include\pch.h">
       <Filter>Bootstrap</Filter>
+    </ClInclude>
+    <ClInclude Include="Include\API\ECSProcess\CameraAPI.h">
+      <Filter>_Include\API</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

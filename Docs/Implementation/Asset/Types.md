@@ -5,9 +5,9 @@
 | 型 | データ・役割 | 定義 |
 | --- | --- | --- |
 | `AssetHandle<T>` | 型、index、generationによる非所有識別子。IsValidは無効indexとの比較で、Storage内の実在確認ではない | [AssetHandle.h](../../../Engine/Include/Asset/AssetHandle.h) |
-| `AssetGuid` / `AssetRef` | ファイルの永続GUIDと、GUID・ファイル内IDを組み合わせたAsset参照 | [AssetHandle.h](../../../Engine/Include/Asset/AssetHandle.h) |
-| `AssetType` | DBの自動登録ではTexture／MaterialShader／Model／Prefabを拡張子から選ぶ | [AssetType.h](../../../Engine/Include/Asset/AssetType.h) |
-| `Prefab` | Handle、名前、子を値として持つルートの `SerializedEntity` | 同上 |
+| `AssetGuid` / `AssetRef` | ファイルまたは組み込みMeshの永続GUIDと、GUID・localIdを組み合わせたAsset参照 | [AssetIdentity.h](../../../Common/Include/AssetIdentity.h) ・ [AssetHandle.h](../../../Engine/Include/Asset/AssetHandle.h) |
+| `AssetType` | 元ファイルの拡張子から Texture・MaterialShader・Material・Model・Prefab・Scene・Script を選ぶ | [AssetIdentity.h](../../../Common/Include/AssetIdentity.h) ・ [AssetMetadata.cpp](../../../Common/Source/AssetMetadata.cpp) |
+| `Prefab` | Handle、名前、子を値として持つルートの `SerializedEntity` | [AssetType.h](../../../Engine/Include/Asset/AssetType.h) |
 | `PositionVertex` | float3の位置 | 同上 |
 | `NormalTangentVertex` | float3法線とfloat4接線 | 同上 |
 | `PrimaryTexCoordVertex` | float2の第一UV | 同上 |
@@ -18,13 +18,15 @@
 | `TextureFormat` | RGBA8Unorm / RGBA8Srgb | 同上 |
 | `TextureDesc` | width、height、mipLevels、format。既定寸法0のため既定値は無効 | 同上 |
 | `Texture` | HandleとTextureDesc。画素とDX12 Resourceは保持しない | 同上 |
-| `AssetInfo` | GUID・種別・相対パスと、モデル内のSubAsset ID割り当て | [AssetDB.h](../../../Engine/Include/Asset/AssetDB.h) |
-| `AssetDB` | 元ファイルと `.meta` を走査し、GUIDと正規化した相対パスの索引を作る | 同上 |
+| `AssetInfo` | GUID・種別・相対パスと、モデル内のSubAsset ID割り当て | [AssetMetadata.h](../../../Common/Include/AssetMetadata.h) |
+| `AssetDB` | 共通メタデータ処理で得た GUID と相対パスの索引を持ち、新規保存した Asset を登録する | [AssetDB.h](../../../Engine/Include/Asset/AssetDB.h) |
 | `AssetStorage<T>` | `AssetRef` と名前の索引を持ち、CPU実体を所有する。GetでIndexとGenerationを照合 | [AssetStorage.h](../../../Engine/Include/Asset/AssetStorage.h) |
 | `AssetStorage<T>::Slot` | `unique_ptr`、Generation、保存用の `AssetRef` を保持する内部要素 | 同上 |
 | `AssetLoader<Prefab>` | モデルからPrefab・個別Mesh・Materialを生成する。 `.prefab` の場合はYAMLからPrefabを構築する | [MeshLoader.cpp](../../../Engine/Source/Asset/MeshLoader.cpp) ・ [PrefabLoader.cpp](../../../Engine/Source/Serialize/PrefabLoader.cpp) |
 | `AssetLoader<Texture>` | Graphicsを借用し、WICデコード・変換・CPU登録・GPU転送を担当 | [AssetLoader.cpp](../../../Engine/Source/Asset/AssetLoader.cpp) |
 | `AssetLoader<MaterialShader>` | .matshを読み込み、Parser・Compilerを経てTextureを解決し登録 | [MaterialShaderLoader.cpp](../../../Engine/Source/Asset/MaterialShaderLoader.cpp) |
+| `AssetLoader<Material>` | .material の Shader 参照と Property 値を復元し、単独 Material として登録する | [MaterialSerialization.cpp](../../../Engine/Source/Asset/MaterialSerialization.cpp) |
+| `Serializer<T>` / `YamlWriter` | 型別の変換で所有付き YAML ツリーを作り、共通処理でファイルを反映する | [Serializer.h](../../../Engine/Include/Serialize/Serializer.h) ・ [YamlFile.h](../../../Engine/Include/Serialize/YamlFile.h) |
 | `MaterialShader` / `Material` | Shaderが共通のProperty定義とPassを持ち、Materialが型付きの値を持つ | [MaterialShaderの実装仕様](../Graphics/MaterialShader.md) |
 | `AssetSystem` | DB、Loader、Storageを所有する統括。static入口を現在instanceへ接続する | [AssetSystem.h](../../../Engine/Include/Asset/AssetSystem.h) |
 | `AssetAPI` | AssetSystem の操作を Asset 型ごとの関数ポインタとして公開する DLL API。未接続時のポインタは `nullptr` | [AssetAPI.h](../../../Engine/Include/API/AssetAPI.h) |

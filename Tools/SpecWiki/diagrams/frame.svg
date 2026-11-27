@@ -1,6 +1,6 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 575" role="img" aria-labelledby="frame-title frame-desc">
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 758" role="img" aria-labelledby="frame-title frame-desc">
 <title id="frame-title">固定更新と通常フレームの呼出順</title>
-<desc id="frame-desc">メッセージ処理後に経過時間を蓄積し、固定刻み以上の間はTime、ECS、GameRuntimeの固定更新を繰り返す。通常更新はECSとGameRuntimeを交互に呼び、描画後はGameRuntime、ECSの順でEndFrameを実行する。</desc>
+<desc id="frame-desc">メッセージ処理後に経過時間を蓄積し、固定刻み以上の間はTime、ECS、GameRuntimeの固定更新を繰り返す。通常更新はECSとGameRuntimeを交互に呼ぶ。描画後にGameRuntimeとECSのEndFrameを実行し、Sceneの保存と切り替えを処理した後、入力の遷移と差分をクリアする。</desc>
 <defs><marker id="frame-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#52675d"/></marker></defs>
 <style>text{font-family:'Yu Gothic UI',Meiryo,sans-serif;font-size:15px;fill:#24362d}.box{fill:#fff;stroke:#a8bbb0;stroke-width:1.4}.line{fill:none;stroke:#52675d;stroke-width:1.5;marker-end:url(#frame-arrow)}.small{font-size:13px;fill:#586b60}.label{font-size:17px;font-weight:600}</style>
 <text x="29" y="34" class="label">Application：固定更新を0回以上</text><text x="508" y="34" class="label">Engine：通常フレームを1回</text>
@@ -20,5 +20,9 @@
 <rect class="box" x="508" y="381" width="420" height="64" rx="5"/><text x="528" y="420">Graphics.Render</text>
 <path class="line" d="M718 445V476"/>
 <rect class="box" x="508" y="476" width="420" height="74" rx="5"/><text x="528" y="507">GameRuntime.EndFrame → ECS.EndFrame</text><text x="528" y="531" class="small">Script の除去・反映後に破棄予約済み Entity の実体を解放</text>
+<path class="line" d="M718 550V581"/>
+<rect class="box" x="508" y="581" width="420" height="62" rx="5"/><text x="528" y="607">Scene の保存 → Scene の切り替え</text><text x="528" y="629" class="small">要求がある処理を実行</text>
+<path class="line" d="M718 643V674"/>
+<rect class="box" x="508" y="674" width="420" height="62" rx="5"/><text x="528" y="700">InputSystem.EndFrame</text><text x="528" y="722" class="small">押下開始・解放、マウスの移動・スクロール量をクリア</text>
 <text x="29" y="470" class="small">Process中の構造変更は、</text><text x="29" y="493" class="small">そのProcessの全Chunk実行後に反映。</text><text x="29" y="521" class="small">Entityの実体破棄はEndFrameまで待つ。</text>
 </svg>

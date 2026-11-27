@@ -29,7 +29,8 @@ namespace Hestia
         Model,
         Prefab,
         Scene,
-        Script
+        Script,
+        Material
     };
 
     /// @brief 元Assetファイルの永続ID

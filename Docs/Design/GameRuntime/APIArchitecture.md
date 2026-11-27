@@ -25,7 +25,8 @@ Engine と各 System が API を所有する。GameRuntime は Script の初期�
 | `m_entity` | `HestiaGame::World` | Entity の生成・破棄、Active、名前・タグ、検索、Process の追加・検索を `EntityAPI` の関数ポインタで呼ぶ |
 | `m_ecsProcess` | `World` と `Transform`／`MeshRenderer` | `World` が Facade 型に対応する登録を取得し、Facade は個別操作の関数ポインタを呼ぶ |
 | `m_log` | `HestiaGame::Logger` | `LogAPI` の `Log`／`Warning`／`Error`／`Fatal` を直接呼ぶ。Game 側の Facade が呼び出し位置を補う |
-| `m_asset` | `HestiaGame::Assets` | `AssetAPI::GetOperations<T>()` で Mesh または Texture のテーブルを選び、`Load`／`Get`／`Register` を呼ぶ。未接続時の戻り値と `Register` が受け取る所有権は Facade が扱う |
+| `m_asset` | `HestiaGame::Assets` | `AssetAPI::GetOperations<T>()` で Mesh・Texture・Prefab のテーブルを選ぶ。Material の取得は `LoadMaterial(path)` を使う。未接続時の戻り値と `Register` が受け取る所有権は Facade が扱う |
+| `m_scene` | `HestiaGame::Scene` | `SceneAPI` 経由で確定済みの名前・パスを取得し、切り替えを予約する。 [Game への公開](../SceneSystem.md#game-への公開) |
 
 `World` の Script 操作は GameRuntime 内で処理する。複数 Entity の検索結果は Engine の作業配列から借用し、`World` が Handle を Game 側の配列へコピーしてから借用を終了する。 [World](./World.md) ・ [GameRuntime の型と API](../../Implementation/GameRuntime/Types.md)
 
@@ -50,6 +51,6 @@ Component と Process の実装、公開 API と Facade の接続、ビルド時
 ## 初期の描画経路
 ---
 
-初期段階では Game 向け `GraphicsAPI` の追加を保留する。Game は `Transform` と `MeshRenderer` を使って Entity の位置・姿勢と Mesh・Material・インスタンス色を設定する。`GetMaterial(index)` と `SetMaterial(index, material)` の `index` は MaterialSlot の添字で、Material は取得済みの `AssetHandle<Material>` を渡す。`SetMaterial` で配列を広げたときは、間のスロットを空にする。現行の `Assets` が公開する型は Mesh と Texture。 [MeshRenderer の実装仕様](../../Implementation/ECSProcess/MeshRenderer.md)
+初期段階では Game 向け `GraphicsAPI` の追加を保留する。Game は `Transform` と `MeshRenderer` を使って Entity の位置・姿勢と Mesh・Material・インスタンス色を設定する。`GetMaterial(index)` と `SetMaterial(index, material)` の `index` は MaterialSlot の添字で、`Assets::LoadMaterial(path)` などで取得した `AssetHandle<Material>` を渡す。`SetMaterial` で配列を広げたときは、間のスロットを空にする。 [MeshRenderer の実装仕様](../../Implementation/ECSProcess/MeshRenderer.md)
 
 ビューと射影は Engine のデバッグシーンが設定し、`MeshRendererProcess` が描画データを `GraphicsSystem` に提出する。追従カメラや視点切り替えを扱う段階では、カメラの Transform や画角を `Camera` の Process／API／Facade から操作する案を検討する。画面全体の設定を Game が変更する要件が出た場合に、その操作を `GraphicsAPI` の候補とする。 [描画の設計](../RenderPass.md)

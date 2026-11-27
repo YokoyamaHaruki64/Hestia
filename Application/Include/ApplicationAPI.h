@@ -13,6 +13,8 @@
 #ifndef _APPLICATION_API_H_
 #define _APPLICATION_API_H_
 
+#include <string_view>
+
 #include "Common/Include/WindowsHeaders.h"
 
 class Application;
@@ -25,6 +27,15 @@ namespace Hestia
     /// Context は非所有参照のため、呼び出し先の Application は Engine の破棄まで有効であること。
     struct ApplicationAPI
     {
+        /// @brief Editor ウィンドウに UTF-8 のスラッシュ区切りパスでメニュー項目を登録する。
+        /// @param execute App のスレッドで呼ぶ関数。
+        /// @param context コールバックの借用先。Engine のアンロード前に登録を解除する。
+        /// @return 登録に成功した場合は true。
+        bool RegisterMenuItem(std::string_view path, void (*execute)(void*), void* context) const
+        {
+            return m_registerMenuItem && m_registerMenuItem(m_context, path, execute, context);
+        }
+
         /// @brief 目標フレームレートを設定する。
         /// @param fps 目標フレームレート（frames per second）。
         void SetTargetFPS(double fps) const
@@ -121,6 +132,7 @@ namespace Hestia
         void (*m_requestQuit)(void* context) = nullptr;
 
         HWND(*m_getWindowHandle)(void* context) = nullptr;
+        bool (*m_registerMenuItem)(void* application, std::string_view path, void (*execute)(void*), void* context) = nullptr;
 
         void* m_context = nullptr;
 

@@ -24,6 +24,8 @@
 namespace Hestia
 {
     class MaterialShader;
+    template<class T> class AssetLoader;
+    template<class T> struct Serializer;
     template<class T> class AssetStorage;
 
     /// @brief Shader の参照と、型付き Property 値および転送用キャッシュを保持する。
@@ -375,6 +377,8 @@ namespace Hestia
     private:
         friend class MaterialShader;
         friend class AssetStorage<Material>;
+        friend class AssetLoader<Material>;
+        friend struct Serializer<Material>;
 
         bool SetProperty(MaterialPropertyID id, const MaterialPropertyValue& value);
         const MaterialPropertyValue* FindPropertyValue(MaterialPropertyID id) const;

@@ -15,8 +15,94 @@
 
 #include <filesystem>
 
+#include "API/SceneAPI.h"
+#include "Graphics/Camera.h"
+#include "Input/InputSystem.h"
+#include "Scene/SceneSystem.h"
+
+#if HESTIA_EDITOR
+#include <shobjidl.h>
+#include <wrl/client.h>
+
+#include <memory>
+#include <span>
+
+#include "Common/Include/StringUtils.h"
+#endif
+
 namespace Hestia
 {
+#if HESTIA_EDITOR
+    namespace
+    {
+        constexpr const wchar_t* SCENE_EXTENSIONS[] = { L"scene" };
+
+        std::string ShowFileDialog(HWND owner, REFCLSID dialogClass, const std::filesystem::path& root,
+            std::span<const wchar_t* const> extensions)
+        {
+            // フィルターと初期フォルダを用意し、選択結果はこのルートに対する相対パスで返す
+            std::error_code error;
+            const auto directory = std::filesystem::weakly_canonical(root, error);
+            if (error || !directory.is_absolute() || extensions.empty())
+            {
+                Logger::Warning("Could not resolve the file dialog root or extensions");
+                return {};
+            }
+            std::wstring pattern;
+            for (const auto* extension : extensions)
+            {
+                if (!pattern.empty())
+                    pattern += L';';
+                pattern += L"*.";
+                pattern += extension;
+            }
+
+            // 開く・保存それぞれの既定オプションを保ち、保存では拡張子をフィルターに限定する
+            Microsoft::WRL::ComPtr<IFileDialog> dialog;
+            Microsoft::WRL::ComPtr<IShellItem> folder;
+            FILEOPENDIALOGOPTIONS options{};
+            const auto saveOptions = IsEqualCLSID(dialogClass, CLSID_FileSaveDialog) ? FOS_STRICTFILETYPES : 0;
+            const COMDLG_FILTERSPEC filter{ pattern.c_str(), pattern.c_str() };
+            if (FAILED(CoCreateInstance(dialogClass, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog))) ||
+                FAILED(dialog->GetOptions(&options)) ||
+                FAILED(dialog->SetOptions(options | FOS_FORCEFILESYSTEM | saveOptions)) ||
+                FAILED(dialog->SetFileTypes(1, &filter)) ||
+                FAILED(dialog->SetDefaultExtension(extensions.front())) ||
+                FAILED(SHCreateItemFromParsingName(directory.c_str(), nullptr, IID_PPV_ARGS(&folder))) ||
+                FAILED(dialog->SetFolder(folder.Get())))
+            {
+                Logger::Warning("Could not prepare the file dialog");
+                return {};
+            }
+            const auto result = dialog->Show(owner);
+            if (result == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+                return {};
+            if (FAILED(result))
+            {
+                Logger::Warning("Could not open the file dialog");
+                return {};
+            }
+
+            // ダイアログでルート外へ移動しても、選択結果は既存の相対パス契約に収める
+            Microsoft::WRL::ComPtr<IShellItem> selected;
+            PWSTR path = nullptr;
+            if (FAILED(dialog->GetResult(&selected)) || FAILED(selected->GetDisplayName(SIGDN_FILESYSPATH, &path)))
+            {
+                Logger::Warning("Could not retrieve the file dialog path");
+                return {};
+            }
+            const std::unique_ptr<wchar_t, decltype(&CoTaskMemFree)> ownedPath(path, CoTaskMemFree);
+            const auto relative = std::filesystem::relative(std::filesystem::path(ownedPath.get()), directory, error);
+            if (error || relative.empty() || relative.has_root_path() || *relative.begin() == L"..")
+            {
+                Logger::Warning("Choose a file inside the file dialog root");
+                return {};
+            }
+            return PathToUtf8(relative);
+        }
+    }
+#endif
+
     Engine::~Engine()
     {
         Finalize();
@@ -30,10 +116,19 @@ namespace Hestia
         m_logInitialized = true;
         m_applicationAPI = applicationAPI;
 
+        // GameRuntime が入力 API を使う前に、App の Window へマウス入力を登録する
+        const HWND window = m_applicationAPI.GetWindowHandle();
+        if (!InputSystem::Initialize(window))
+        {
+            Logger::Error("Could not register mouse Raw Input");
+            Finalize();
+            return false;
+        }
+
         m_time.Initialize();
         m_timeInitialized = true;
 
-        if (!m_graphics.Initialize(m_applicationAPI.GetWindowHandle(), 1600, 900))
+        if (!m_graphics.Initialize(window, 1600, 900))
         {
             Finalize();
             return false;
@@ -67,35 +162,56 @@ namespace Hestia
             return false;
         }
 
-        // 起動SceneのCubeが同じ描画バッチに入るよう、復元前にMaterialを一つだけ登録する
-        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Shaders/MatShaders/Unlit_Inst.matsh"));
-        if (shader == nullptr || !shader->IsInstancing())
-        {
-            Logger::Error("DebugCubeMaterial requires the Unlit_Inst MaterialShader");
-            Finalize();
-            return false;
-        }
-        auto material = std::make_unique<Material>();
-        material->SetShader(shader);
-        if (!AssetSystem::Register<Material>("DebugCubeMaterial", material.release()).IsValid())
+        // Camera を含まない Scene でも描画できるよう初回の行列を用意する
+        GraphicsSystem::SetView(Matrix4x4_SIMD::LookAtLH(
+            { 440.0f, 275.0f, -820.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }));
+        GraphicsSystem::SetProj(CameraComponent{}.m_proj);
+
+        // 起動 Scene の Entity と Script を最初の更新までに復元する
+        if (!SceneSystem::LoadScene("Scenes/Startup.scene") ||
+            !SceneSystem::CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
         {
             Finalize();
             return false;
         }
 
-        // 起動Sceneの表示と復元を、最初の更新より前に確定する
-        GraphicsSystem::SetView(Matrix4x4_SIMD::LookAtLH(
-            { 440.0f, 275.0f, -820.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }));
-        GraphicsSystem::SetProj(Matrix4x4_SIMD::PerspectiveFovLH(
-            0.8f, 1600.0f / 900.0f, 10.0f, 1600.0f));
-        if (!m_scenes.LoadScene("Scenes/Startup.scene") ||
-            !m_scenes.CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
+#if HESTIA_EDITOR
+        // Scene の読み込みと保存は、メニューからフレーム末尾の処理を予約する
+        const bool openRegistered = m_applicationAPI.RegisterMenuItem("File/OpenScene...", [](void* context)
         {
-            Finalize();
-            return false;
-        }
+            const auto engine = static_cast<Engine*>(context);
+            const auto path = ShowFileDialog(engine->m_applicationAPI.GetWindowHandle(), CLSID_FileOpenDialog,
+                engine->m_assets.GetDatabase().SourcePath("."), SCENE_EXTENSIONS);
+            if (!path.empty())
+                SceneSystem::LoadScene(path);
+        }, this);
+        const bool saveRegistered = m_applicationAPI.RegisterMenuItem("File/SaveScene", [](void* context)
+        {
+            const auto path = SceneSystem::GetCurrentScenePath();
+            if (path.empty())
+                static_cast<Engine*>(context)->SaveSceneAs();
+            else
+                SceneSystem::SaveScene(path);
+        }, this);
+        const bool saveAsRegistered = m_applicationAPI.RegisterMenuItem("File/SaveSceneAs...", [](void* context)
+        {
+            static_cast<Engine*>(context)->SaveSceneAs();
+        }, this);
+        if (!openRegistered || !saveRegistered || !saveAsRegistered)
+            Logger::Warning("Could not register Scene menu items");
+#endif
         return true;
     }
+
+#if HESTIA_EDITOR
+    void Engine::SaveSceneAs()
+    {
+        const auto path = ShowFileDialog(m_applicationAPI.GetWindowHandle(), CLSID_FileSaveDialog,
+            m_assets.GetDatabase().SourcePath("."), SCENE_EXTENSIONS);
+        if (!path.empty())
+            SceneSystem::SaveScene(path);
+    }
+#endif
 
     bool Engine::LoadGame()
     {
@@ -152,8 +268,10 @@ namespace Hestia
             return false;
         }
 
+        // GameRuntime の生成中から使えるように Engine 所有の API を接続する
         m_entityAPI = ECSSystem::CreateEntityAPI();
-        m_gameEngineAPI = { &m_timeAPI, &m_entityAPI, &m_ecs.GetProcessAPI(), &m_logAPI, &m_assetAPI };
+        m_gameEngineAPI = { &m_timeAPI, &m_entityAPI, &m_ecs.GetProcessAPI(), &m_logAPI, &m_assetAPI,
+            &SceneAPI::Get(), &InputSystem::GetAPI() };
         m_gameRuntime = runtimeAPI->Create(&m_gameEngineAPI);
         if (m_gameRuntime == nullptr)
         {
@@ -194,6 +312,8 @@ namespace Hestia
     {
         // Facade の参照先を解放する前に Game を終了する
         UnloadGame();
+        SceneSystem::Finalize();
+        InputSystem::Finalize();
 
         if (m_ecsInitialized)
         {
@@ -232,7 +352,6 @@ namespace Hestia
             m_timeInitialized = false;
         }
 
-        m_scenes = {};
         m_applicationAPI = ApplicationAPI{};
 
         if (m_logInitialized)
@@ -244,8 +363,12 @@ namespace Hestia
         }
     }
 
-    void Engine::ProcessMessage(HWND, UINT, WPARAM, LPARAM)
+    WindowMessageResult Engine::ProcessMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
+        InputSystem::KeyboardHook(message, wParam, lParam);
+        WindowMessageResult result;
+        result.m_handled = InputSystem::MouseHook(hwnd, message, wParam, lParam, result.m_value);
+        return result;
     }
 
     void Engine::FixedUpdate(float deltaTime)
@@ -300,9 +423,12 @@ namespace Hestia
             ECSSystem::EndFrame();
 
             // 反映済みWorldを保存してから、保留されたSceneを切り替える
-            m_scenes.SerializeScene(m_assets.GetDatabase());
-            if (m_gameRuntime && !m_scenes.CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
+            SceneSystem::SerializeScene();
+            if (m_gameRuntime && !SceneSystem::CheckScene(m_assets.GetDatabase(), *m_gameRuntimeAPI, m_gameRuntime))
                 m_applicationAPI.RequestQuit();
         }
+
+        // Scene 復元時の OnStart まで現フレームの遷移を参照できるようにする
+        InputSystem::EndFrame();
     }
 }

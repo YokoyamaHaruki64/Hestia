@@ -23,7 +23,6 @@
 #include "Asset/AssetSystem.h"
 #include "API/AssetAPI.h"
 #include "ECS/ECSSystem.h"
-#include "Scene/SceneSystem.h"
 
 namespace Hestia
 {
@@ -50,7 +49,7 @@ namespace Hestia
         /// @param message Window Message 識別子。
         /// @param wParam メッセージの追加情報。
         /// @param lParam メッセージの追加情報。
-        void ProcessMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+        WindowMessageResult ProcessMessage(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
         /// @brief 固定刻みの更新を有効な System へ配送する。
         /// @param deltaTime 固定更新の経過時間（秒）。
@@ -63,6 +62,9 @@ namespace Hestia
     private:
         bool LoadGame();
         void UnloadGame();
+#if HESTIA_EDITOR
+        void SaveSceneAs();
+#endif
 
         ApplicationAPI m_applicationAPI;
 
@@ -75,7 +77,6 @@ namespace Hestia
         AssetSystem m_assets;
         AssetAPI m_assetAPI;
         ECSSystem m_ecs;
-        SceneSystem m_scenes;
         EntityAPI m_entityAPI;
         GameEngineAPI m_gameEngineAPI;
         HMODULE m_gameModule = nullptr;

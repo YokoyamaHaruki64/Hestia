@@ -4,9 +4,11 @@
 
 | 型・入口 | 所有と操作 | 定義 |
 | --- | --- | --- |
-| `GameRuntimeAPI` | Game 側が持つ関数テーブル。`Create`、`Destroy`、`FixedUpdate`、`Update`、`LateUpdate`、`EndFrame` を Engine が呼ぶ | [GameRuntimeAPI.h](../../../Common/Include/GameRuntimeAPI.h) |
-| `HestiaGame::Setup` | Game が実装する初期化の入口。GameCore が型登録の `RegisterScripts` と初期配置の `SetupScene` を順に呼ぶ | [GameSetup.h](../../../Game/Include/GameSetup.h) |
-| `GameEngineAPI` | Engine が所有する `TimeAPI`、`EntityAPI`、`ECSProcessAPI`、`LogAPI`、`AssetAPI` への非所有ポインタをまとめる | [GameEngineAPI.h](../../../Engine/Include/API/GameEngineAPI.h) |
+| `GameRuntimeAPI` | Game 側が持つ関数テーブル。生成・破棄、各更新、フレーム末尾の処理、Scene 用の照会・追加・反映・全解除を公開する | [GameRuntimeAPI.h](../../../Common/Include/GameRuntimeAPI.h) |
+| `ScriptAttachmentQuery` / `ScriptAttachmentVisitor` | Engine が Handle 列とコールバックを渡し、GameRuntime が反映済みの Entity Handle と型 GUID を返す | 同上 |
+| `SceneScriptResult` | GUID による Script 追加の結果。`Attached` は追加予約済み、`UnknownType` は型が未登録、`Failed` は Entity や生成処理の失敗 | 同上 |
+| `HestiaGame::Setup` | GameCore が Runtime 初期化中に呼ぶ `RegisterScripts` の宣言。関数の本体は GameCodeGenerator が生成する | [GameSetup.h](../../../Game/Include/GameSetup.h) |
+| `GameEngineAPI` | Engine が提供する `TimeAPI`、`EntityAPI`、`ECSProcessAPI`、`LogAPI`、`AssetAPI`、`SceneAPI`、`InputAPI` への非所有ポインタをまとめる | [GameEngineAPI.h](../../../Engine/Include/API/GameEngineAPI.h) |
 | `EntityHandle` | Entity の Index と Generation を値で渡す。操作ごとに Engine 内で解決する | [EntityHandle.h](../../../Common/Include/EntityHandle.h) |
 | `EntityAPI` | Entity の生成・破棄、Active、名前、タグ、検索、Process の追加・検索、破棄予約の読み取り、Active 通知の登録を公開する | [EntityAPI.h](../../../Engine/Include/API/EntityAPI.h) |
 | `World` | Entity と Process の操作を Engine に、Script の操作を GameRuntime に委譲する | [World.h](../../../Game/Include/World.h) |
@@ -26,6 +28,8 @@
 | --- | --- |
 | `HestiaGame::Time` | `TimeAPI` を借用する。Getter は Engine の `TimeData` を読み、倍率設定は Engine の関数ポインタを呼ぶ |
 | `HestiaGame::Logger` | `LogAPI` の4本の関数ポインタを呼ぶ。既定引数により Game の呼び出し位置を記録し、未接続では記録しない |
-| `HestiaGame::Assets` | `AssetAPI` から Mesh／Texture のテーブルを選ぶ。未接続なら `Load`／`Register` は無効 Handle、`Get` は `nullptr` を返す。`Register` が受け取った Asset は未接続でも破棄する |
+| `HestiaGame::Assets` | `AssetAPI` から Mesh・Texture・Prefab のテーブルを選び、Material は `LoadMaterial` で取得する。未接続なら `Load`／`Register` は無効 Handle、`Get` は `nullptr` を返す。`Register` が受け取った Asset は未接続でも破棄する |
+| `HestiaGame::Scene` | `SceneAPI` から確定済みのパスを借用し、名前はそのファイル名から取得する。`LoadScene` はフレーム末尾の切り替えを予約する。未接続なら Getter は空、`LoadScene` は `false` を返す。 [GameScene.h](../../../Game/Include/GameScene.h) ・ [SceneAPI.h](../../../Engine/Include/API/SceneAPI.h) |
+| `HestiaGame::Input` | `InputAPI` を借用し、キー・マウスの状態照会とカーソル設定を Engine へ委譲する。 [公開 API と戻り値](../Engine/Input.md#game-向け-api) |
 
 [Time](../Time/Types.md) ・ [Log](../Log/Types.md) ・ [Asset](../Asset/Types.md)

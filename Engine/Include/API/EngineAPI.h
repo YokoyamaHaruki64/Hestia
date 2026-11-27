@@ -22,6 +22,13 @@ namespace Hestia
     /// @brief Engine.dll 内の Engine 実体を指す不透明なハンドル。
     using EngineHandle = void*;
 
+    /// @brief Engine が処理した Window Message の結果。
+    struct WindowMessageResult
+    {
+        bool m_handled = false;
+        LRESULT m_value = 0;
+    };
+
     /// @brief Application と Engine.dll の間で共有する関数テーブル。
     struct EngineAPI
     {
@@ -33,7 +40,8 @@ namespace Hestia
         void (*Destroy)(EngineHandle engine);
 
         /// @brief Window Message を Engine へ渡す。
-        void (*ProcessMessage)(EngineHandle engine, HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+        /// @return 処理済みかどうかと、処理済みの場合に WindowProc が返す値
+        WindowMessageResult (*ProcessMessage)(EngineHandle engine, HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
         /// @brief 固定更新を Engine に渡す。
         void (*FixedUpdate)(EngineHandle engine, float deltaTime);

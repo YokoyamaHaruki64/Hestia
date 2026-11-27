@@ -32,9 +32,14 @@
     "Design/ECS.md": { "category": "design", "order": 35, "summary": "Entityの配置と寿命、Processの要求Component、Gameとの受け渡し。" },
     "Design/Transform.md": { "category": "design", "order": 40, "label": "Transformの設計", "summary": "Transformのクラス構成、Local TRSを正本にする契約とGame向けFacadeの設計。" },
     "Design/Serialize/ComponentSerialization.md": { "category": "design", "order": 41, "label": "Componentのシリアライズ", "summary": "保存フィールド宣言、Prefabの取得とYAML入出力、Worldへの展開。" },
-    "Design/AssetSystem.md": { "category": "design", "order": 45, "label": "AssetSystemの設計", "summary": "型付きHandleによる資源管理、CPU Assetの所有、組み込みMesh。" },
+    "Design/Serialize/SceneSerialization.md": { "category": "design", "order": 42, "summary": "複数ルートとActive・Script型参照のYAML保存、Worldからの取得と復元。" },
+    "Design/SceneSystem.md": { "category": "design", "order": 43, "summary": "起動Scene、フレーム末尾の保存と切り替え、EntityとScriptの入れ替え。" },
+    "Design/InputSystem.md": { "category": "design", "order": 44, "summary": "キーボードとマウスのフレーム内入力、Gameへの公開、カーソルの制限と表示。" },
+    "Design/AssetSystem.md": { "category": "design", "order": 45, "label": "AssetSystemの設計", "summary": "型付きHandleによる資源管理、YAML Assetの共通保存、組み込みMesh。" },
     "Design/Asset/AssetDB.md": { "category": "design", "order": 46, "summary": ".metaの生成と検証、GUIDの解決、モデル内のSubAsset ID。" },
     "Design/Asset/MeshLoader.md": { "category": "design", "order": 47, "summary": "モデルのノード階層、Prefabと個別Mesh、SubMeshとMaterialSlotの割当。" },
+    "Design/Asset/MetaTool.md": { "category": "design", "order": 48, "summary": "AssetDBと開発ツールで共用するメタデータ形式・走査・GUID発行。" },
+    "Design/Asset/MaterialSerialization.md": { "category": "design", "order": 49, "summary": "単独MaterialのShader・Texture参照と、既定値との差分の保存・復元。" },
     "Legacy/AssetSystem.md": { "category": "legacy", "order": 10, "label": "名前ベースのAssetSystem", "summary": "AssetDB.yamlから名前・型・パスを解決する旧設計。" },
     "Legacy/Asset/MeshLoader.md": { "category": "legacy", "order": 20, "label": "単一Meshに変換するMeshLoader", "summary": "ノード変換を焼き付けてファイルを単一Meshにまとめる旧設計。" },
     "Design/MaterialShader.md": { "category": "design", "order": 50, "label": "MaterialShaderの設計", "summary": "Materialの所有、.matsh、PassのStream選択とSubMesh単位のForward描画。" },
@@ -44,12 +49,13 @@
     "Implementation/ECSProcess/Transform.md": { "label": "Transform", "summary": "必須Component、親子関係、World行列の更新順とDLL公開Facadeの現行仕様。" },
     "Implementation/ECSProcess/MeshRenderer.md": { "label": "MeshRenderer", "summary": "描画提出と、Game向けのMesh、MaterialSlot、インスタンス色の設定。" },
     "Implementation/README.md": { "category": "runtime", "label": "全体概要", "summary": "実装仕様書の索引、全体の接続、実装済みの対象範囲を確認する。", "diagrams": ["system"] },
-    "Implementation/Application/README.md": { "summary": "WindowとEngineの起動、フレーム進行、現在の終了処理を確認する。" },
+    "Implementation/Application/README.md": { "summary": "WindowとEngineの起動、メッセージ配送、フレーム進行、終了処理。" },
     "Implementation/Engine/README.md": {
-      "summary": "Systemの初期化・終了と、コードに記述された固定・通常更新の呼出順を確認する。",
+      "summary": "Systemの初期化・終了、固定・通常更新の呼出順、Sceneの保存と切り替え。",
       "diagrams": ["frame"],
-      "notes": [{ "text": "2026-11-05のEngine Debug_EditorビルドとECS関連19件のテストは成功。全体テストにはEngine生成4件とLog出力件数1件の失敗が残る。ビルド成立と実機上の描画・更新確認を区別する。", "sources": ["Docs/Implementation/ECS/README.md", "Engine/Source/Engine.cpp"] }]
+      "notes": [{ "text": "2026-11-26のApp Debug_EditorビルドとSceneの保存・再読込・Script復元の関連テストは成功。起動デモの確認はGPUを使わないテストで行った。", "sources": ["Docs/Implementation/Engine/README.md", "Test/Hestia_Tests/Source/GameRuntimeTests.cpp"] }]
     },
+    "Implementation/Engine/Input.md": { "label": "InputSystem", "summary": "キーボードとマウスの入力経路、Game向けAPI、カーソル制御、フレーム末尾のクリア。" },
     "Implementation/ECS/README.md": {
       "summary": "Entityの識別とSoA配置、構造変更の反映時点、破棄までの寿命を確認する。",
       "diagrams": ["ecs-process", "ecs-layout", "ecs-life"],
@@ -57,7 +63,7 @@
     },
     "Implementation/ECS/Process.md": { "order": 30, "label": "Process実行と型", "summary": "要求Componentの照合、Chunk単位の呼び出し、実行順と変更反映を確認する。" },
     "Implementation/ECS/DevelopmentGuide.md": { "order": 40, "label": "開発手引き", "summary": "ComponentとProcessの定義・登録から、公開APIとFacadeを介したGame側の操作までの開発手順。" },
-    "Implementation/Asset/README.md": { "summary": ".metaとGUIDによる管理、モデルからのPrefab・Mesh・DefaultPBR Materialの生成。", "diagrams": ["asset"] },
+    "Implementation/Asset/README.md": { "summary": ".metaとGUID、YAML Assetの共通保存、MaterialとMeshの解決。", "diagrams": ["asset"] },
     "CodingStandard.md": { "category": "guides", "order": 10, "summary": "名前、コメント、処理構成、includeパスの規約。" },
     "CodingExamples.md": { "category": "guides", "order": 20, "summary": "LogProcessを題材にしたヘッダー・実装・コメントの記述例。" },
     "BuildTroubleshooting.md": { "category": "guides", "order": 30, "summary": "MSVCのProgram Database Manager不整合に関する対応記録。" },
@@ -72,7 +78,7 @@
   "diagrams": {
     "ecs-process": { "title": "Processの生成・登録から実行まで", "caption": "RegisterProcessでProcessを生成してWorldへ登録し、要求Componentが揃うArchetypeをキャッシュする。Run(phase)は登録順・Chunk単位で関数を呼ぶ。AddProcessはEntityのComponent構成を変更する。RegisterECSはTransformProcessをPreRenderに登録する。", "sources": ["Docs/Implementation/ECS/Process.md", "Docs/Implementation/ECSProcess/Transform.md", "Engine/Include/ECS/ECSWorld.h", "Engine/Include/ECS/ECSProcess.h", "Engine/Include/ECS/ECSProcessExecution.h", "Engine/Source/ECS/ECSWorld.cpp", "Engine/Source/ECS/ECSProcess.cpp"] },
     "system": { "title": "Systemの所有とDLL境界", "caption": "実線は所有、破線はAPI接続。EngineはGameRuntimeの生成・破棄を呼び、GameRuntimeはEngineから操作テーブルを借りる。", "sources": ["Docs/Implementation/README.md", "Engine/Include/Engine.h", "Application/Include/Application.h", "Game/Include/GameRuntime.h"] },
-    "frame": { "title": "コードに記述されたフレーム進行", "caption": "固定更新は蓄積時間に応じて0回以上。GameRuntimeは対応するECS phaseの後に更新し、描画後はScriptを除去してからEntityを破棄する。", "sources": ["Docs/Implementation/Engine/README.md", "Application/Source/Application.cpp", "Engine/Source/Engine.cpp", "Game/Source/GameRuntime.cpp"] },
+    "frame": { "title": "コードに記述されたフレーム進行", "caption": "固定更新は蓄積時間に応じて0回以上。描画後はSceneの保存・切り替えを済ませてから、入力の遷移と差分をクリアする。", "sources": ["Docs/Implementation/Engine/README.md", "Application/Source/Application.cpp", "Engine/Source/Engine.cpp", "Engine/Source/Scene/SceneSystem.cpp", "Engine/Source/Input/InputSystem.cpp", "Game/Source/GameRuntime.cpp"] },
     "asset": { "title": "CPU登録とGPU転送", "caption": "CPU AssetのHandleが有効でもGPU転送成功とは限らない。GetはCPU実体を借用する。", "sources": ["Docs/Implementation/Asset/README.md", "Engine/Source/Asset/AssetSystem.cpp", "Engine/Source/Asset/AssetLoader.cpp"] },
     "ecs-layout": { "title": "HandleからSoA列への参照", "caption": "同じrowが同じEntityに対応する。構造変更で位置が変わるため、生ポインタを長期保持せずHandleから再取得する。", "sources": ["Docs/Implementation/ECS/README.md", "Engine/Include/ECS/Entity.h", "Engine/Source/ECS/Archetype.cpp", "Engine/Source/ECS/Chunk.cpp"] },
     "ecs-life": { "title": "Entityの生成と破棄", "caption": "破棄予約はAliveのEntityに付くbitで、独立したslot状態ではない。Process後の変更反映とEndFrameの破棄確定を区別する。", "sources": ["Docs/Implementation/ECS/README.md", "Engine/Include/ECS/Entity.h", "Engine/Source/ECS/ECSWorld.cpp"] }

@@ -16,6 +16,8 @@
 #include <new>
 
 #include "GameAssets.h"
+#include "GameInput.h"
+#include "GameScene.h"
 #include "GameTime.h"
 #include "World.h"
 
@@ -51,6 +53,8 @@ namespace HestiaGame::Detail
         Time::Bind(api->m_time);
         Logger::Bind(api->m_log);
         Assets::Bind(api->m_asset);
+        Scene::Bind(api->m_scene);
+        Input::Bind(api->m_input);
 
         // 初期配置のコールバックから Active を変更する場合も ECS から通知を受ける
         entity.SetActiveChangedCallback(runtime, [](void* context, Hestia::EntityHandle handle, bool active)
@@ -88,6 +92,8 @@ namespace HestiaGame::Detail
         m_storageGuids.clear();
         m_entityScripts.clear();
         m_storages.clear();
+        Input::Unbind();
+        Scene::Unbind();
         Assets::Unbind();
         Logger::Unbind();
         Time::Unbind();

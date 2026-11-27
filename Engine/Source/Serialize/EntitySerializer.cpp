@@ -1,6 +1,6 @@
 ﻿/*=============================================================================
 
- File   : EntityYamlWriter.cpp
+ File   : EntitySerializer.cpp
  Desc   : EntityのスナップショットからRapidYAMLのTreeを作成する。
 
 ------------------------------------------------------------------------------
@@ -11,19 +11,15 @@
 =============================================================================*/
 
 #include "pch.h"
-#include "Serialize/EntityYamlWriter.h"
+#include "Serialize/Serializer.h"
 
-#include <charconv>
-#include <cmath>
-#include <fstream>
 #include <string>
-#include <type_traits>
 
 #include "ECS/ComponentRegistry.h"
 #include "ECS/ECSSystem.h"
 #include "Log/Logger.h"
-#include "RapidYaml/rapidyaml.hpp"
 #include "Serialize/SerializedEntity.h"
+#include "Serialize/YamlFile.h"
 
 namespace Hestia
 {
@@ -43,54 +39,6 @@ namespace Hestia
             auto entities = root["entities"];
             entities |= ryml::SEQ;
             return entities;
-        }
-
-        void WriteValue(ryml::NodeRef node, const SerializedValue& value)
-        {
-            // 配列は要素を再帰的に展開し、文字列は数値や真偽値と区別する
-            std::visit([node](const auto& item) mutable
-            {
-                using Value = std::decay_t<decltype(item)>;
-                if constexpr (std::is_same_v<Value, SerializedValue::Array>)
-                {
-                    node |= ryml::SEQ | ryml::FLOW_SL;
-                    for (const auto& element : item)
-                        WriteValue(node.append_child(), element);
-                }
-                else if constexpr (std::is_same_v<Value, std::string>)
-                    node.save(ryml::csubstr(item.data(), item.size()), ryml::VAL_DQUO);
-                else if constexpr (std::is_same_v<Value, bool>)
-                    node.set_val(item ? "true" : "false");
-                else if constexpr (std::is_same_v<Value, AssetRef>)
-                {
-                    if (!item.m_guid)
-                    {
-                        node.set_val("null");
-                        return;
-                    }
-
-                    node |= ryml::MAP | ryml::FLOW_SL;
-                    node["guid"].save(ryml::to_csubstr(item.m_guid.ToString()));
-                    node["localId"].save(item.m_localId);
-                }
-                else if constexpr (std::is_same_v<Value, double>)
-                {
-                    // 指数表記で精度を保ち、整数に見える値も浮動小数として保存する
-                    if (std::isnan(item))
-                        node.set_val(".nan");
-                    else if (std::isinf(item))
-                        node.set_val(std::signbit(item) ? "-.inf" : ".inf");
-                    else
-                    {
-                        char buffer[32];
-                        const auto result = std::to_chars(buffer, buffer + sizeof(buffer), item,
-                            std::chars_format::scientific);
-                        node.save(ryml::csubstr(buffer, static_cast<size_t>(result.ptr - buffer)));
-                    }
-                }
-                else
-                    node.save(item);
-            }, value.m_value);
         }
 
         bool WriteComponents(ryml::NodeRef components, const SerializedEntity& entity,
@@ -126,7 +74,7 @@ namespace Hestia
 
                     auto fieldNode = fields.append_child();
                     fieldNode.save_key(ryml::csubstr(field.name.data(), field.name.size()), ryml::KEY_DQUO);
-                    WriteValue(fieldNode, found->second);
+                    WriteYamlValue(fieldNode, found->second);
                     ++writtenFields;
                 }
                 if (writtenFields != component.m_fields.size())
@@ -161,7 +109,7 @@ namespace Hestia
                             Logger::Error("Scene YAML contains an invalid Script reference");
                             return false;
                         }
-                        WriteValue(scripts.append_child(), SerializedValue{ ref });
+                        WriteYamlValue(scripts.append_child(), SerializedValue{ ref });
                     }
                 }
             }
@@ -201,37 +149,19 @@ namespace Hestia
             return true;
         }
 
-        bool SaveTree(const ryml::Tree& tree, const std::filesystem::path& path)
-        {
-            // Treeが完成してから出力先を開き、close時の書き込み失敗も確認する
-            const auto yaml = ryml::emitrs_yaml<std::string>(tree);
-            std::ofstream file(path, std::ios::binary | std::ios::trunc);
-            if (!file)
-            {
-                Logger::Error("Could not open Entity YAML for writing: " + path.string());
-                return false;
-            }
-
-            file.write(yaml.data(), static_cast<std::streamsize>(yaml.size()));
-            file.close();
-            if (!file)
-            {
-                Logger::Error("Could not write Entity YAML: " + path.string());
-                return false;
-            }
-            return true;
-        }
     }
 
-    bool EntityYamlWriter::Save(const SerializedEntity& root, std::string_view prefabName,
-        const std::filesystem::path& path)
+    std::optional<ryml::Tree> Serializer<Prefab>::Serialize(const SerializedEntity& root, std::string_view prefabName)
     {
         ryml::Tree tree;
         auto entities = BeginPrefab(tree, prefabName);
-        return entities.readable() && WriteHierarchy(entities, { &root, 1 }, false) && SaveTree(tree, path);
+        if (!entities.readable() || !WriteHierarchy(entities, { &root, 1 }, false))
+            return std::nullopt;
+        return tree;
     }
 
-    bool EntityYamlWriter::SaveScene(std::span<const SerializedEntity> roots, const std::filesystem::path& path)
+    std::optional<ryml::Tree> Serializer<std::span<const SerializedEntity>>::Serialize(
+        std::span<const SerializedEntity> roots)
     {
         // Sceneのバージョンを付けてから、Prefabと同じEntity形式で階層を出力する
         ryml::Tree tree;
@@ -242,6 +172,8 @@ namespace Hestia
         entities |= ryml::SEQ;
         if (roots.empty())
             entities |= ryml::FLOW_SL;
-        return WriteHierarchy(entities, roots, true) && SaveTree(tree, path);
+        if (!WriteHierarchy(entities, roots, true))
+            return std::nullopt;
+        return tree;
     }
 }

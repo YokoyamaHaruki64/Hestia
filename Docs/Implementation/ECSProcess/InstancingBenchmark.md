@@ -1,6 +1,6 @@
 ﻿# インスタンシングのベンチマーク
 
-`Engine::CreateDebugScene` は100列×25行×40層の格子に立方体100,000個を置き、斜め上から透視投影する。全個体が一つのMeshとMaterialを共有し、Transformとインスタンス色を個別に持つ。シーンの立方体は親を持たない。 [シーン生成](../../../Engine/Source/Engine.cpp) · [Unlit_Inst.matsh](../../../Assets/Shaders/MatShaders/Unlit_Inst.matsh)
+計測当時は100列×25行×40層の格子に立方体100,000個を置き、斜め上から透視投影した。全個体が一つのMeshとMaterialを共有し、Transformとインスタンス色を個別に持っていた。現在の起動デモは Scene から復元した Script で立方体を生成する。 [現在の動作確認用シーン](MeshRenderer.md#動作確認用シーン)
 
 ## Script 版と Process 版の比較
 
@@ -11,7 +11,7 @@
 | Script 版 | Game.dll の `RotateTransformScript` が、`OnStart` で取得した Transform Facade の Getter／Setter を使う | 約 55 | 約 18.2 ms |
 | Process 版 | Engine の `MoveTransform` が、ECS の Transform Component 列を直接更新する | 約 77 | 約 13.0 ms |
 
-[RotateTransformScript](../../../Game/Scripts/RotateTransformScript.h) · [初期配置](../../../Game/Scripts/GameSetup.cpp) · [MoveTransform](../../../Engine/Source/Transform/TransformProcess.cpp)
+当時の Script 版は手書きの Game Setup でアタッチしていた。Process 版の更新関数は Engine 側にある。 [MoveTransform](../../../Engine/Source/Transform/TransformProcess.cpp)
 
 | 測定環境 | 構成 |
 | --- | --- |

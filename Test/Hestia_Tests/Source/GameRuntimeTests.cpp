@@ -19,15 +19,19 @@
 
 #include "Common/Include/GameRuntimeAPI.h"
 #include "Engine/Include/API/AssetAPI.h"
+#include "Engine/Include/API/SceneAPI.h"
 #include "Engine/Include/Asset/AssetSystem.h"
 #include "Engine/Include/ECS/ECSSystem.h"
 #include "Engine/Include/Game/MeshRenderer.h"
+#include "Engine/Include/Game/Transform.h"
 #include "Engine/Include/Graphics/GraphicsSystem.h"
 #include "Engine/Include/Graphics/MeshRenderer.h"
+#include "Engine/Include/Input/InputSystem.h"
 #include "Engine/Include/API/TimeAPI.h"
 #include "Engine/Include/Time/TimeSystem.h"
 #include "Engine/Include/Scene/SceneSystem.h"
-#include "Engine/Include/Serialize/EntityYamlWriter.h"
+#include "Game/Include/GameInput.h"
+#include "Game/Include/GameScene.h"
 #include "Game/Include/GameTime.h"
 #include "Game/Include/World.h"
 
@@ -35,6 +39,10 @@ namespace
 {
     using Hestia::ECSSystem;
     using Hestia::EntityHandle;
+    using Hestia::InputSystem;
+    using Hestia::SceneSystem;
+    using HestiaGame::Input;
+    using HestiaGame::Key;
     using HestiaGame::Time;
     using HestiaGame::World;
 
@@ -148,6 +156,8 @@ namespace
             // Engine が Runtime に渡すものと同じ API で、描画環境なしに境界を検証する
             m_entityAPI = ECSSystem::CreateEntityAPI();
             m_engineAPI = { &m_time, &m_entityAPI, &m_ecs.GetProcessAPI() };
+            m_engineAPI.m_scene = &Hestia::SceneAPI::Get();
+            m_engineAPI.m_input = &InputSystem::GetAPI();
             m_runtimeAPI = GetGameRuntimeAPI();
             ASSERT_NE(m_runtimeAPI, nullptr);
             m_runtime = HestiaGame::Detail::GameRuntime::Create(&m_engineAPI, []
@@ -167,6 +177,8 @@ namespace
         {
             if (m_runtime != nullptr)
                 m_runtimeAPI->Destroy(m_runtime);
+            SceneSystem::Finalize();
+            InputSystem::Reset();
             if (m_ecsInitialized)
                 m_ecs.Finalize();
             m_time.Finalize();
@@ -209,6 +221,7 @@ namespace
             ("HestiaSceneStartup-" + std::to_string(GetCurrentProcessId()));
         const std::filesystem::path files[] = {
             "Scenes/Startup.scene", "Scenes/Startup.scene.meta", "Shaders/Common.hlsl",
+            "Materials/DebugCube.material", "Materials/DebugCube.material.meta",
             "Shaders/MatShaders/Unlit_Inst.matsh", "Shaders/MatShaders/Unlit_Inst.matsh.meta"
         };
         for (const auto& file : files)
@@ -218,17 +231,13 @@ namespace
                 std::filesystem::copy_options::overwrite_existing));
         }
 
-        // 描画デバイスなしで、起動Sceneが使う共有Materialを用意する
+        // 描画デバイスなしで、起動Sceneの共有Materialをファイルから取得する
         GraphicsSystem graphics;
         AssetSystem assets;
         ECSSystem ecs;
         ASSERT_TRUE(assets.Initialize(&graphics, directory));
-        auto* shader = AssetSystem::Get(AssetSystem::Load<MaterialShader>("Shaders/MatShaders/Unlit_Inst.matsh"));
-        ASSERT_TRUE(shader && shader->IsInstancing());
-        auto material = std::make_unique<Material>();
-        material->SetShader(shader);
-        const auto* sharedMaterial = AssetSystem::Get(AssetSystem::Register<Material>("DebugCubeMaterial", material.release()));
-        ASSERT_NE(sharedMaterial, nullptr);
+        const auto* sharedMaterial = AssetSystem::Get(AssetSystem::Load<Material>("Materials/DebugCube.material"));
+        ASSERT_TRUE(sharedMaterial && sharedMaterial->GetShader() && sharedMaterial->GetShader()->IsInstancing());
 
         // 本番用の生成登録とAsset Facadeを起動Sceneの復元へ接続する
         ASSERT_TRUE(ecs.Initialize());
@@ -243,13 +252,17 @@ namespace
         assetAPI.Initialize(&assets);
         GameEngineAPI engineAPI{ &time, &entityAPI, &ecs.GetProcessAPI(), nullptr, &assetAPI };
         const auto* runtimeAPI = GetGameRuntimeAPI();
-        std::unique_ptr<void, decltype(runtimeAPI->Destroy)> runtime(runtimeAPI->Create(&engineAPI), runtimeAPI->Destroy);
+        const auto destroyRuntime = [runtimeAPI](void* instance)
+        {
+            runtimeAPI->Destroy(instance);
+            SceneSystem::Finalize();
+        };
+        std::unique_ptr<void, decltype(destroyRuntime)> runtime(runtimeAPI->Create(&engineAPI), destroyRuntime);
         ASSERT_TRUE(runtime);
         ECSSystem::BindScriptAttachmentQuery(runtime.get(), runtimeAPI->QueryScriptAttachments);
 
-        SceneSystem scenes;
-        ASSERT_TRUE(scenes.LoadScene("Scenes/Startup.scene"));
-        ASSERT_TRUE(scenes.CheckScene(assets.GetDatabase(), *runtimeAPI, runtime.get()));
+        ASSERT_TRUE(SceneSystem::LoadScene("Scenes/Startup.scene"));
+        ASSERT_TRUE(SceneSystem::CheckScene(assets.GetDatabase(), *runtimeAPI, runtime.get()));
         const auto generator = World::FindFirstEntityByName("Debug Cube Generator");
         ASSERT_TRUE(generator.IsValid());
         const auto snapshot = ECSSystem::SaveEntity(generator);
@@ -278,29 +291,31 @@ namespace
         const auto directory = std::filesystem::temp_directory_path() /
             ("HestiaSceneSwitch-" + std::to_string(GetCurrentProcessId()));
         std::filesystem::create_directories(directory);
-        Hestia::AssetDB database;
-        ASSERT_TRUE(database.Initialize(directory));
-        Hestia::SceneSystem scenes;
+        Hestia::GraphicsSystem graphics;
+        Hestia::AssetSystem assets;
+        ASSERT_TRUE(assets.Initialize(&graphics, directory));
+        const auto& database = assets.GetDatabase();
         ECSSystem::BindScriptAttachmentQuery(m_runtime, m_runtimeAPI->QueryScriptAttachments);
 
         const auto original = World::CreateEntity();
         ASSERT_TRUE(World::SetName(original, "Saved spinner"));
         ASSERT_TRUE(World::AddScript<ValueScript>(original, 42));
         EndFrame();
-        ASSERT_TRUE(scenes.SaveScene("Saved.scene"));
-        ASSERT_TRUE(scenes.SaveScene("Saved.scene"));
-        ASSERT_TRUE(scenes.SerializeScene(database));
-        ASSERT_NE(database.FindByPath("Saved.scene"), nullptr);
+        ASSERT_TRUE(SceneSystem::SaveScene());
+        ASSERT_TRUE(SceneSystem::SaveScene());
+        ASSERT_TRUE(SceneSystem::SerializeScene());
+        EXPECT_EQ(SceneSystem::GetLastSavedScenePath(), "NewScene.scene");
+        ASSERT_NE(database.FindByPath("NewScene.scene"), nullptr);
         ASSERT_TRUE(World::SetName(original, "Unsaved change"));
-        ASSERT_TRUE(scenes.SerializeScene(database));
+        ASSERT_TRUE(SceneSystem::SerializeScene());
 
         // 保存後に追加したScriptも、旧Entityの実体がある間に終了する
         ASSERT_TRUE(World::AddScript<DestroyScript>(original, EntityHandle{}, &m_destroyed));
         EndFrame();
-        ASSERT_TRUE(scenes.LoadScene("Missing.scene"));
-        ASSERT_TRUE(scenes.LoadScene("Saved.scene"));
-        ASSERT_TRUE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
-        EXPECT_EQ(scenes.GetCurrentScenePath(), "Saved.scene");
+        ASSERT_TRUE(SceneSystem::LoadScene("Missing.scene"));
+        ASSERT_TRUE(SceneSystem::LoadScene("NewScene.scene"));
+        ASSERT_TRUE(SceneSystem::CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(SceneSystem::GetCurrentScenePath(), "NewScene.scene");
         EXPECT_EQ(m_destroyed, (std::vector<EntityHandle>{ original }));
         EXPECT_EQ(ECSSystem::GetEntity(original), nullptr);
         const auto restored = World::FindFirstEntityByName("Saved spinner");
@@ -314,20 +329,121 @@ namespace
         ASSERT_EQ(current->m_scripts.size(), 1u);
         current->m_active = false;
         current->m_scripts.push_back({ { { 90, 1 } }, 0 });
-        ASSERT_TRUE(Hestia::EntityYamlWriter::SaveScene({ &*current, 1 }, directory / "Saved.scene"));
-        ASSERT_TRUE(scenes.LoadScene("Saved.scene"));
-        ASSERT_TRUE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
+        ASSERT_TRUE(Hestia::AssetSystem::Save(std::span<const Hestia::SerializedEntity>{ &*current, 1 }, "NewScene.scene"));
+        ASSERT_TRUE(SceneSystem::LoadScene("NewScene.scene"));
+        ASSERT_TRUE(SceneSystem::CheckScene(database, *m_runtimeAPI, m_runtime));
         EXPECT_EQ(ECSSystem::GetEntity(restored), nullptr);
         const auto reopened = World::FindFirstEntityByName("Saved spinner");
         ASSERT_TRUE(reopened.IsValid());
         EXPECT_FALSE(World::IsActive(reopened));
         EXPECT_TRUE(World::GetScript<ValueScript>(reopened));
-        EXPECT_FALSE(scenes.LoadScene("../Saved.scene"));
-        ASSERT_TRUE(scenes.LoadScene("Missing.scene"));
-        EXPECT_FALSE(scenes.CheckScene(database, *m_runtimeAPI, m_runtime));
-        EXPECT_EQ(scenes.GetCurrentScenePath(), "Saved.scene");
+        EXPECT_FALSE(SceneSystem::LoadScene("../Saved.scene"));
+        ASSERT_TRUE(SceneSystem::LoadScene("Missing.scene"));
+        EXPECT_FALSE(SceneSystem::CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(SceneSystem::GetCurrentScenePath(), "NewScene.scene");
         ECSSystem::BindScriptAttachmentQuery(nullptr, nullptr);
         std::filesystem::remove_all(directory);
+    }
+
+    TEST_F(GameRuntimeTests, ExposesCurrentSceneAfterDeferredSwitch)
+    {
+        using HestiaGame::Scene;
+        const auto directory = std::filesystem::temp_directory_path() /
+            ("HestiaGameSceneAPI-" + std::to_string(GetCurrentProcessId()));
+        std::filesystem::create_directories(directory);
+        Hestia::GraphicsSystem graphics;
+        Hestia::AssetSystem assets;
+        ASSERT_TRUE(assets.Initialize(&graphics, directory));
+        const auto& database = assets.GetDatabase();
+        const std::span<const Hestia::SerializedEntity> roots;
+        ASSERT_TRUE(Hestia::AssetSystem::Save(roots, "Maps/Hub.scene"));
+        ASSERT_TRUE(Hestia::AssetSystem::Save(roots, "Maps/Final.Level.scene"));
+
+        // 初回の復元が完了してから名前とパスを取得できる
+        EXPECT_TRUE(Scene::GetCurrentSceneName().empty());
+        EXPECT_TRUE(Scene::GetCurrentScenePath().empty());
+        ASSERT_TRUE(Scene::LoadScene("Maps/./Hub.scene"));
+        EXPECT_TRUE(Scene::GetCurrentSceneName().empty());
+        EXPECT_TRUE(Scene::GetCurrentScenePath().empty());
+        ASSERT_TRUE(SceneSystem::CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(Scene::GetCurrentSceneName(), "Hub");
+        EXPECT_EQ(Scene::GetCurrentScenePath(), "Maps/Hub.scene");
+
+        // 無効な要求を拒否し、有効な要求の処理までは現在の Scene を返す
+        ASSERT_TRUE(Scene::LoadScene("Maps/Final.Level.scene"));
+        EXPECT_FALSE(Scene::LoadScene("../Outside.scene"));
+        EXPECT_FALSE(Scene::LoadScene("Maps/Final.Level.prefab"));
+        EXPECT_EQ(Scene::GetCurrentSceneName(), "Hub");
+        EXPECT_EQ(Scene::GetCurrentScenePath(), "Maps/Hub.scene");
+        ASSERT_TRUE(SceneSystem::CheckScene(database, *m_runtimeAPI, m_runtime));
+        EXPECT_EQ(Scene::GetCurrentSceneName(), "Final.Level");
+        EXPECT_EQ(Scene::GetCurrentScenePath(), "Maps/Final.Level.scene");
+        std::filesystem::remove_all(directory);
+    }
+
+    TEST_F(GameRuntimeTests, InputKeepsBothTransitionsForAShortTap)
+    {
+        // 更新前に押して離したキーも、両方の遷移を Game 側から取得できる
+        InputSystem::KeyboardHook(WM_KEYDOWN, 'W', 0);
+        InputSystem::KeyboardHook(WM_KEYUP, 'W', 0);
+        EXPECT_FALSE(Input::KeyHold(Key::W));
+        EXPECT_TRUE(Input::KeyDown(Key::W));
+        EXPECT_TRUE(Input::KeyRelease(Key::W));
+        InputSystem::EndFrame();
+        EXPECT_FALSE(Input::KeyDown(Key::W));
+        EXPECT_FALSE(Input::KeyRelease(Key::W));
+
+        // フレームをまたいだ押下とオートリピートは遷移扱いにしない
+        InputSystem::KeyboardHook(WM_KEYDOWN, 'W', 0);
+        InputSystem::EndFrame();
+        InputSystem::KeyboardHook(WM_KEYDOWN, 'W', 0x40000001);
+        EXPECT_TRUE(Input::KeyHold(Key::W));
+        EXPECT_FALSE(Input::KeyDown(Key::W));
+        EXPECT_FALSE(Input::KeyRelease(Key::W));
+
+        // フォーカス喪失前の入力を次の操作に引き継がない
+        InputSystem::KeyboardHook(WM_KEYDOWN, 'A', 0);
+        InputSystem::KeyboardHook(WM_KILLFOCUS, 0, 0);
+        EXPECT_FALSE(Input::KeyHold(Key::W));
+        EXPECT_FALSE(Input::KeyHold(Key::A));
+        EXPECT_FALSE(Input::KeyDown(Key::A));
+        EXPECT_FALSE(Input::KeyRelease(Key::W));
+    }
+
+    TEST_F(GameRuntimeTests, InputKeepsCombinedModifierHeldUntilBothSidesAreReleased)
+    {
+        // Win32 の共通コードとスキャンコードから左右の Shift に分ける
+        constexpr LPARAM leftShift = 0x002A0001;
+        constexpr LPARAM rightShift = 0x00360001;
+        InputSystem::KeyboardHook(WM_KEYDOWN, VK_SHIFT, leftShift);
+        EXPECT_TRUE(Input::KeyDown(Key::LeftShift));
+        EXPECT_TRUE(Input::KeyDown(Key::Shift));
+        EXPECT_FALSE(Input::KeyHold(Key::RightShift));
+        InputSystem::EndFrame();
+
+        InputSystem::KeyboardHook(WM_KEYDOWN, VK_SHIFT, rightShift);
+        EXPECT_TRUE(Input::KeyDown(Key::RightShift));
+        EXPECT_FALSE(Input::KeyDown(Key::Shift));
+        InputSystem::KeyboardHook(WM_KEYUP, VK_SHIFT, leftShift);
+        EXPECT_TRUE(Input::KeyRelease(Key::LeftShift));
+        EXPECT_TRUE(Input::KeyHold(Key::RightShift));
+        EXPECT_TRUE(Input::KeyHold(Key::Shift));
+        EXPECT_FALSE(Input::KeyRelease(Key::Shift));
+
+        InputSystem::KeyboardHook(WM_KEYUP, VK_SHIFT, rightShift);
+        EXPECT_TRUE(Input::KeyRelease(Key::RightShift));
+        EXPECT_TRUE(Input::KeyRelease(Key::Shift));
+        EXPECT_FALSE(Input::KeyHold(Key::Shift));
+
+        // 拡張キーフラグとシステムキー通知で右 Ctrl・Alt を区別する
+        InputSystem::KeyboardHook(WM_KEYDOWN, VK_CONTROL, 0x011D0001);
+        InputSystem::KeyboardHook(WM_SYSKEYDOWN, VK_MENU, 0x01380001);
+        EXPECT_TRUE(Input::KeyHold(Key::RightCtrl));
+        EXPECT_TRUE(Input::KeyHold(Key::RightAlt));
+        EXPECT_FALSE(Input::KeyHold(Key::LeftCtrl));
+        EXPECT_FALSE(Input::KeyHold(Key::LeftAlt));
+        InputSystem::KeyboardHook(WM_SYSKEYUP, VK_MENU, 0x01380001);
+        EXPECT_TRUE(Input::KeyRelease(Key::RightAlt));
     }
 
     TEST_F(GameRuntimeTests, QueriesOnlyRequestedAttachmentsAfterFlush)
